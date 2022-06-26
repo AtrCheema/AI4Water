@@ -128,11 +128,11 @@ class Transformation(TransformationsContainer):
         - ``maxabs``
         - ``robust``
         - ``power`` same as yeo-johnson
-        - ``yeo-johnson``
-        - ``box-cox``
+        - ``yeo-johnson`` power transformation using Yeo-Johnson method
+        - ``box-cox``  power transformation using box-cox method
         - ``zscore``    also known as standard scalers
         - ``scale``    division by standard deviation
-        - ``center`'   by subtracting mean
+        - ``center``   by subtracting mean
         - ``quantile``
         - ``quantile_normal`` quantile with normal distribution as target
         - ``log``      natural logrithmic
@@ -173,7 +173,8 @@ class Transformation(TransformationsContainer):
 
     Note
     ------
-     ``tan`` and ``cumsum`` do not return original data upon inverse transformation.
+     ``tan``, ``tanh``, ``sigmoid`` and ``cumsum`` do not return original data upon
+     inverse transformation.
 
     .. _google:
         https://developers.google.com/machine-learning/data-prep/transform/normalization

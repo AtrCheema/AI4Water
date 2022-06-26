@@ -16,6 +16,7 @@ p_cls = np.random.randint(0, 2, (100, 1))
 t_m_cls = np.random.randint(0, 4, (100, 1))
 p_m_cls = np.random.randint(0, 4, (100, 1))
 x = np.random.random((100, 4))
+x_2d = np.random.random((100, 4, 2))
 t2 = np.random.random((100, 2))
 p2 = np.random.random((100, 2))
 
@@ -28,12 +29,25 @@ class TestProcessPrediction(unittest.TestCase):
                                 forecast_len=1,
                                 output_features=['a'],
                                 is_multiclass=False,
-                                plots="residual",
+                                plots=["residual", "murphy"],
                                 show=self.show,
                                 save=False,
                                 )
 
-        pp(t,p,  inputs=x)
+        pp(t, p,  inputs=x)
+        return
+
+    def test_rgr_1_output_2dinp(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                output_features=['a'],
+                                is_multiclass=False,
+                                plots=["residual", "murphy"],
+                                show=self.show,
+                                save=False,
+                                )
+
+        self.assertRaises(ValueError, pp, t, p,  inputs=x_2d)
         return
 
     def test_rgr_2_output(self):

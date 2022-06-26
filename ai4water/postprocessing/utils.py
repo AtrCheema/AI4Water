@@ -288,7 +288,8 @@ class ProcessPredictions(Plot):
             show=False,
             save_path=os.path.join(self.path, where),
             save=self.save,
-            statistics=False)
+            #statistics=False
+        )
 
     def regression_plot(
             self,

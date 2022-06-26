@@ -323,13 +323,30 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
 
 def plot_edf(
         y: np.ndarray,
-        num_points=100,
+        num_points: int = 100,
         xlabel="Objective Value",
+        marker: str = '-',
         ax: plt.Axes = None,
-        **kwargs) -> plt.Axes:
+        **kwargs
+) -> plt.Axes:
     """
-    Plots the objective value empirical distribution function on hyperparameter
-    optimization. Implementation is taken from optuna.
+    Plots the empirical distribution function.
+
+    Parameters
+    ----------
+        y : np.ndarray
+            array of values
+        num_points : int
+        xlabel : str
+        marker : str
+        ax : plt.Axes, optional
+        **kwargs :
+            key word arguments for plot
+
+    Returns
+    -------
+    plt.Axes
+
     """
     x = np.linspace(np.min(y), np.max(y), num_points)
 
@@ -345,7 +362,7 @@ def plot_edf(
     ax = em.plot(
         x,
         y_values,
-        '-',
+        marker,
         show=False,
         title="Empirical Distribution Function Plot",
         ylabel="Cumulative Probability",

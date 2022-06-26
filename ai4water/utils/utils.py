@@ -779,9 +779,9 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5",
         try:
             # converting to float so that trailing 0 is removed
             val_loss = str(float(wname.split('_')[2]))
-        except ValueError as e:
+        except (ValueError, IndexError) as e:
             raise ValueError(f"while trying to find best weight in {w_path} with {best} and"
-                             f" {ext} and {epoch_identifier}"
+                             f" {ext} and {epoch_identifier} wname: {wname}"
                              f" encountered following error \n{e}")
         losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
 
