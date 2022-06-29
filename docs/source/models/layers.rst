@@ -20,6 +20,7 @@ Conditionalize
 
    .. automethod:: __init__
 
+
 EALSTM
 ========
 .. autoclass:: ai4water.models.tensorflow.EALSTM
@@ -29,23 +30,3 @@ EALSTM
 
    .. automethod:: __init__
 
-
-SelfAttention
-=============
-.. autoclass:: ai4water.models.tensorflow.SelfAttention
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-AttentionLSTM
-=============
-.. autoclass:: ai4water.models.tensorflow.AttentionLSTM
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-   .. automethod:: __call__

@@ -842,7 +842,6 @@ class SpatialAttention(layers.Layer):
 
 class attn_layers(object):
 
-    #SelfAttention = SelfAttention
     SeqSelfAttention = SeqSelfAttention
     SnailAttention = SnailAttention
     SeqWeightedAttention = SeqWeightedAttention
