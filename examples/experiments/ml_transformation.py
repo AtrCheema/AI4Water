@@ -80,5 +80,10 @@ experiment.fit(data = data,
                run_type='dry_run'
                )
 
-experiment.plot_improvement('nse')
+experiment.compare_errors('rmse')
 
+experiment.compare_errors('r2')
+
+experiment.compare_errors('nrmse')
+
+experiment.taylor_plot()

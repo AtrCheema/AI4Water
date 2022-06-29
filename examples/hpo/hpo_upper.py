@@ -49,10 +49,17 @@ model = Model(
 
 #%%
 
-optimizer = model.optimize_hyperparameters(data=data, num_iterations=30)
+optimizer = model.optimize_hyperparameters(
+    data=data,
+    num_iterations=30,
+    process_results=False  # we can turn it False if we want post-processing of results
+)
 
 #%%
-np.nanmin(optimizer.func_vals())
+optimizer._plot_convergence()
+
+#%%
+optimizer.best_iter()
 
 #%%
 

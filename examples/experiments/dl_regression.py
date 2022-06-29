@@ -1,7 +1,7 @@
 """
-=================================================
-Comparison of various deep learning architectures
-=================================================
+=========================================
+Comparison of deep learning architectures
+=========================================
 """
 
 
@@ -19,6 +19,7 @@ comparisons = DLRegressionExperiments(
     split_random=True,
     train_fraction=1.0,
     epochs=20,
+    ts_args={"lookback": 12},
     verbosity=0
 )
 
@@ -26,9 +27,9 @@ comparisons = DLRegressionExperiments(
 comparisons.fit(data=data,
                 include=['MLP',
                          'LSTM',
-                         'LSTMCNN',
+                         'CNNLSTM',
                          'TCN',
-                         "TFT",
+                         #"TFT",
                          "LSTMAutoEncoder",
                          ])
 

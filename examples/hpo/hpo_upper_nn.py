@@ -47,6 +47,11 @@ model = Model(
 
 #%%
 
-optimizer = model.optimize_hyperparameters(data=data, num_iterations=30)
+optimizer = model.optimize_hyperparameters(
+    data=data,
+    num_iterations=30,
+    process_results=False
+)
 
 #%%
+_ = optimizer.plot_importance(save=False)

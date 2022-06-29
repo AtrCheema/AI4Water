@@ -51,11 +51,6 @@ class TestDLExeriments(unittest.TestCase):
                 run_type="optimize",
                 num_iterations=12)
 
-        exp.loss_comparison(save=False, show=False)
-        exp.compare_errors('r2', save=False, show=False)
-        exp.compare_convergence(save=False, show=False)
-
-        return
 
 if __name__ == "__main__":
     unittest.main()

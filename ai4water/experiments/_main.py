@@ -187,6 +187,15 @@ class Experiments(object):
 
         return
 
+    def _named_x0(self)->dict:
+        x0 = getattr(self, 'x0', None)
+        param_space = getattr(self, 'param_space', None)
+        if param_space:
+            names = [s.name for s in param_space]
+            if x0:
+                return {k: v for k, v in zip(names, x0)}
+        return {}
+
     def fit(
             self,
             x=None,
@@ -342,16 +351,16 @@ class Experiments(object):
                         title=f"{self.exp_name}{SEP}{model_name}",
                         **config)
 
+                # there may be attributes int the model, which needs to be loaded so run the method first.
+                # such as param_space etc.
+                if hasattr(self, model_type):
+                    getattr(self, model_type)()
+
                 if run_type == 'dry_run':
                     if self.verbosity >= 0: print(f"running  {model_type} model")
-                    train_results, test_results = objective_fn()
+                    train_results, test_results = objective_fn(**self._named_x0())
                     self._populate_results(model_name, train_results, test_results)
                 else:
-                    # there may be attributes int the model, which needs to be loaded so run the method first.
-                    # such as param_space etc.
-                    if hasattr(self, model_type):
-                        getattr(self, model_type)()
-
                     opt_dir = os.path.join(os.getcwd(),
                                            f"results{SEP}{self.exp_name}{SEP}{model_name}")
 

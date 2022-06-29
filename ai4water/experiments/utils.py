@@ -799,8 +799,8 @@ def dl_space(
                 [32, 32, 1, 1]},
         "TCN": {
             "param_space": [
-                Integer(16, 128, name="hidden_units", num_samples=num_samples),
-                Categorical([1,2,3,4,5], name="num_heads")],
+                Integer(16, 128, name="filters", num_samples=num_samples),
+                Categorical([2,3,4,5], name="kernel_size")],
             "x0":
                 [64, 2]},
         "TFT": {

@@ -622,9 +622,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def best_paras(self, as_list=False) -> Union[list, dict]:
         # returns best parameters either as dictionary or as list
         if self.use_skopt_gpmin:
-            d = self.xy_of_iterations()
-            best_iter = np.nanargmin(np.array(list(d.keys()), dtype=np.float64))
-            paras = np.array(list(d.values()))[best_iter]
+            xys = self.xy_of_iterations()
+            paras = xys[self.best_iter()]['x']
         elif self.backend == 'hyperopt':
             d = get_one_tpe_x_iter(self.trials.best_trial['misc']['vals'], self.hp_space())
             if as_list:
@@ -974,9 +973,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """returns the iteration on which best/optimized parameters are obtained.
         The indexing starts from 0.
         """
-        d = self.xy_of_iterations()
-
-        return np.nanargmin(np.array(list(d.keys()), dtype=np.float64)).item()
+        return np.nanargmin(self.func_vals()).item()
 
     def best_xy(self) -> dict:
         """Returns best (optimized) parameters as dictionary.

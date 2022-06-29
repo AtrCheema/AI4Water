@@ -636,11 +636,11 @@ class Transformation(TransformationsContainer):
 
         if len(x_) == x_.size:
             # it is 1d
-            fig, axes = plt.subplots(1, 2, sharey="all", figsize=figsize)
+            fig, axes = plt.subplots(1, 2,  figsize=figsize)
             func(data, ax=axes[0], ** kwargs, title="original", show=False)
             func(x_, ax = axes[1], **kwargs,  title="Transformed", show=False)
         else:
-            fig, axes = plt.subplots(x_.shape[1], 2, sharey="all", figsize=figsize)
+            fig, axes = plt.subplots(x_.shape[1], 2, figsize=figsize)
             if isinstance(data, pd.DataFrame):
                 data = data.values
 

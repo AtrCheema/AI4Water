@@ -45,8 +45,8 @@ cases = {
     'model_scale': {'y_transformation': 'scale'},
     'model_robust': {'y_transformation': 'robust'},
     'model_quantile': {'y_transformation': 'quantile'},
-    'model_box_cox': {'y_transformation': {'method': 'box-cox', 'treat_negatives': True, 'replace_zeros': True}},
-    'model_yeo-johnson': {'y_transformation': 'yeo-johnson'},
+    #'model_box_cox': {'y_transformation': {'method': 'box-cox', 'treat_negatives': True, 'replace_zeros': True}},
+    #'model_yeo-johnson': {'y_transformation': 'yeo-johnson'},
     'model_sqrt': {'y_transformation': 'sqrt'},
     'model_log': {'y_transformation': {'method':'log', 'treat_negatives': True, 'replace_zeros': True}},
     'model_log10': {'y_transformation': {'method':'log10', 'treat_negatives': True, 'replace_zeros': True}},
@@ -66,18 +66,25 @@ search_space = [
 ]
 
 x0 = [16, "relu", 32, 0.0001]
-experiment = MyTransformationExperiments(cases=cases,
-                                         input_features=input_features,
-                                         output_features = output_features,
-                                         param_space=search_space,
-                                         x0=x0,
-                                         verbosity=0,
-                                         epochs=5,
-                                         exp_name = f"ecoli_lstm_y_exp_{dateandtime_now()}")
+experiment = MyTransformationExperiments(
+    cases=cases,
+    input_features=input_features,
+    output_features = output_features,
+    param_space=search_space,
+    x0=x0,
+    verbosity=0,
+    epochs=5,
+    exp_name = f"ecoli_lstm_y_exp_{dateandtime_now()}")
 
 experiment.fit(data = data,
                run_type='dry_run'
                )
 
-experiment.plot_improvement('nse')
+experiment.compare_errors('rmse')
+
+experiment.compare_errors('r2')
+
+experiment.compare_errors('nrmse')
+
+experiment.taylor_plot()
 

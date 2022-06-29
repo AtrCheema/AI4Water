@@ -312,11 +312,8 @@ class TestHyperOpt(unittest.TestCase):
             model = Model(
                 input_features=inputs,
                 output_features=outputs,
-                #lookback=1,
                 batches="2d",
-                #val_data="same",
-                #test_fraction=0.3,
-                val_fraction=0.0,
+                train_fraction=1.0,
                 model={"XGBRegressor": kwargs},
                 prefix='testing',
                 split_random=True,
