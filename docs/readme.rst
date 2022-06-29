@@ -5,6 +5,14 @@ To build docs locally follow the steps
 
 2) move to the docs directory
 
-3) ``pip install -r requirements.txt``
+    ``cd docs``
 
-4) ``make html``
+3) install the requirements
+
+    ``pip install -r requirements.txt``
+
+4) build the documentation
+
+    ``make html``
+
+5) If everythin works, then go to ``build`` folder and double click on ``index.html`` file

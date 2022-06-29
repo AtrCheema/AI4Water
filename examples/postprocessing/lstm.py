@@ -9,6 +9,9 @@ from ai4water.models import LSTM
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing import Visualize
 
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
 #%%
 data = busan_beach()
 data.shape

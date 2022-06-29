@@ -32,3 +32,7 @@ shapely
 # for making Laos data
 xarray
 netcdf4
+
+#
+shap
+lime
