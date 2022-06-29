@@ -1360,13 +1360,13 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data='test',
+            data=None,
             metrics=None,
             **kwargs
     ):
         """
         Evalutes the performance of the model on a given data.
-        calls the `evaluate` method of underlying `model`. If the `evaluate`
+        calls the ``evaluate`` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
 
         Arguments:
@@ -1376,7 +1376,7 @@ class BaseModel(NN):
                 outputs/true data corresponding to `x`
             data:
                 Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
-                to prepare x and y. If `x` and `y` are given, this argument will have no meaning.
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1384,9 +1384,9 @@ class BaseModel(NN):
                 It can also be name of group of metrics to evaluate.
                 Following groups are available
 
-                    - `minimal`
-                    - `all`
-                    - `hydro_metrics`
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
 
                 If this argument is given, the `evaluate` function of the underlying class
                 is not called. Rather the model is evaluated manually for given metrics.
@@ -1469,11 +1469,17 @@ class BaseModel(NN):
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
-    def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
+    def call_evaluate(self, x=None,y=None, data=None, metrics=None, **kwargs):
+
+        if x is None and data is None:
+            data = "test"
 
         source = 'test'
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
             source = data
+            warnings.warn(f"""
+            argument {data} is deprecated and will be removed in future. Please 
+            use 'evaluate_on_{data}' method instead.""")
 
         x, y, _, _, user_defined = self._fetch_data(source, x, y, data)
 
@@ -1659,6 +1665,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="training",
             **kwargs
         )
 
@@ -1698,6 +1705,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="validation",
             **kwargs
         )
 
@@ -1737,6 +1745,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="test",
             **kwargs
         )
 
@@ -1777,6 +1786,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="all",
             **kwargs
         )
 
@@ -1784,19 +1794,26 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data='test',
+            data=None,
             process_results=True,
             metrics="minimal",
             return_true: bool = False,
             plots=None,
+            prefix=None,
             **kwargs
     ):
 
         source = 'test'
+        if x is None and data is None:
+            data = "test"
+
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
+            warnings.warn(f"""
+            argument {data} is deprecated and will be removed in future. Please 
+            use 'predict_on_{data}' method instead.""")
             source = data
 
-        inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+        inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
             source=source,
             x=x,
             y=y,
@@ -1810,7 +1827,7 @@ class BaseModel(NN):
                           UserWarning)
             data = "validation"
             source = data
-            inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+            inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
                 source=source,
                 x=x,
                 y=y,
@@ -1822,11 +1839,13 @@ class BaseModel(NN):
                               UserWarning)
                 data = "training"
                 source = data
-                inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+                inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
                     source=source,
                     x=x,
                     y=y,
                     data=data)
+
+        prefix = prefix or _prefix
 
         inputs = self._transform_x(inputs)
 
