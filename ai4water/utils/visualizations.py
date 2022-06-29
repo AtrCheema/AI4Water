@@ -1,3 +1,5 @@
+__all__ = ["Plot", "murphy_diagram", "edf_plot", "fdc_plot"]
+
 from typing import Union, Callable
 
 from ai4water.backend import os, np, pd, plt, plotly
@@ -321,7 +323,7 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     return fig, ax
 
 
-def plot_edf(
+def edf_plot(
         y: np.ndarray,
         num_points: int = 100,
         xlabel="Objective Value",

@@ -1479,7 +1479,7 @@ class BaseModel(NN):
             source = data
             warnings.warn(f"""
             argument {data} is deprecated and will be removed in future. Please 
-            use 'evaluate_on_{data}' method instead.""")
+            use 'evaluate_on_{data}_data' method instead.""")
 
         x, y, _, _, user_defined = self._fetch_data(source, x, y, data)
 
@@ -1810,7 +1810,7 @@ class BaseModel(NN):
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
             warnings.warn(f"""
             argument {data} is deprecated and will be removed in future. Please 
-            use 'predict_on_{data}' method instead.""")
+            use 'predict_on_{data}_data' method instead.""")
             source = data
 
         inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(

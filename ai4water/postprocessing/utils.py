@@ -7,7 +7,7 @@ from ai4water.backend import easy_mpl as ep
 from ai4water.backend import np, pd, mpl, plt, os, sklearn
 from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
-from ai4water.utils.visualizations import murphy_diagram, fdc_plot, plot_edf
+from ai4water.utils.visualizations import murphy_diagram, fdc_plot, edf_plot
 
 try:
     import wandb
@@ -239,7 +239,7 @@ class ProcessPredictions(Plot):
 
         error = np.abs(true - predicted)
 
-        plot_edf(error, xlabel="Absolute Error")
+        edf_plot(error, xlabel="Absolute Error")
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
     def murphy_plot(self, true, predicted, prefix, where, inputs, **kwargs):

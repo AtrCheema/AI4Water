@@ -18,7 +18,7 @@ from .utils import loss_histogram, plot_hyperparameters
 from ai4water.utils.utils import JsonEncoder
 from ai4water.utils.utils import clear_weights
 from ai4water.utils.utils import Jsonize, dateandtime_now
-from ai4water.utils.visualizations import plot_edf
+from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
@@ -992,7 +992,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """empirical CDF of objective function"""
         plt.close("all")
         y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
-        plot_edf(y, **kwargs)
+        edf_plot(y, **kwargs)
         if save:
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return

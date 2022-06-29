@@ -861,7 +861,7 @@ def clear_weights(
 
     fname = 'sorted.json'
 
-    results = OrderedDict(sorted(results.items()))
+    results = OrderedDict(sorted({float(k):v for k,v in results.items()}.items()))
 
     best_results = {}
 
