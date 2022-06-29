@@ -28,3 +28,7 @@ optuna
 # for hru discretization examples
 pyshp
 shapely
+
+# for making Laos data
+xarray
+netcdf4
