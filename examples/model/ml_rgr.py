@@ -1,7 +1,7 @@
 """
-================================
-Building Machine learning models
-================================
+===============================================
+Building Machine learning models for regression
+===============================================
 """
 
 from ai4water import Model

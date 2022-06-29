@@ -46,10 +46,10 @@ def x_iter_for_tpe(trials, param_space: dict, as_list=True):
         vals = t['misc']['vals']
         y = t['result']['loss']
 
-        _iter = get_one_tpe_x_iter(vals, param_space)
-        iterations[f'{round(y, 5)}_{idx}'] = _iter
+        x = get_one_tpe_x_iter(vals, param_space)
+        iterations[idx] = {'x': x, 'y': y}
 
-        x_iters.append(_iter)
+        x_iters.append(x)
 
     if as_list:
         return [list(d.values()) for d in x_iters]

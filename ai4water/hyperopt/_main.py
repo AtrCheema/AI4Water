@@ -2,7 +2,7 @@ import json
 import copy
 import inspect
 import warnings
-from typing import Union
+from typing import Union, Dict
 from collections import OrderedDict
 
 from .utils import plot_convergences
@@ -347,7 +347,7 @@ class HyperOpt(object):
         self.param_space = param_space
         self.original_space = param_space       # todo self.space and self.param_space should be combined.
         self.title = self.algorithm
-        self.results = {}  # internally stored results
+        self.results = OrderedDict()  # internally stored results
         self.gpmin_results = None  #
         self.data = None
         self.eval_on_best = eval_on_best
@@ -638,8 +638,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         elif self.use_skopt_bayes or self.use_sklearn:
             paras = self.optfn.best_params_
         else:
-            best_y = list(sorted(self.results.keys()))[0]
-            paras = sort_x_iters(self.results[best_y], list(self.param_space.keys()))
+            paras = sort_x_iters(self.results[self.best_iter()]['x'], list(self.param_space.keys()))
 
         if as_list:
             return list(paras.values())
@@ -755,7 +754,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if len(self.results) < 1:
             fv = search_result.func_vals
             xiters = search_result.x_iters
-            self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
+            for idx, y, x in zip(range(len(fv)), fv, xiters):
+                self.results[idx] = {'y': y, 'x': x}
 
         if self._process_results:
             post_process_skopt_results(search_result, self.results, self.opt_path)
@@ -788,7 +788,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         this argument is set to True during initiatiation of HyperOpt.""")
             err = round(err, 8)
 
-            self.results[f'{round(err, 8)}_{idx}'] = sort_x_iters(para, self.original_para_order())
+            self.results[idx] = {'y':err, 'x':sort_x_iters(para, self.original_para_order())}
 
         if self._process_results:
             clear_weights(self.opt_path, self.results)
@@ -917,38 +917,48 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """returns a dictionary whose values are hyperopt equivalent space instances."""
         return {k: v.as_hp(False if self.algorithm == 'atpe' else True) for k,v in self.space().items()}
 
-    def xy_of_iterations(self) -> dict:
-        # todo, not in original order
+    def xy_of_iterations(self) -> Dict[int,Dict[str, Union[str, dict]]]:
+        """returns a dictionary whose keys are iteration numbers are values are xy parirs
+        at those iterations.
+
+        Returns
+        Dict[int, Dict[str, [dict,float]]]
+        """
         if self.backend == "optuna":
             num_iters = range(self.num_iterations)
-            return {float(f'{round(trial.value, 5)}_{idx}'): trial.params for idx, trial in zip(num_iters, self.study.trials)}
+            results = {}
+            for idx, trial in zip(num_iters, self.study.trials):
+                results[idx] = {'y': trial.value, 'x': trial.params}
+            return results
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
             assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
-            # adding idx because sometimes the difference between two func_vals is negligible
             fv = self.gpmin_results['func_vals']
             xiters = self.gpmin_results['x_iters']
-            return {f'{round(k, 5)}_{idx}': self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
+            results = {}
+            for idx, y, x in zip(range(len(fv)), fv, xiters):
+                results[idx] = {'y': y, 'x': self.to_kw(x)}
+            return results
         else:
             # for sklearn based
             return self.results
 
-    def func_vals(self):
+    def func_vals(self)->np.ndarray:
         """returns the value of objective function at each iteration."""
         if self.backend == 'hyperopt':
-            return [self.trials.results[i]['loss'] for i in range(self.num_iterations)]
+            return np.array([self.trials.results[i]['loss'] for i in range(self.num_iterations)])
         elif self.backend == 'optuna':
-            return [s.values for s in self.study.trials]
+            return np.array([s.values for s in self.study.trials])
         else:
-            return np.array(list(self.results.keys()), dtype=np.float32)
+            return np.array([v['y'] for v in self.results.values()])
 
     def skopt_results(self):
         if self.use_own and self.algorithm in ["bayes", "bayes_rf"] and self.backend == 'skopt':
             return self.gpmin_results
         else:
             class SR:
-                x_iters = [list(s.values()) for s in self.xy_of_iterations().values()]
+                x_iters = [list(s['x'].values()) for s in self.xy_of_iterations().values()]
                 func_vals = self.func_vals()
                 space = self.skopt_space()
                 if isinstance(self.best_paras(), list):
@@ -960,17 +970,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             return SR()
 
-    def best_xy(self) -> dict:
-        """Returns best (optimized) parameters as dictionary.
-        The key of the dictionary is the value of the objective function with
-        best parameters. The value of the dictionary is again a dictionay of
-        optimized parameters.
+    def best_iter(self)->int:
+        """returns the iteration on which best/optimized parameters are obtained.
+        The indexing starts from 0.
         """
         d = self.xy_of_iterations()
-        k = list(dict(sorted(d.items())).keys())[0]
-        paras = {k: d[k]}
 
-        return paras
+        return np.nanargmin(np.array(list(d.keys()), dtype=np.float64)).item()
+
+    def best_xy(self) -> dict:
+        """Returns best (optimized) parameters as dictionary.
+        The dictionary has two keys ``x`` and ``y``. ``x`` is the
+        best hyperparameters while `y` is the corresponding objective function value.
+        """
+        d = self.xy_of_iterations()
+        key = list(d.keys())[self.best_iter()]
+
+        return d[key]
 
     def _plot_edf(self, save=True, **kwargs):
         """empirical CDF of objective function"""
@@ -986,7 +1002,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """
         d = self.xy_of_iterations()
 
-        data = pd.DataFrame([list(v.values()) for v in d.values()],
+        data = pd.DataFrame([list(v['x'].values()) for v in d.values()],
                             columns=[s for s in self.space()])
         categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
         parallel_coordinates(
@@ -1014,7 +1030,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if original:
             easy_mpl.plot(self.func_vals(), '--.',
                  xlabel="Number of calls $n$",
-                 yalbel=r"$\min f(x)$ after $n$ calls", **kwargs)
+                 ylabel=r"$\min f(x)$ after $n$ calls", **kwargs)
         else:
             plot_convergence([self.skopt_results()], **kwargs)
         if save:
@@ -1113,12 +1129,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             from pandas.plotting._matplotlib.tools import _subplots as create_subplots
 
         # name of hyperparameters
-        h_paras = list(list(self.best_xy().values())[0].keys())
+        h_paras = list(self.best_xy()['x'].keys())
 
         # container with a list for each hyperparameter
         h_para_lists = {k: [] for k in h_paras}
 
-        for score, x_iter in self.xy_of_iterations().items():
+        for xy in self.xy_of_iterations().values():
+            #score = xy['y']
+            x_iter = xy['x']
             for para, val in x_iter.items():
                 h_para_lists[para].append(val)
 
@@ -1271,8 +1289,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             distributions = {sn: s.to_optuna() for sn, s in self.space().items()}
 
-            for _y, _x in self.xy_of_iterations().items():
-
+            for xy in self.xy_of_iterations().values():
+                _x, _y = xy['x'], xy['y']
                 assert isinstance(_x, dict), f'params must of type dict but provided params are of type {_x.__class__.__name__}'
 
                 trials.append(_Trial(number=idx,

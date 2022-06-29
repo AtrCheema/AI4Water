@@ -27,7 +27,7 @@ np.random.seed(313)
 optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 from ai4water.tf_attributes import tf
-from ai4water.utils.utils import Jsonize
+from ai4water.utils.utils import Jsonize, dateandtime_now
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
@@ -55,7 +55,7 @@ def objective_func(**suggestion):
 
     model.fit(data=data)
 
-    t, p = model.predict(return_true=True, process_results=False)
+    t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
     mse = RegressionMetrics(t, p).mse()
 
     return mse
@@ -88,6 +88,15 @@ def check_attrs(optimizer, paras):
     assert isinstance(optimizer.best_paras(as_list=True), list)
     assert isinstance(optimizer.best_paras(False), dict)
     assert len(optimizer.func_vals()) >= optimizer.num_iterations
+    assert isinstance(optimizer.func_vals(), np.ndarray)
+
+    # all keys should be integer but we check only first
+    first_key = list(optimizer.xy_of_iterations().keys())[0]
+    assert isinstance(first_key, int)
+    first_xy = list(optimizer.xy_of_iterations().values())[0]
+    assert isinstance(first_xy['x'], dict)
+    assert isinstance(first_xy['y'], float)
+
     assert isinstance(optimizer.skopt_space(), Space)
 
     fpath = os.path.join(optimizer.opt_path, 'serialized.json')
@@ -98,18 +107,20 @@ def check_attrs(optimizer, paras):
 
 def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
+    prefix = f'test_{algorithm}_xgboost_{backend}{dateandtime_now()}'
+
     def fn(**suggestion):
         model = Model(
             input_features=inputs,
             output_features=outputs,
             model={"XGBRegressor": suggestion},
-            prefix=f'test_{algorithm}_xgboost_{backend}',
+            prefix=prefix,
             split_random=True,
             verbosity=0)
 
         model.fit(data=data)
 
-        t, p = model.predict(return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
         mse = RegressionMetrics(t, p).mse()
 
         return mse
@@ -124,7 +135,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
                          backend=backend,
                          num_iterations=num_iterations,
                          verbosity=0,
-                         opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
+                         opt_path=os.path.join(os.getcwd(), f'results\\{prefix}'))
 
     optimizer.fit()
     check_attrs(optimizer, len(search_space))
@@ -313,7 +324,7 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit(data=data)
 
-            t, p = model.predict(return_true=True, process_results=False)
+            t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
 
             return mse
@@ -411,9 +422,8 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit(data=data)
 
-            t, p = model.predict(return_true=True, process_results=False)
+            t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
-            #print(f"Validation mse {mse}")
 
             return mse
 
