@@ -3,7 +3,7 @@ import json
 import time
 import warnings
 from pickle import PicklingError
-from typing import Union, Callable
+from typing import Union, Callable, Tuple, List
 from types import MethodType
 
 import joblib  # since sklearn is required, this will automatically come in
@@ -18,6 +18,7 @@ from .nn_tools import NN
 from .backend import sklearn_models
 from .utils.utils import make_model
 from .postprocessing import ProcessPredictions
+from .postprocessing import prediction_distribution_plot
 from .preprocessing.transformations import Transformations
 from .utils.utils import maybe_three_outputs, get_version_info
 from .models.tensorflow.custom_training import train_step, test_step
@@ -25,6 +26,7 @@ from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
+from ai4water.backend import easy_mpl
 from ai4water.backend import np, pd, plt, os, mpl, random, h5py
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
@@ -3041,11 +3043,292 @@ class BaseModel(NN):
 
         return pdp
 
-    def feature_interaction(self, feature_1, feature_2, plot_type="heatmap"):
-        raise NotImplementedError
+    def feature_interaction(
+            self,
+            features: List[str],
+            x: Union[np.ndarray, pd.DataFrame] = None,
+            data = None,
+            data_type: str = "all",
+            feature_names: List[str] = None,
+            plot_type="heatmap",
+            num_grid_points=None,
+            grid_types=None,
+            percentile_ranges=None,
+            grid_ranges=None,
+            cust_grid_points=None,
+            show_percentile: bool = False,
+            show_outliers: bool =False,
+            endpoint: bool = True,
+            which_classes=None,
+            ncols=2,
+            figsize: Tuple[Union[int, float]]=None,
+            annotate: bool = False,
+            annotate_counts: bool = True,
+            show: bool = True,
+            save_info: bool = True,
+            annotate_colors=("black", "white"),
+            annotate_color_threshold: float=None,
+            annotate_fmt:str = None,
+            annotate_fontsize: int = 7
+    )->Tuple[pd.DataFrame, plt.Axes]:
+        """shows prediction distribution with respect to two input features.
 
-    def prediction_distribution(self, feature_name):
-        raise NotImplementedError
+        Parameters
+        ----------
+            x :
+                input data to the model.
+            data :
+                raw unprepared data from which x,y pairs for training,validation and test
+                are generated. It must only be given if ``x`` is not given.
+            data_type : str, optional (default="test")
+                The kind of data to be used. It is only valid if ``data`` argument is used.
+                It should be one of ``training``, ``validation``, ``test`` or ``all``.
+            features: list
+                two features to investigate
+            feature_names: list
+                feature names
+            num_grid_points: list, optional, default=None
+                number of grid points for each feature
+            grid_types: list, optional, default=None
+                type of grid points for each feature
+            percentile_ranges: list of tuple, optional, default=None
+                percentile range to investigate for each feature
+            grid_ranges: list of tuple, optional, default=None
+                value range to investigate for each feature
+            cust_grid_points: list of (Series, 1d-array, list), optional, default=None
+                customized list of grid points for each feature
+            show_percentile: bool, optional, default=False
+                whether to display the percentile buckets for both feature
+            show_outliers: bool, optional, default=False
+                whether to display the out of range buckets for both features
+            endpoint: bool, optional
+                If True, stop is the last grid point, default=True
+                Otherwise, it is not included
+            which_classes: list, optional, default=None
+                which classes to plot, only use when it is a multi-class problem
+            figsize: tuple or None, optional, default=None
+                size of the figure, (width, height)
+            ncols: integer, optional, default=2
+                number subplot columns, used when it is multi-class problem
+            annotate: bool, default=False
+                whether to annotate the points
+            annotate_counts : bool, default=False
+                whether to annotate counts or not.
+            annotate_colors : tuple
+                pair of colors
+            annotate_color_threshold : float
+                threshold value for annotation
+            annotate_fmt : str
+                format string for annotation.
+            annotate_fontsize : int, optinoal (default=7)
+                fontsize for annotation
+            plot_type : str, optional (default="circles")
+                either ``circles`` or ``hetmap``
+            show : bool, optional (default=True)
+                whether to show the  plot or not
+            save_info : bool, optional, default=True
+                whether to save the information as csv or not
+
+        Returns
+        -------
+        tuple
+            a pandas dataframe and maplotlib Axes
+
+        Examples
+        --------
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water import Model
+        ...
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> model.feature_interaction(
+        ...     ['tide_cm', 'sal_psu'],
+        ...     data=busan_beach(),
+        ...     annotate_counts=True,
+        ...     annotate_colors=("black", "black"),
+        ...     annotate_fontsize=10,
+        ...     cust_grid_points=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+        ...                       [33.45, 33.7, 33.9, 34.05, 34.4]],
+        ... )
+        """
+        if x is None:
+            assert data is not None
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
+
+        from pdpbox.info_plots import actual_plot_interact
+
+        if not isinstance(x, pd.DataFrame):
+            assert isinstance(x, np.ndarray)
+            x = pd.DataFrame(x, columns=self.input_features)
+
+        if feature_names is None:
+            feature_names = features
+
+        fig, ax, summary_df = actual_plot_interact(
+            self,
+            x,
+            features=features,
+            feature_names=feature_names,
+            annotate=annotate,
+            annotate_counts=annotate_counts,
+            plot_type=plot_type,
+            num_grid_points=num_grid_points,
+            grid_types=grid_types,
+            percentile_ranges=percentile_ranges,
+            grid_ranges=grid_ranges,
+            cust_grid_points=cust_grid_points,
+            show_percentile=show_percentile,
+            show_outliers=show_outliers,
+            endpoint=endpoint,
+            which_classes=which_classes,
+            ncols=ncols,
+            figsize=figsize,
+            annotate_colors=annotate_colors,
+            annotate_color_threshold=annotate_color_threshold,
+            annotate_fmt=annotate_fmt,
+            annotate_fontsize=annotate_fontsize,
+        )
+
+        if save_info:
+            summary_df.to_csv(os.path.join(self.path, f"{data_type}_feature_interaction.csv"))
+
+        plt.tight_layout()
+        if show:
+            plt.show()
+
+        return summary_df, ax
+
+    def prediction_distribution(
+            self,
+            feature: Union[str, list],
+            feature_name: str = None,
+            x: Union[np.ndarray, pd.DataFrame] = None,
+            data = None,
+            data_type: str = "test",
+            num_grid_points=10,
+            grid_type='percentile',
+            percentile_range=None,
+            grid_range=None,
+            cust_grid_points=None,
+            show_percentile: bool = False,
+            show_outliers: bool = False,
+            endpoint : bool = True,
+            figsize: tuple = None,
+            ncols: int = 2,
+            save_info: bool = True,
+            show: bool = True,
+            plot_params: dict = None,
+    )->Tuple[plt.Figure, plt.Axes, pd.DataFrame]:
+        """plots distribution of prediction from the model against an input feature.
+
+        Parameters
+        ----------
+            feature : str or list
+                the name of input feature against which the distribution is to be plotted.
+                for one-hot encoding features, this must be a list
+            feature_name : str
+                only useful when feature is list i.e. it is a one-hot encoded feature
+            x :
+                input data to the model.
+            data :
+                raw unprepared data from which x,y pairs for training,validation and test
+                are generated. It must only be given if ``x`` is not given.
+            data_type : str, optional (default="test")
+                The kind of data to be used. It is only valid if ``data`` argument is used.
+                It should be one of ``training``, ``validation``, ``test`` or ``all``.
+            num_grid_points: integer, optional, default=10
+                number of grid points for numeric feature
+            grid_type: string, optional, default='percentile'
+                'percentile' or 'equal'
+                type of grid points for numeric feature
+            percentile_range: tuple or None, optional, default=None
+                percentile range to investigate
+                for numeric feature when grid_type='percentile'
+            grid_range: tuple or None, optional, default=None
+                value range to investigate
+                for numeric feature when grid_type='equal'
+            cust_grid_points: Series, 1d-array, list or None, optional, default=None
+                customized list of grid points
+                for numeric feature
+            show_percentile: bool, optional, default=False
+                whether to display the percentile buckets
+                for numeric feature when grid_type='percentile'
+            show_outliers: bool, optional, default=False
+                whether to display the out of range buckets
+                for numeric feature when percentile_range or grid_range is not None
+            endpoint: bool, optional, default=True
+                If True, stop is the last grid point
+                Otherwise, it is not included
+            figsize : tuple or None, optional, default=None
+                size of the figure, (width, height)
+            ncols : integer, optional, default=2
+                number subplot columns, used when it is multi-class problem
+            save_info : bool, optional, default=True
+                whether to save the information as csv or not
+            show : bool, optional, default=True
+                whether to show the plot or not
+            plot_params : dict or None, optional, default=None
+                parameters for the plot
+
+        Returns
+        -------
+            a tuple of plt.Figure, plt.Axes and pd.DataFrame
+
+        Examples
+        --------
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water import Model
+        ...
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> model.prediction_distribution(feature="tide_cm",
+        ... data=busan_beach(), show_percentile=True)
+
+        """
+
+        if x is None:
+            assert data is not None
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
+
+        y = self.predict(x)
+
+        if isinstance(x, np.ndarray):
+            x = pd.DataFrame(x, columns=self.input_features)
+
+        if feature_name is None:
+            if isinstance(feature, str):
+                feature_name = feature
+            else:
+                assert isinstance(feature, list)
+                feature_name = "Feature"
+
+        fig, axes, summary_df = prediction_distribution_plot(
+            self.mode,
+            inputs=x,
+            prediction=y,
+            feature=feature,
+            feature_name=feature_name,
+            n_classes=self.num_classes,
+            num_grid_points=num_grid_points,
+            grid_type=grid_type,
+            percentile_range=percentile_range,
+            grid_range=grid_range,
+            cust_grid_points=cust_grid_points,
+            show_percentile = show_percentile,
+            show_outliers = show_outliers,
+            endpoint = endpoint,
+            figsize = figsize,
+            ncols = ncols,
+            plot_params=plot_params
+        )
+
+        if save_info:
+            summary_df.to_csv(os.path.join(self.path, f"{data_type}_prediction_distribution.csv"))
+
+        if show:
+            plt.show()
+
+        return fig, axes, summary_df
 
     def _transform(self, data, name_in_config):
         """transforms the data using the transformer which has already been fit"""

@@ -20,7 +20,8 @@ min_requirements = [
     'joblib',
     'requests',
     'easy_mpl>=0.20.4',
-    'SeqMetrics>=1.3.3'
+    'SeqMetrics>=1.3.3',
+    'PDPbox1'
     ]
 
 extra_requires = [
