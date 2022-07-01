@@ -4,14 +4,20 @@ machine learning for classification
 ===================================
 """
 
+import numpy as np
+import pandas as pd
+import ai4water
 from ai4water import Model
-from ai4water.datasets import MtropicsLaos
+from sklearn.datasets import load_breast_cancer
+
+ai4water.__version__
 
 #%%
 
-laos = MtropicsLaos()
-data = laos.make_classification(lookback_steps=1)
-data.shape
+bunch = load_breast_cancer()
+
+data = pd.DataFrame(np.column_stack([bunch['data'], bunch['target']]),
+                    columns=bunch['feature_names'].tolist() + ['diagnostic'])
 
 #
 
@@ -20,7 +26,6 @@ model = Model(
     output_features=data.columns.tolist()[-1:],
     model="XGBClassifier",
     split_random=True,
-    train_fraction=1.0,
     x_transformation="zscore",
 )
 

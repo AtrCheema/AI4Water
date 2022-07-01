@@ -2,18 +2,22 @@
 ==================================
 neural networks for classification
 ==================================
-"""
+This file shows how to build neural networks for a classification problem.
 
+"""
+import numpy as np
+import pandas as pd
 
 from ai4water import Model
 from ai4water.models import MLP
-from ai4water.datasets import MtropicsLaos
+from sklearn.datasets import load_breast_cancer
 
 #%%
 
-laos = MtropicsLaos()
-data = laos.make_classification(lookback_steps=1)
-data.shape
+bunch = load_breast_cancer()
+
+data = pd.DataFrame(np.column_stack([bunch['data'], bunch['target']]),
+                    columns=bunch['feature_names'].tolist() + ['diagnostic'])
 
 #
 
@@ -24,14 +28,13 @@ model = Model(
     lr=0.009919,
     batch_size=8,
     split_random=True,
-    train_fraction=1.0,
     x_transformation="zscore",
     epochs=200,
     loss="binary_crossentropy"
 )
-
-#%%
+#
+# #%%
 h = model.fit(data=data)
-
-#%%
+#
+# #%%
 p = model.predict_on_validation_data(data=data)

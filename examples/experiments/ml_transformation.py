@@ -67,14 +67,14 @@ Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
 ]
 
 x0 = [10, 0.11, 1.0, 1.0, 0.2, 45, "Uniform"]
-experiment = MyTransformationExperiments(cases=cases,
-                                         input_features=input_features,
-                                         output_features = output_features,
-                                         param_space=search_space,
-                                         x0=x0,
-                                         verbosity=0,
-                                         epochs=5,
-                                         exp_name = f"xgb_y_exp_{dateandtime_now()}")
+experiment = MyTransformationExperiments(
+    cases=cases,
+    input_features=input_features,
+    output_features = output_features,
+    param_space=search_space,
+    x0=x0,
+    verbosity=0,
+    exp_name = f"xgb_y_exp_{dateandtime_now()}")
 
 experiment.fit(data = data,
                run_type='dry_run'

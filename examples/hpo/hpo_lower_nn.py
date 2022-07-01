@@ -194,6 +194,7 @@ optimizer = HyperOpt(
     param_space=param_space,
     x0=x0,
     num_iterations=num_iterations,
+    process_results=False, # we can turn it False if we want post-processing of results
     opt_path=f"results{SEP}{PREFIX}"
 )
 
