@@ -384,7 +384,12 @@ class Visualize(Plots):
             data = getattr(self.model, f'{data}_data')()
             x, y = maybe_three_outputs(data)
 
-        return keract.get_gradients_of_activations(self.model, x, y,
+        from ai4water.functional import Model as FModel
+        if isinstance(self.model, FModel):
+            model = self.model._model
+        else:
+            model = self.model
+        return keract.get_gradients_of_activations(model, x, y,
                                                    layer_names=layer_names)
 
     def activation_gradients(
@@ -549,7 +554,12 @@ class Visualize(Plots):
             data = getattr(self.model, f'{data}_data')()
             x, y = maybe_three_outputs(data)
 
-        return keract.get_gradients_of_trainable_weights(self.model, x, y)
+        from ai4water.functional import Model as FModel
+        if isinstance(self.model, FModel):
+            model = self.model._model
+        else:
+            model = self.model
+        return keract.get_gradients_of_trainable_weights(model, x, y)
 
     def weight_gradients(
             self,
@@ -866,7 +876,7 @@ def features_2D(data,
     return
 
 
-def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, 
+def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None,
         title=None):
 
     assert data.ndim == 2
