@@ -381,6 +381,7 @@ class MtropicsLaos(Datasets):
             for xlsx_file in files:
 
                 if not xlsx_file.startswith("~"):
+
                     if os.name == "nt":
                         data_dir = os.path.join(self.ds_dir, "weather_station")
                         df = to_csv_and_read(xlsx_file,
@@ -394,7 +395,8 @@ class MtropicsLaos(Datasets):
                                            usecols=['Date', 'T', 'H', 'W', 'Gr'],
                                            parse_dates={'datetime': ['Date']},
                                            keep_default_na=False)
-                    df = df.dropna()
+                    df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+                    df = df.dropna(how="all")
                     df.index = pd.to_datetime(df.pop('datetime'))
                     dataframes.append(df)
 
@@ -412,9 +414,11 @@ class MtropicsLaos(Datasets):
 
         df.index = pd.to_datetime(df.pop('datetime'))
 
-        print(df.columns, self.weather_station_data)
-
         df.columns = self.weather_station_data
+
+        df = df.asfreq('H')
+        df = df.interpolate()
+        df = df.bfill()
 
         return check_st_en(df, st, en)
 
@@ -496,7 +500,7 @@ class MtropicsLaos(Datasets):
 
                 _df = pd.read_excel(f, sheet_name='Aperiodic')
                 _wl = _df[['Date', 'Time', 'RWL04']]
-                print('reading', f)
+
                 if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx"]:
                     _wl['Time'].iloc[-1] = datetime.time(0)
                 if os.path.basename(f) in [ "OMPrawdataLaos2006.xlsx"]:
@@ -511,7 +515,7 @@ class MtropicsLaos(Datasets):
                     "OMPrawdataLaos2017.xlsx", "OMPrawdataLaos2018.xlsx",
                     "OMPrawdataLaos2019.xlsx",
                                             ]:
-                    _wl = _wl.dropna()
+                    _wl = _wl.dropna(how="all")
                     _wl['Time'].iloc[-1] = datetime.time(0)
 
                 _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
@@ -686,9 +690,6 @@ class MtropicsLaos(Datasets):
         pcp = pcp.fillna(0.0)
 
         w = self.fetch_weather_station_data(st=st, en=en)
-        w = w.asfreq('H')
-        w = w.interpolate()
-        w = w.bfill()
         assert int(w.isna().sum().sum()) == 0, f"{int(w.isna().sum().sum())}"
 
         w.columns = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
