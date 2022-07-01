@@ -8,6 +8,8 @@ from ai4water import Model
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import PartialDependencePlot
 
+# sphinx_gallery_thumbnail_number = 5
+#%%
 
 data = busan_beach()
 input_features = data.columns.tolist()[0:-1]
@@ -47,7 +49,7 @@ pdp.plot_1d("tide_cm", show_dist=False)
 ############################################################
 
 
-pdp.plot_1d("tide_cm", show_dist=False, ice=False)
+pdp.plot_1d("tide_cm", show_dist_as="grid", ice=False)
 
 ############################################################
 

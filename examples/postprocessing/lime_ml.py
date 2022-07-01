@@ -11,6 +11,8 @@ from ai4water import Model
 from ai4water.datasets import MtropicsLaos
 from ai4water.postprocessing.explain import LimeExplainer
 
+# sphinx_gallery_thumbnail_number = 3
+
 #%%
 
 laos = MtropicsLaos()
@@ -75,8 +77,3 @@ _ = explainer.explain_example(44, annotate=True)
 
 #%%
 _ = explainer.explain_example(51, annotate=True)
-
-
-
-
-

@@ -8,12 +8,12 @@ Activations
 # layer or as activation functions.
 
 # sphinx_gallery_thumbnail_number = 2
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
 
 from ai4water import Model
-import tensorflow as tf
 from ai4water.postprocessing import Visualize
 
-tf.compat.v1.disable_eager_execution()
 
 import pandas as pd
 import numpy as np

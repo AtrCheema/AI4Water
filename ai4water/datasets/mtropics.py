@@ -1,7 +1,9 @@
 
 import glob
 import warnings
+from subprocess import call
 from typing import Union, Tuple
+import datetime
 
 try:
     from shapely.geometry import shape, mapping
@@ -11,7 +13,7 @@ except (ModuleNotFoundError, OSError):
 
 from ai4water.backend import os, shapefile, xr, np, pd, fiona
 
-from .utils import check_attributes
+from .utils import check_attributes, check_st_en
 from .datasets import Datasets, _maybe_download
 
 from ai4water.preprocessing.resample import Resampler
@@ -368,29 +370,53 @@ class MtropicsLaos(Datasets):
             https://doi.org/10.1038/s41598-017-04385-2
         """
 
-        fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
-        if not os.path.exists(fname):
+        nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
+        if not os.path.exists(nc_fname):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
-            df = pd.DataFrame()
-            for f in files:
-                _df = pd.read_excel(f, sheet_name='Hourly',
-                                    usecols=['T', 'H', 'W', 'Gr'], keep_default_na=False)
-                df = pd.concat([df, _df])
+
+            vbsfile = os.path.join(self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
+            create_vbs_script(vbsfile)
+
+            dataframes = []
+            for xlsx_file in files:
+
+                if not xlsx_file.startswith("~"):
+                    if os.name == "nt":
+                        data_dir = os.path.join(self.ds_dir, "weather_station")
+                        df = to_csv_and_read(xlsx_file,
+                                             data_dir,
+                                             sheed_id='2',
+                                             usecols=['Date', 'Time', 'T', 'H', 'W', 'Gr'],
+                                             parse_dates={'datetime': ['Date', 'Time']})
+                    else:
+                        df = pd.read_excel(xlsx_file,
+                                           sheet_name='Hourly',
+                                           usecols=['Date', 'T', 'H', 'W', 'Gr'],
+                                           parse_dates={'datetime': ['Date']},
+                                           keep_default_na=False)
+                    df = df.dropna()
+                    df.index = pd.to_datetime(df.pop('datetime'))
+                    dataframes.append(df)
+
+            df = pd.concat(dataframes)
+            del dataframes
 
             # non-numertic dtype causes problem in converting/saving netcdf
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col])
 
-            df = df.reset_index(drop=True)  # index is of type Int64Index
-            df.to_xarray().to_netcdf(fname)
+            df = df.reset_index()  # index is of type Int64Index
+            df.to_xarray().to_netcdf(nc_fname)
         else:  # feather file already exists so load from it
-            df = xr.load_dataset(fname).to_dataframe()
+            df = xr.load_dataset(nc_fname).to_dataframe()
+
+        df.index = pd.to_datetime(df.pop('datetime'))
+
+        print(df.columns, self.weather_station_data)
 
         df.columns = self.weather_station_data
 
-        df.index = pd.date_range('20010101 01:00:00', periods=len(df), freq='H')
-
-        return df[st:en]
+        return check_st_en(df, st, en)
 
     def fetch_pcp(self,
                   st: Union[str, pd.Timestamp] = '20010101 00:06:00',
@@ -467,8 +493,27 @@ class MtropicsLaos(Datasets):
             wl = pd.DataFrame()
             spm = pd.DataFrame()
             for f in files:
+
                 _df = pd.read_excel(f, sheet_name='Aperiodic')
                 _wl = _df[['Date', 'Time', 'RWL04']]
+                print('reading', f)
+                if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx"]:
+                    _wl['Time'].iloc[-1] = datetime.time(0)
+                if os.path.basename(f) in [ "OMPrawdataLaos2006.xlsx"]:
+                    _wl = _wl.iloc[0:-1]
+                    _wl['Time'].iloc[-1] = datetime.time(0)
+                if os.path.basename(f) in [ "OMPrawdataLaos2008.xlsx"]:
+                    _wl = _wl.dropna()
+                if os.path.basename(f) in [ "OMPrawdataLaos2009.xlsx",
+                                            "OMPrawdataLaos2010.xlsx",
+                                            "OMPrawdataLaos2011.xlsx",
+                    "OMPrawdataLaos2015.xlsx", "OMPrawdataLaos2016.xlsx",
+                    "OMPrawdataLaos2017.xlsx", "OMPrawdataLaos2018.xlsx",
+                    "OMPrawdataLaos2019.xlsx",
+                                            ]:
+                    _wl = _wl.dropna()
+                    _wl['Time'].iloc[-1] = datetime.time(0)
+
                 _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
                 _spm = _df[['Date.1', 'Time.1', 'SPM04']]
                 _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
@@ -485,14 +530,14 @@ class MtropicsLaos(Datasets):
                 spm = pd.concat([spm, _spm['SPM04']])
 
             wl.columns = ['water_level']
-            wl = wl.reset_index()
+            #wl = wl.reset_index()
             wl.to_xarray().to_netcdf(wl_fname)
             spm.columns = ['susp_pm']
-            spm = spm.reset_index()
+            #spm = spm.reset_index()
             spm.to_xarray().to_netcdf(spm_fname)
         else:
-            wl = xr.load_dataset(wl_fname).to_dataframe(['index'])
-            spm = xr.load_dataset(spm_fname).to_dataframe(['index'])
+            wl = xr.load_dataset(wl_fname).to_dataframe()
+            spm = xr.load_dataset(spm_fname).to_dataframe()
 
         # wl.index = pd.to_datetime(wl.pop('index'))
         # spm.index = pd.to_datetime(spm.pop('index'))
@@ -641,9 +686,10 @@ class MtropicsLaos(Datasets):
         pcp = pcp.fillna(0.0)
 
         w = self.fetch_weather_station_data(st=st, en=en)
+        w = w.asfreq('H')
         w = w.interpolate()
         w = w.bfill()
-        assert int(w.isna().sum().sum()) == 0
+        assert int(w.isna().sum().sum()) == 0, f"{int(w.isna().sum().sum())}"
 
         w.columns = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
         w_6min = Resampler(w,
@@ -1028,3 +1074,58 @@ def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
             df = df.loc[st:en]
 
     return df
+
+
+def to_csv_and_read(
+        xlsx_file:str,
+        data_dir:str,
+        sheed_id:str,
+        **read_csv_kwargs
+)->pd.DataFrame:
+    """converts the xlsx file to csv and reads it to dataframe."""
+    vbsfile = os.path.join(data_dir, 'ExcelToCsv.vbs')
+    create_vbs_script(vbsfile)
+
+    assert xlsx_file.endswith(".xlsx")
+
+    fname = os.path.basename(xlsx_file).split('.')[0]
+    #if not fname.startswith("~"):
+    csv_fpath = os.path.join(data_dir, f"{fname}.csv")
+    if not os.path.exists(csv_fpath):
+        call(['cscript.exe', vbsfile, xlsx_file, csv_fpath, sheed_id])
+
+    return pd.read_csv(csv_fpath, **read_csv_kwargs)
+
+
+def create_vbs_script(vbsfile):
+    f = open(vbsfile, 'wb')
+    f.write(vbscript.encode('utf-8'))
+    f.close()
+    return
+
+
+vbscript="""if WScript.Arguments.Count < 3 Then
+    WScript.Echo "Please specify the source and the destination files. Usage: ExcelToCsv <xls/xlsx source file> <csv destination file> <worksheet number (starts at 1)>"
+    Wscript.Quit
+End If
+
+csv_format = 6
+
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+src_file = objFSO.GetAbsolutePathName(Wscript.Arguments.Item(0))
+dest_file = objFSO.GetAbsolutePathName(WScript.Arguments.Item(1))
+worksheet_number = CInt(WScript.Arguments.Item(2))
+
+Dim oExcel
+Set oExcel = CreateObject("Excel.Application")
+
+Dim oBook
+Set oBook = oExcel.Workbooks.Open(src_file)
+oBook.Worksheets(worksheet_number).Activate
+
+oBook.SaveAs dest_file, csv_format
+
+oBook.Close False
+oExcel.Quit
+"""
