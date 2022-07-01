@@ -16,10 +16,16 @@ from sklearn.datasets import load_breast_cancer
 
 bunch = load_breast_cancer()
 
-data = pd.DataFrame(np.column_stack([bunch['data'], bunch['target']]),
-                    columns=bunch['feature_names'].tolist() + ['diagnostic'])
+data = pd.DataFrame(np.column_stack([
+    bunch['data'][0:1000, :], bunch['target'][0:1000, :]
+]),
+    columns=bunch['feature_names'].tolist() + ['diagnostic'])
 
-#
+del bunch
+
+data.shape
+
+#%%
 
 model = Model(
     input_features=data.columns.tolist()[0:-1],
@@ -33,8 +39,8 @@ model = Model(
     loss="binary_crossentropy"
 )
 #
-# #%%
+#%%
 h = model.fit(data=data)
-#
-# #%%
+
+#%%
 p = model.predict_on_validation_data(data=data)

@@ -16,10 +16,17 @@ ai4water.__version__
 
 bunch = load_breast_cancer()
 
-data = pd.DataFrame(np.column_stack([bunch['data'], bunch['target']]),
-                    columns=bunch['feature_names'].tolist() + ['diagnostic'])
+del bunch
 
-#
+#%%
+
+data = pd.DataFrame(np.column_stack([
+    bunch['data'][0:1000, :], bunch['target'][0:1000, :]
+]),
+    columns=bunch['feature_names'].tolist() + ['diagnostic'])
+data.shape
+
+#%%
 
 model = Model(
     input_features=data.columns.tolist()[0:-1],
