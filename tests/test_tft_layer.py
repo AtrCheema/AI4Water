@@ -8,6 +8,8 @@ site.addsitedir(ai4_dir)
 
 
 import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
 import numpy as np
 
 from ai4water.models.tensorflow import TemporalFusionTransformer
@@ -24,7 +26,7 @@ if 230 <= tf_version < 260:
 else:
     from ai4water import Model
 
-tf.compat.v1.disable_eager_execution()
+
 reset_seed(313, np=np, tf=tf)
 
 
@@ -128,6 +130,7 @@ class Test_TFT(unittest.TestCase):
         return
 
     def test_as_layer_for_nowcasting(self):
+
         params['total_time_steps'] = num_encoder_steps
         params['future_inputs'] = False
         layers = {

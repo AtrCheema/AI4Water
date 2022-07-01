@@ -29,16 +29,16 @@ laos = MtropicsLaos()
 cls_data = laos.make_classification(lookback_steps=1)
 
 
-def test_evaluation(model):
+def test_evaluation(model, _data):
 
-    model.evaluate(data='training')
-    model.training_data()
+    model.evaluate_on_training_data(data=_data)
+    model.training_data(data=_data)
 
-    model.evaluate(data='validation')
-    val_data = model.validation_data()
+    model.evaluate_on_validation_data(data=_data)
+    val_data = model.validation_data(data=_data)
 
-    model.evaluate(data='test')
-    test_data = model.test_data()
+    model.evaluate_on_test_data(data=_data)
+    test_data = model.test_data(data=_data)
     if not isinstance(test_data, tf.data.Dataset):
         test_x, test_y = test_data
 
@@ -48,13 +48,13 @@ def test_evaluation(model):
 
     return
 
-def test_prediction(model):
+def test_prediction(model, df):
 
-    t, p =model.predict(data='training', return_true=True, metrics="all")
+    t, p =model.predict_on_training_data(data=df, return_true=True, metrics="all")
     assert t.size == p.size
-    t,p = model.predict(data='validation', return_true=True, metrics="all")
+    t,p = model.predict_on_validation_data(data=df, return_true=True, metrics="all")
     assert t.size == p.size
-    t,p = model.predict(data='test', return_true=True, metrics="all")
+    t,p = model.predict_on_test_data(data=df, return_true=True, metrics="all")
     assert t.size == p.size
 
     return
@@ -102,9 +102,9 @@ def build_and_run_class_problem(n_classes,
         verbosity=0,
     )
     model.fit(data=df)
-    test_evaluation(model)
+    test_evaluation(model, df)
 
-    test_prediction(model)
+    test_prediction(model, df)
 
     assert model.mode == 'classification'
     assert len(model.classes_) == n_classes
@@ -116,7 +116,7 @@ class TestClassifications(unittest.TestCase):
 
     def test_ml_cls_model(self):
         # FModel because tensorflow sucks
-        model = FModel(model="RandomForestClassifier")
+        model = FModel(model="RandomForestClassifier", verbosity=0)
         model.fit(data=cls_data)
         proba = model.predict_proba()
         log_proba = model.predict_log_proba()

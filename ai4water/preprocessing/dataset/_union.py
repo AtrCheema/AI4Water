@@ -90,6 +90,14 @@ class DataSetUnion(_DataSet):
         return all([ds.is_binary for ds in self._datasets.values()])
 
     @property
+    def is_multilabel(self):
+        return all([ds.is_multilabel for ds in self._datasets.values()])
+
+    @property
+    def is_multiclass(self):
+        return all([ds.is_multiclass for ds in self._datasets.values()])
+
+    @property
     def input_features(self):
         _input_features = {k:v.input_features for k,v in self._datasets.items()}
         if self.as_list:

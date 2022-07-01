@@ -29,7 +29,7 @@ class TestEvaluate(unittest.TestCase):
 
     def test_basic_on_training_data(self):
         model.fit(data=beach_data, epochs=1)
-        eval_scores = model.evaluate(data='training')
+        eval_scores = model.evaluate_on_training_data(data=beach_data)
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
 
         eval_scores = model.evaluate_on_training_data(data=beach_data)
@@ -38,7 +38,7 @@ class TestEvaluate(unittest.TestCase):
 
     def test_basic_on_validation_data(self):
         model.fit(data=beach_data, epochs=1)
-        eval_scores = model.evaluate(data='validation')
+        eval_scores = model.evaluate_on_validation_data(data=beach_data)
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         eval_scores = model.evaluate_on_validation_data(data=beach_data)
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
@@ -52,12 +52,12 @@ class TestEvaluate(unittest.TestCase):
 
     def test_basic_with_metrics(self):
         # basic example with metrics
-        eval_scores = model.evaluate(data=beach_data, metrics="kge")
+        eval_scores = model.evaluate_on_test_data(data=beach_data, metrics="kge")
         assert isinstance(eval_scores, float)
 
     def test_basic_with_metric_groups(self):
         # basic example with metrics
-        eval_scores = model.evaluate(data=beach_data, metrics="hydro_metrics")
+        eval_scores = model.evaluate_on_test_data(data=beach_data, metrics="hydro_metrics")
         assert isinstance(eval_scores, dict)
         return
 

@@ -444,8 +444,8 @@ class BaseModel(NN):
     @property
     def is_multilabel(self):
         if hasattr(self, 'dh_'):
-            if self.dh_.data is None:
-                return None
+            #if self.dh_.data is None:
+            #    return None
             return self.dh_.is_multilabel
         return None
 
@@ -3543,8 +3543,13 @@ def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
     if isinstance(config, str) and config in ['quantile', 'quantile_normal']:
         config = {'method': 'quantile', 'n_quantiles': num_exs}
 
-    elif isinstance(config, dict) and config['method'] in ['quantile', 'quantile_normal']:
-        config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
+    elif isinstance(config, dict):
+        if 'method' not in config:
+            # for multiinput cases when x_transformation is defined as
+            # {'inp_1d': 'minmax', 'inp_2d': None}
+            pass # todo
+        elif config['method'] in ['quantile', 'quantile_normal']:
+            config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
 
     elif isinstance(config, list):
 
