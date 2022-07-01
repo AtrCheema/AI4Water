@@ -24,13 +24,13 @@ class TestMtropicsLaos(unittest.TestCase):
     def test_weather_station_data(self):
         w = laos.fetch_weather_station_data()
         assert isinstance(w.index, pd.DatetimeIndex)
-        assert w.index.freq == 'H'
+        assert w.index.freq == 'H', f"{w.index.freq}"
         assert w.shape == (166536, 4)
         #assert int(w.isna().sum().sum()) == 82114
 
     def test_fetch_hydro(self):
         wl, spm = laos.fetch_hydro()
-        assert wl.shape == (454699, 1)
+        assert wl.shape == (454696, 1), f"{wl.shape}"
         assert isinstance(wl.index, pd.DatetimeIndex)
         assert spm.shape == (6428, 1)
         assert isinstance(spm.index, pd.DatetimeIndex)

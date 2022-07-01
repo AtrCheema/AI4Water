@@ -7,7 +7,7 @@ Visualizing inside LSTM
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 
-from ai4water import Model
+from ai4water.functional import Model
 from ai4water.models import LSTM
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing import Visualize

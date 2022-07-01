@@ -2,11 +2,13 @@
 ============================
 HyperOpt for neural networks
 ============================
+This file shows how to optimize number of layers, neurons/units/filters in layers
+and activation functions of layers using HyperOpt class of AI4Water.
+The HyperOpt class provides a lower level API for hyperparameter optimization.
+It provides more control to the user. However, the user has to write
+the objective function, define parameter space and initial values itself.
 
-If your model consists of layers of neural neworks, you can easily modify
-the objective function accordingly. The only change you have to do is to
-get corresponding parameters from ``suggestions`` and use them
-to build the layers of neural network.
+
 """
 
 import os
@@ -16,7 +18,8 @@ from typing import Union
 import numpy as np
 from SeqMetrics import RegressionMetrics
 
-from ai4water.functional import Model
+import ai4water
+from ai4water import Model
 from ai4water.datasets import busan_beach
 from ai4water.models import LSTM
 from ai4water.utils.utils import jsonize, dateandtime_now
@@ -28,10 +31,9 @@ SEP = os.sep
 
 import tensorflow as tf
 
-print(tf.__version__, np.__version__)
+print(tf.__version__, np.__version__, ai4water.__version__)
 
 #%%
-#np.random.seed(313)
 
 ###########################################
 
@@ -68,6 +70,11 @@ def objective_fn(
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
 
+    In this example we are considering same number of units and same activation for each
+    layer. If we want to have (optimize) different number of units for each layer,
+    willhave to modify the parameter space accordingly. The LSTM function
+    can be used to have separate number of units and activation function for each layer.
+
     Parameters
     ----------
     prefix : str
@@ -82,6 +89,11 @@ def objective_fn(
         determines the amount of information to be printed
     predict : bool, optional (default=False)
         whether to make predictions on training and validation data or not.
+    seed : int, optional
+        random seed for reproducibility. During optimization, its value will
+        be None and we will use the value from SEEDS. After optimization,
+        we will again call the objective function but this time with fixed
+        seed.
     suggestions : dict
         a dictionary with values of hyperparameters at the iteration when
         this objective function is called. The objective function will be
@@ -98,6 +110,7 @@ def objective_fn(
     # build model
     _model = Model(
         model=LSTM(units=suggestions['units'],
+                   num_layers=suggestions['num_layers'],
                    activation=suggestions['activation'],
                    dropout=0.2),
         batch_size=suggestions["batch_size"],
@@ -158,7 +171,8 @@ def objective_fn(
 #-------------------------------
 # parameter space
 param_space = [
-    Integer(10, 20, name="units"),
+    Integer(10, 15, name="units"),
+    Integer(1, 2, name="num_layers"),
     Categorical(["relu", "elu", "tanh"], name="activation"),
     Real(0.00001, 0.01, name="lr"),
     Categorical([4, 8, 12, 16, 24], name="batch_size")
@@ -168,7 +182,7 @@ param_space = [
 # 3) initial state
 #-------------------------------
 # initial values
-x0 = [16, "relu", 0.001, 8]
+x0 = [14, 1, "relu", 0.001, 8]
 
 #############################################
 # 4) run optimization algorithm
@@ -217,6 +231,6 @@ model = objective_fn(prefix=f"{PREFIX}{SEP}best",
                      seed=seed_on_best_iter,
                      return_model=True,
                      epochs=200,
-                     verbosity=0,
+                     verbosity=1,
                      predict=True,
                      **optimizer.best_paras())
