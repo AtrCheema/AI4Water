@@ -14,25 +14,18 @@ scikit-optimize
 plotly
 tensorflow==2.7
 protobuf==3.19.1
-torch
 seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery
 keras-tcn
 xgboost
-lightgbm
 catboost
 optuna
 
 # for hru discretization examples
 pyshp
 shapely
-
-# for making Laos data
-xarray
-netcdf4
-openpyxl
 
 #
 shap
