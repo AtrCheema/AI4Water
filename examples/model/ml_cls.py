@@ -16,7 +16,7 @@ ai4water.__version__
 
 bunch = load_breast_cancer()
 
-del bunch
+
 
 #%%
 

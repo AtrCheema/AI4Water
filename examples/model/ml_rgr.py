@@ -18,12 +18,12 @@ model = Model(model={"XGBRegressor": {"learning_rate": 0.01}})
 
 #########################################
 
-model = Model(model={"CatBoostRegressor": {"learning_rate": 0.01}})
+# model = Model(model={"CatBoostRegressor": {"learning_rate": 0.01}})
 
 
 #########################################
 
-model = Model(model={"LGBMRegressor": {"num_leaves": 45}})
+#model = Model(model={"LGBMRegressor": {"num_leaves": 45}})
 
 
 #########################################
