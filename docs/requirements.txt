@@ -20,7 +20,6 @@ SeqMetrics
 sphinx-gallery
 keras-tcn
 xgboost
-catboost
 optuna
 
 # for hru discretization examples

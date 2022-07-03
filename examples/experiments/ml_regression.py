@@ -27,9 +27,9 @@ comparisons.fit(data=data,
                          'XGBRegressor',
                          'GaussianProcessRegressor',
                          'HistGradientBoostingRegressor',
-                         "LGBMRegressor",
+                         #"LGBMRegressor",
                          "GradientBoostingRegressor",
-                         "CatBoostRegressor",
+                         #"CatBoostRegressor",
                          "XGBRFRegressor"
                          ])
 
