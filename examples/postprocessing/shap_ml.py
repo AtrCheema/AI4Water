@@ -8,15 +8,14 @@ individual examples/samples of data.
 """
 
 from ai4water import Model
-from ai4water.datasets import MtropicsLaos
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import ShapExplainer
 
 # sphinx_gallery_thumbnail_number = 5
 
 #%%
 
-laos = MtropicsLaos()
-data = laos.make_regression()
+data = busan_beach()
 data.shape
 
 #%%

@@ -8,20 +8,18 @@ individual examples/samples of data.
 """
 
 from ai4water import Model
-from ai4water.datasets import MtropicsLaos
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import LimeExplainer
 
 # sphinx_gallery_thumbnail_number = 3
 
 #%%
 
-laos = MtropicsLaos()
-data = laos.make_regression()
+data =busan_beach()
 data.shape
 
 #%%
 model = Model(model="XGBRegressor",
-              prefix="ecoli_shap",  # folder name to save results
               val_fraction=0.0,
              )
 
