@@ -54,7 +54,7 @@ def objective_fn(
     global ITER
 
     # build model
-    _model = Model(model={"CatBoostRegressor": suggestions},
+    _model = Model(model={"XGBRegressor": suggestions},
                   prefix=prefix or PREFIX,
                   train_fraction=1.0,
                   split_random=True,
@@ -91,21 +91,11 @@ def objective_fn(
 
 num_samples=10
 space = [
-# maximum number of trees that can be built
-Integer(low=10, high=30, name='iterations', num_samples=num_samples),
-# Used for reducing the gradient step.
-Real(low=0.09, high=0.3, prior='log', name='learning_rate', num_samples=num_samples),
-# Coefficient at the L2 regularization term of the cost function.
-Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=num_samples),
-# arger the value, the smaller the model size.
-Real(low=0.1, high=10, name='model_size_reg', num_samples=num_samples),
-# percentage of features to use at each split selection, when features are selected over again at random.
-Real(low=0.1, high=0.5, name='rsm', num_samples=num_samples),
-# number of splits for numerical features
-Integer(low=32, high=50, name='border_count', num_samples=num_samples),
-# The quantization mode for numerical features.  The quantization mode for numerical features.
-Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
-                        'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')
+Integer(low=5, high=50, name='n_estimators', num_samples=num_samples),
+# Maximum tree depth for base learners
+Integer(low=3, high=10, name='max_depth', num_samples=num_samples),
+Real(low=0.01, high=0.5, name='learning_rate', prior='log', num_samples=num_samples),
+Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
 ]
 
 ###########################################
@@ -113,7 +103,7 @@ Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
 #-------------------------------
 # this step is optional but it is always better to
 # provide a good initial guess to the optimization algorithm
-x0 = [10, 0.11, 1.0, 1.0, 0.2, 45, "Uniform"]
+x0 = [5, 4, 0.1, "gbtree"]
 
 #############################################
 # 4) run optimization algorithm
