@@ -21,7 +21,7 @@ data.shape
 #%%
 
 model = Model(model="XGBRegressor",
-              prefix="ecoli_shap",  # folder name to save results
+              prefix="arg_shap",  # folder name to save results
               val_fraction=0.0,
              )
 
@@ -106,7 +106,7 @@ explainer.force_plot_single_example(44)
 # dependence plots
 #-----------------
 
-explainer.dependence_plot_single_feature('susp_pm')
+explainer.dependence_plot_single_feature('tide_cm')
 
 #%%
 

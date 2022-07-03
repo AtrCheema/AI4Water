@@ -21,7 +21,7 @@ bunch = load_breast_cancer()
 #%%
 
 data = pd.DataFrame(np.column_stack([
-    bunch['data'][0:1000, :], bunch['target'][0:1000, :]
+    bunch['data'][0:1000, :], bunch['target'][0:1000,]
 ]),
     columns=bunch['feature_names'].tolist() + ['diagnostic'])
 data.shape
