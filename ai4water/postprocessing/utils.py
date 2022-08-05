@@ -239,7 +239,7 @@ class ProcessPredictions(Plot):
 
         error = np.abs(true - predicted)
 
-        edf_plot(error, xlabel="Absolute Error")
+        edf_plot(error, xlabel="Absolute Error", show=False)
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
     def murphy_plot(self, true, predicted, prefix, where, inputs, **kwargs):
@@ -270,8 +270,17 @@ class ProcessPredictions(Plot):
 
         ep.hist(y, show=False, ax=axis[0])
 
-        ep.plot(x, y, 'o', show=False, ax=axis[1],
-                color="darksalmon", xlabel="Predicted", ylabel="Residual")
+        ep.plot(x, y, 'o', show=False,
+                ax=axis[1],
+                color="darksalmon",
+                xlabel="Predicted",
+                ylabel="Residual",
+                markerfacecolor=np.array([225, 121, 144]) / 256.0,
+                markeredgecolor="black", markeredgewidth=0.5,
+                xlabel_kws={"fontsize": 14},
+                ylabel_kws={"fontsize": 14},
+                )
+
         # draw horizontal line on y=0
         axis[1].axhline(0.0)
         plt.suptitle("Residual")

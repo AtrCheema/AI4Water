@@ -33,6 +33,6 @@ wrapt
 psutil
 SHAP
 
-easy_mpl>=0.20.4
+easy_mpl>=0.20.5
 SeqMetrics>=1.3.3
 PDPbox1
