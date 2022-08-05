@@ -200,8 +200,8 @@ def plot_param_importances(
     param_names = list(importances.keys())
 
     ax = bar_chart(importance_values, param_names, orient='h', show=False,
-                   title="fANOVA hyperparameter importance",
-                   xlabel="Relative Importance")
+                   ax_kws={'title':"fANOVA hyperparameter importance",
+                   'xlabel':"Relative Importance"})
 
     return importances, importance_paras, ax
 

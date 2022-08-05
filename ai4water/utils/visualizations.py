@@ -329,6 +329,7 @@ def edf_plot(
         xlabel="Objective Value",
         marker: str = '-',
         ax: plt.Axes = None,
+        show:bool = True,
         **kwargs
 ) -> plt.Axes:
     """
@@ -342,6 +343,8 @@ def edf_plot(
         xlabel : str
         marker : str
         ax : plt.Axes, optional
+        show : bool, optional (default=True)
+            whether to show the plot or not
         **kwargs :
             key word arguments for plot
 
@@ -372,5 +375,8 @@ def edf_plot(
         ax=ax,
         **kwargs
     )
+
+    if show:
+        plt.show()
 
     return ax

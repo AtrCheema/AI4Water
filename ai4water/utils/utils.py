@@ -861,7 +861,10 @@ def clear_weights(
 
     fname = 'sorted.json'
 
-    results = OrderedDict(sorted({float(k):v for k,v in results.items()}.items()))
+    d = {k: v['y'] for k, v in results.items()}
+    sorted_iters: list = sorted(d, key=d.get)
+    # sort a results based on a sorted_iters
+    results = dict(sorted(results.items(), key=lambda pair: sorted_iters.index(pair[0])))
 
     best_results = {}
 

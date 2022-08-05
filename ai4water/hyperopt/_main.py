@@ -985,11 +985,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return d[key]
 
-    def _plot_edf(self, save=True, **kwargs):
+    def _plot_edf(self, save=True, show=False, **kwargs):
         """empirical CDF of objective function"""
         plt.close("all")
         y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
-        edf_plot(y, **kwargs)
+        edf_plot(y, show=show, **kwargs)
         if save:
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
