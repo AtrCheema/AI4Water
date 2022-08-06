@@ -2766,7 +2766,8 @@ class BaseModel(NN):
             analyzer:Union[str, list]="sobol",
             sampler_kwds: dict = None,
             analyzer_kwds: dict = None,
-            save_plots: bool = True
+            save_plots: bool = True,
+            names: List[str] = None
     )->dict:
         """performs sensitivity analysis of the model w.r.t input features in data.
 
@@ -2798,6 +2799,8 @@ class BaseModel(NN):
         analyzer_kwds : dict
             keyword arguments for analyzer
         save_plots : bool, optional
+        names : list, optional
+            names of input features. If not given, names of input features will be used.
 
         Returns
         -------
@@ -2876,7 +2879,7 @@ class BaseModel(NN):
             bounds=bounds,
             sampler_kwds = sampler_kwds,
             analyzer_kwds = analyzer_kwds,
-            names=self.input_features
+            names=names or self.input_features
         )
 
         if save_plots:
@@ -3132,7 +3135,7 @@ class BaseModel(NN):
         Returns
         -------
         tuple
-            a pandas dataframe and maplotlib Axes
+            a pandas dataframe and matplotlib Axes
 
         Examples
         --------
@@ -3152,7 +3155,7 @@ class BaseModel(NN):
         ... )
         """
         if x is None:
-            assert data is not None
+            assert data is not None, f"either 'x' or 'data' must be given"
             x, _ = getattr(self, f"{data_type}_data")(data=data)
 
         from pdpbox.info_plots import actual_plot_interact
@@ -3426,7 +3429,9 @@ class BaseModel(NN):
                                                                         postprocess=postprocess).reshape(-1, )
             else:  # 1d array
                 y = getattr(transformer, method)(y, postprocess=postprocess)
-        else:
+        # y can be None for example when we call model.predict(x=x),
+        # in this case we don't know what is y
+        elif y is not None:
             raise ValueError(f"can't inverse transform y of type {type(y)}")
 
         return y

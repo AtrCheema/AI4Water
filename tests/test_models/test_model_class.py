@@ -1,5 +1,6 @@
 
 import os
+import time
 import unittest
 import site
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -244,6 +245,7 @@ class TestPermImp(unittest.TestCase):
         return
 
     def test_lookback(self):
+        time.sleep(1)
         model = Model(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
                       verbosity=0)
@@ -288,7 +290,8 @@ class TestShapValues(unittest.TestCase):
         return
 
     def test_lookback(self):
-        model = Model(model=LSTM(1, input_shape=(3, 3)),
+        time.sleep(1)
+        model = FModel(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
                       verbosity=0)
         model.fit(data=data)
