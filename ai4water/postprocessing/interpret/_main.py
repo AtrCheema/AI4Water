@@ -134,9 +134,9 @@ class Interpret(Plot):
             ep.bar_chart(labels=all_cols,
                       values=imp,
                       ax=axis,
-                      title="Feature importance",
-                      show=False,
-                      xlabel_fs=12)
+                      ax_kws={'title':"Feature importance",
+                              'xlabel_kws': {'fontsize': 12}},
+                      show=False)
             self.save_or_show(save=save, show=show, fname="feature_importance.png")
         return
 

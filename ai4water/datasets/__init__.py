@@ -60,7 +60,7 @@ def busan_beach(inputs: list = None,
     The data is in the form of
     mutlivariate time series and was collected over the period of 2 years during
     several precipitation events. The frequency of environmental data is 30 mins
-    while the ARG is discontinuous. The data and its pre-processing is described
+    while that of ARG is discontinuous. The data and its pre-processing is described
     in detail in Jang_ et al., 2021
 
     Arguments

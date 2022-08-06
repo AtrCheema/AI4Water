@@ -709,8 +709,8 @@ Available cases are {self.models} and you wanted to include
             for ordr in order:
                 bar_chart(improvement[ordr], improvement.index.tolist(),
                           ax=ax, color=colors[ordr], show=False,
-                          xlabel=ERROR_LABELS.get(metric_name, metric_name),
-                          label=ordr, **kwargs)
+                          ax_kws={'xlabel':ERROR_LABELS.get(metric_name, metric_name),
+                          'label':ordr}, **kwargs)
 
             ax.legend()
             plt.title('Improvement after Optimization')
@@ -810,22 +810,22 @@ Available cases are {self.models} and you wanted to include
                   labels=models.index.tolist(),
                   values=models['train'],
                   color=kwargs.get('color', None),
-                  title="Train",
-                  xlabel=ERROR_LABELS.get(matric_name, matric_name),
-                  xlabel_fs=kwargs.get('xlabel_fs', 16),
-                  title_fs=kwargs.get('title_fs', 20),
+                  ax_kws={'title':"Train",
+                  'xlabel':ERROR_LABELS.get(matric_name, matric_name),
+                  'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
+                  'title_kws':{'fontsize': kwargs.get('title_fs', 20)}},
                   show=False,
                   )
 
         bar_chart(ax=axis[1],
                   labels=models.index.tolist(),
                   values=models['test'],
-                  title="Test",
                   color=kwargs.get('color', None),
-                  xlabel=ERROR_LABELS.get(matric_name, matric_name),
-                  xlabel_fs=kwargs.get('xlabel_fs', 16),
-                  title_fs=kwargs.get('title_fs', 20),
-                  show_yaxis=False,
+                  ax_kws={'title':"Test",
+                  'xlabel':ERROR_LABELS.get(matric_name, matric_name),
+                  'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
+                  'title_kws':{'fontsize': kwargs.get('title_fs', 20)},
+                  'show_yaxis':False},
                   show=False
                   )
 
