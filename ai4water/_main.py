@@ -2056,14 +2056,14 @@ class BaseModel(NN):
         """
         from ai4water.postprocessing.visualize import Visualize
 
-        visualizer = Visualize(model=self)
+        visualizer = Visualize(model=self, show=show)
 
         visualizer(layer_name,
                    data=data,
                    x=x,
                    y=y,
-                   examples_to_use=examples_to_view,
-                   show=show)
+                   examples_to_use=examples_to_view
+                   )
 
         return visualizer
 

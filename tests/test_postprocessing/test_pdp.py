@@ -77,10 +77,11 @@ class TestPDP(unittest.TestCase):
         ax = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         assert isinstance(ax, plt.Axes)
 
-        model.partial_dependence_plot(data=pd.DataFrame(x, columns=model.input_features),
+        model.partial_dependence_plot(x=pd.DataFrame(x, columns=model.input_features),
                                       feature_name='tide_cm')
 
         return
+
 
 if __name__ == "__main__":
     unittest.main()

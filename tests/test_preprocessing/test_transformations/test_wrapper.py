@@ -284,7 +284,7 @@ class TestMultipleSources(unittest.TestCase):
                               val_fraction=0.0, train_fraction=1.0)
 
                 model.fit(data=df)
-                t,p = model.predict(data='training',
+                t,p = model.predict_on_training_data(data=df,
                                     return_true=True,
                                     process_results=False)
 
@@ -301,7 +301,7 @@ class TestMultipleSources(unittest.TestCase):
                                verbosity=0,
                                val_fraction=0.0, train_fraction=1.0,)
                 model2.fit(data=df2)
-                t2, p2 = model2.predict(data='training', return_true=True, process_results=False)
+                t2, p2 = model2.predict_on_training_data(data=df2, return_true=True, process_results=False)
                 _t2 = log_t.inverse_transform(t2)
                 _p2 = log_t.inverse_transform(p2)
                 np.testing.assert_array_almost_equal(t, _t2)

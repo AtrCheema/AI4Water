@@ -10,6 +10,7 @@ from ai4water.postprocessing.explain import PermutationImportance
 
 data=busan_beach()
 
+
 class TestPermImportance(unittest.TestCase):
 
     def test_one_2d_input(self):

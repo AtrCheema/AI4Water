@@ -308,7 +308,7 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifier.html
 
         self.path = "sklearn.linear_model.RidgeClassifier"
-        self.param_space = self.spaces["RidgeClassifierCV"]["param_space"]
+        self.param_space = self.spaces["RidgeClassifier"]["param_space"]
         self.x0 = self.spaces["RidgeClassifierCV"]["x0"]
 
         return {'model': {'RidgeClassifier': kwargs}}

@@ -261,8 +261,9 @@ class TestClassifications(unittest.TestCase):
             shuffle=False
         )
 
-        model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
-        t,p = model.predict(data='test', return_true=True)
+        data = busan_beach(target=['blaTEM_coppml', 'tetx_coppml'])
+        model.fit(data=data)
+        t,p = model.predict_on_test_data(data=data, return_true=True)
 
         assert np.allclose(t[3:5, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
 

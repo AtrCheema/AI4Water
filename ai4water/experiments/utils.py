@@ -445,9 +445,10 @@ def classification_space(num_samples:int, verbosity=0):
         "CalibratedClassifierCV": {
             "param_space": [
                 Categorical(categories=['sigmoid', 'isotonic'], name='method'),
-                Integer(low=5, high=50, name='n_jobs', num_samples=num_samples)],
+                #Integer(low=5, high=50, name='n_jobs', num_samples=num_samples)
+            ],
             "x0":
-                [5, 'sigmoid']},
+                ['sigmoid']},
         "DecisionTreeClassifier": {
             "param_space": [
                 Categorical(["best", "random"], name='splitter'),
@@ -524,9 +525,10 @@ def classification_space(num_samples:int, verbosity=0):
                 Integer(low=5, high=10, name='n_neighbors', num_samples=num_samples),
                 Integer(low=50, high=1000, name='max_iter', num_samples=num_samples),
                 Real(low=1e-6, high=1e-2, name='tol', num_samples=num_samples),
-                Integer(low=2, high=10, name='n_jobs', num_samples=num_samples)],
+                #Integer(low=2, high=10, name='n_jobs', num_samples=num_samples)
+            ],
             "x0":
-                ['knn', 5, 50, 1e-4, 5]},
+                ['knn', 5, 50, 1e-4]},
         "LabelSpreading": {
             "param_space": [
                 Categorical(categories=['knn', 'rbf'], name='kernel'),
@@ -534,9 +536,10 @@ def classification_space(num_samples:int, verbosity=0):
                 Integer(low=10, high=100, name='max_iter', num_samples=num_samples),
                 Real(low=0.1, high=1.0, name='alpha', num_samples=num_samples),
                 Real(low=1e-6, high=1e-2, name='tol', num_samples=num_samples),
-                Integer(low=2, high=50, name='n_jobs', num_samples=num_samples)],
+                #Integer(low=2, high=50, name='n_jobs', num_samples=num_samples)
+            ],
             "x0":
-                ['knn', 5, 10, 0.1, 1e-4, 5]},
+                ['knn', 5, 10, 0.1, 1e-4]},
         "LGBMClassifier": {
             "param_space": [
                 Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
@@ -563,7 +566,7 @@ def classification_space(num_samples:int, verbosity=0):
                 [True, 1.0, 100, 1e-4, True]},
         "LogisticRegression": {
             "param_space": [
-                Categorical(categories=[True, False], name='dual'),
+                #Categorical(categories=[True, False], name='dual'),
                 Real(low=1e-5, high=1e-1, name='tol', num_samples=num_samples),
                 Real(low=0.5, high=5.0, name='C', num_samples=num_samples),
                 Categorical(categories=[True, False], name='fit_intercept'),
@@ -571,7 +574,7 @@ def classification_space(num_samples:int, verbosity=0):
                 #Categorical(categories=['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'], name='solver')
             ],
             "x0":
-                [True, 1e-6, 1.0, True, 100]},
+                [1e-6, 1.0, True, 100]},
         "MLPClassifier": {
             "param_space": [
                 Integer(low=10, high=500, name='hidden_layer_sizes', num_samples=num_samples),

@@ -89,15 +89,15 @@ class TestTransformations(unittest.TestCase):
         test_custom_scaler(Log2Scaler, x3d)
         test_custom_scaler(Log10Scaler, x3d)
 
-        test_custom_scaler(LogScaler, x3d, feature_dim="1d")
-        test_custom_scaler(Log2Scaler, x3d, feature_dim="1d")
-        test_custom_scaler(Log10Scaler, x3d, feature_dim="1d")
+        test_custom_scaler(LogScaler, x3d)
+        test_custom_scaler(Log2Scaler, x3d)
+        test_custom_scaler(Log10Scaler, x3d)
         return
 
     def test_sqrt(self):
         test_custom_scaler(SqrtScaler, x)
         test_custom_scaler(SqrtScaler, x3d)
-        test_custom_scaler(SqrtScaler, x3d, feature_dim="1d")
+        test_custom_scaler(SqrtScaler, x3d)
         return
 
     def test_tan(self):

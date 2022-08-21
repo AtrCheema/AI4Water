@@ -23,7 +23,7 @@ def get_model(model_name, **kwargs):
 
     model.fit(data=data)
 
-    p = model.predict()
+    p = model.predict_on_test_data(data=data)
 
     return p
 

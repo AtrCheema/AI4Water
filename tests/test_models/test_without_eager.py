@@ -36,10 +36,10 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
 
     _ = model.fit(data=data)
 
-    _ = model.predict(data='training')
-    _ = model.predict(data='validation')
-    _ = model.evaluate(data='training')
-    pred_y = model.predict()
+    _ = model.predict_on_training_data(data=data)
+    _ = model.predict_on_validation_data(data=data)
+    _ = model.evaluate_on_training_data(data=data)
+    pred_y = model.predict_on_test_data(data=data)
 
     # user defined data
     x,y = model.training_data(data=data)
@@ -74,7 +74,7 @@ class TestModels(unittest.TestCase):
             ts_args={"lookback": 15},
             verbosity=0,
         )
-        model.predict(data=arg_busan)
+        model.predict_on_test_data(data=arg_busan)
         return
 
     def test_IA_with_transformation(self):

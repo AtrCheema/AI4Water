@@ -64,7 +64,7 @@ def _test_ml_inbuilt_data_reg(_model):
     model.predict_on_training_data(data=data)
     model.predict_on_validation_data(data=data)
 
-    t, p = model.predict(data="test", return_true=True)
+    t, p = model.predict_on_test_data(data=data, return_true=True)
     assert isinstance(t, np.ndarray)
     assert isinstance(p, np.ndarray)
 
@@ -79,7 +79,7 @@ def _test_ml_inbuilt_data_cls(_model):
 
     test_user_defined_data(model, x_cls, y_cls)
 
-    t, p = model.predict(data='test', return_true=True)
+    t, p = model.predict_on_test_data(data=data_cls, return_true=True)
     assert isinstance(t, np.ndarray)
     assert isinstance(p, np.ndarray)
     assert len(t) == len(p)

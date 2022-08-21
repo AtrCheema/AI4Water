@@ -105,7 +105,7 @@ history = model.fit(data=data)
 
 Make predictions from it
 ```python
-predicted = model.predict()
+predicted = model.predict(data=data)
 ```
 
 The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
@@ -165,7 +165,7 @@ model = Model(
 
 history = model.fit(data=data)
 
-preds = model.predict()
+preds = model.predict(data=data)
 ```
 
 # Hyperparameter optimization
