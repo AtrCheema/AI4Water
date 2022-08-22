@@ -46,38 +46,3 @@ IMVModel
    :show-inheritance:
 
    .. automethod:: __init__
-
-MLP
-===
-.. automodule:: ai4water.models
-   :members: MLP
-
-LSTM
-====
-.. automodule:: ai4water.models
-   :members: LSTM
-
-CNN
-===
-.. automodule:: ai4water.models
-   :members: CNN
-
-CNNLSTM
-=======
-.. automodule:: ai4water.models
-   :members: CNNLSTM
-
-TCN
-===
-.. automodule:: ai4water.models
-   :members: TCN
-
-LSTMAutoEncoder
-===============
-.. automodule:: ai4water.models
-   :members: LSTMAutoEncoder
-
-TFT
-===
-.. automodule:: ai4water.models
-   :members: TFT

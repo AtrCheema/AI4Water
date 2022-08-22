@@ -2,7 +2,6 @@ import json
 import glob
 from typing import Union
 
-
 from .datasets import Datasets, _unzip
 from .utils import check_attributes, download, sanity_check
 from ai4water.utils.utils import dateandtime_now
@@ -24,7 +23,6 @@ def gb_message():
 
 
 class Camels(Datasets):
-
     """
     Get CAMELS dataset.
     This class first downloads the CAMELS dataset if it is not already downloaded.
@@ -75,8 +73,8 @@ class Camels(Datasets):
 
     def fetch_static_features(
             self,
-            stn_id:Union[str, list],
-            features:Union[str, list]=None
+            stn_id: Union[str, list],
+            features: Union[str, list] = None
     ):
         """Fetches all or selected static attributes of one station.
 
@@ -157,7 +155,7 @@ class Camels(Datasets):
               static_features: Union[str, list, None] = None,
               st: Union[None, str] = None,
               en: Union[None, str] = None,
-              as_dataframe:bool = False,
+              as_dataframe: bool = False,
               **kwargs
               ) -> Union[dict, pd.DataFrame]:
         """
@@ -192,10 +190,21 @@ class Camels(Datasets):
         --------
         >>> dataset = CAMELS_AUS()
         >>> # get data of 10% of stations
-        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)
+        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        ...  # fetch data of 5 (randomly selected) stations
+        >>> df = dataset.fetch(stations=5, as_dataframe=True)
+        ... # fetch data of 3 selected stations
+        >>> df = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        ... # fetch data of a single stations
+        >>> df = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
         >>> data = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> data['dynamic']
+        ... # get only selected dynamic features
+        >>> df = dataset.fetch(stations='318076',
+        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        ... # fetch data between selected periods
+        >>> df = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         if isinstance(stations, int):
@@ -336,7 +345,7 @@ class Camels(Datasets):
 
     def fetch_dynamic_features(
             self,
-            stn_id:str,
+            stn_id: str,
             features='all',
             st=None,
             en=None,
@@ -394,21 +403,37 @@ class Camels(Datasets):
         """
         Fetches attributes for one station.
 
-        Arguments:
-            station : station id/gauge id for which the data is to be fetched.
-            dynamic_features:
-            static_features:
-            as_ts : whether static attributes are to be converted into a time
+        Parameters
+        -----------
+            station :
+                station id/gauge id for which the data is to be fetched.
+            dynamic_features : str/list, optional
+                names of dynamic features/attributes to fetch
+            static_features :
+                names of static features/attributes to be fetches
+            as_ts : bool
+                whether static attributes are to be converted into a time
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
-            st : starting point from which the data to be fetched. By default
+            st : str,optional
+                starting point from which the data to be fetched. By default
                 the data will be fetched from where it is available.
-            en : end point of data to be fetched. By default the dat will be fetched
+            en : str, optional
+                end point of data to be fetched. By default the dat will be fetched
 
-        Return: DataFrame
+        Returns
+        -------
+        pd.DataFrame
             dataframe if as_ts is True else it returns a dictionary of static and
-                dynamic attributes for a station/gauge_id
-            """
+            dynamic attributes for a station/gauge_id
+
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_AUS
+            >>> dataset = CAMELS_AUS()
+            >>> dataset.fetch_station_attributes('912101A')
+
+        """
         st, en = self._check_length(st, en)
 
         station_df = pd.DataFrame()
@@ -438,10 +463,8 @@ class LamaH(Camels):
     paper: https://essd.copernicus.org/preprints/essd-2021-72/
     """
     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
-    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp'
-                   ]
-    time_steps = ['daily', 'hourly'
-                  ]
+    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
+    time_steps = ['daily', 'hourly']
 
     static_attribute_categories = ['']
 
@@ -452,10 +475,19 @@ class LamaH(Camels):
                  ):
 
         """
-        Arguments:
-            time_step : possible values are `daily` or `hourly`
-            data_type : possible values are `total_upstrm`, `diff_upstrm_all`
-                or 'diff_upstrm_lowimp'
+        Parameters
+        ----------
+            time_step :
+                possible values are ``daily`` or ``hourly``
+            data_type :
+                possible values are ``total_upstrm``, ``diff_upstrm_all``
+                or `diff_upstrm_lowimp`
+
+        Examples
+        --------
+            >>> from ai4water.datasets import LamaH
+            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
+            >>> df = dataset.fetch(3, as_dataframe=True)
         """
 
         assert time_step in self.time_steps, f"invalid time_step {time_step} given"
@@ -475,7 +507,6 @@ class LamaH(Camels):
         if not os.path.exists(fpath):
             for dt in _data_types:
                 for ts in self.time_steps:
-
                     self.time_step = ts
                     self.data_type = dt
                     fname = f"lamah_{dt}_{ts}_dyn"
@@ -536,7 +567,6 @@ class LamaH(Camels):
             station_df = pd.DataFrame()
 
             if dynamic_features is not None:
-
                 dynamic_df = self.read_ts_of_station(station)
 
                 station_df = pd.concat([station_df, dynamic_df])
@@ -550,7 +580,19 @@ class LamaH(Camels):
             stn_id: Union[str, list],
             features=None
     ) -> pd.DataFrame:
+        """
+        static features of LamaH
 
+        Examples
+        --------
+            >>> from ai4water.datasets import LamaH
+            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
+            >>> df = dataset.fetch_static_features('99')  # (1, 61)
+            ...  # get list of all static features
+            >>> dataset.static_features
+            >>> dataset.fetch_static_features('99',
+            >>> features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
+        """
         fname = os.path.join(self.data_type_dir,
                              f'1_attributes{SEP}Catchment_attributes.csv')
 
@@ -680,7 +722,7 @@ class HYSETS(Camels):
     url = "https://osf.io/rpc3w/"
     Q_SRC = ['ERA5', 'ERA5Land', 'ERA5Land_SWE', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS_SWE']
     SWE_SRC = ['ERA5Land_SWE', 'SNODAS_SWE']
-    OTHER_SRC = [src for src in Q_SRC if src not in  ['ERA5Land_SWE', 'SNODAS_SWE']]
+    OTHER_SRC = [src for src in Q_SRC if src not in ['ERA5Land_SWE', 'SNODAS_SWE']]
     dynamic_features = ['discharge', 'swe', 'tasmin', 'tasmax', 'pr']
 
     def __init__(self,
@@ -726,7 +768,7 @@ class HYSETS(Camels):
         if not os.path.exists(fpath):
             self._maybe_to_netcdf('hysets_dyn')
 
-    def _maybe_to_netcdf(self, fname:str):
+    def _maybe_to_netcdf(self, fname: str):
         # todo saving as one file takes very long time
         oneD_vars = []
         twoD_vars = []
@@ -801,7 +843,8 @@ class HYSETS(Camels):
             as_dataframe: bool = False,
             **kwargs
     ):
-
+        """returns attributes of multiple stations
+        """
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
 
@@ -927,7 +970,7 @@ class HYSETS(Camels):
             en=None,
             as_ts=False
     ) -> pd.DataFrame:
-
+        """returns static atttributes of a station"""
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
     def read_static_data(self):
@@ -940,8 +983,9 @@ class HYSETS(Camels):
 class CAMELS_US(Camels):
     """
     Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
-    from https://ral.ucar.edu/solutions/products/camels
-    https://doi.org/10.5194/hess-19-209-2015
+    from https://ral.ucar.edu/solutions/products/camels following Newman et al., 2015 [1]_
+
+    .. [1]_ https://doi.org/10.5194/hess-19-209-2015
     """
     DATASETS = ['CAMELS_US']
     url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
@@ -1044,7 +1088,8 @@ class CAMELS_US(Camels):
                                      names=['Year', 'Mnth', 'Day', 'Hr', 'dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
                                             'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)'],
                                      )
-                    df.index = pd.to_datetime(df['Year'].map(str) + '-' + df['Mnth'].map(str) + '-' + df['Day'].map(str))
+                    df.index = pd.to_datetime(
+                        df['Year'].map(str) + '-' + df['Mnth'].map(str) + '-' + df['Day'].map(str))
 
             flow_dir = os.path.join(self.dataset_dir, 'usgs_streamflow')
             for cat in os.listdir(flow_dir):
@@ -1052,7 +1097,7 @@ class CAMELS_US(Camels):
                 stn_file = f'{station}_streamflow_qc.txt'
                 if stn_file in cat_dirs:
                     fpath = os.path.join(flow_dir, f'{cat}{SEP}{stn_file}')
-                    df1 = pd.read_csv(fpath,  sep="\s+|;|:'",
+                    df1 = pd.read_csv(fpath, sep="\s+|;|:'",
                                       names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'],
                                       engine='python')
                     df1.index = pd.to_datetime(
@@ -1068,10 +1113,19 @@ class CAMELS_US(Camels):
 
     def fetch_static_features(
             self,
-            stn_id:Union[str, list],
-            features:Union[str, list]=None
+            stn_id: Union[str, list],
+            features: Union[str, list] = None
     ):
-
+        """
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_US
+            >>> camels = CAMELS_US()
+            >>> camels.fetch_static_features('11532500')
+            >>> camels.static_features
+            >>> camels.fetch_static_features('11528700',
+            >>> features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+        """
         attributes = check_attributes(features, self.static_features)
 
         static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
@@ -1085,7 +1139,7 @@ class CAMELS_US(Camels):
                 _df.index = idx['gauge_id']
                 static_df = pd.concat([static_df, _df], axis=1)
             static_df.to_csv(static_fpath, index_label='gauge_id')
-        else:   # index should be read as string bcs it has 0s at the start
+        else:  # index should be read as string bcs it has 0s at the start
             idx = pd.read_csv(static_fpath, usecols=['gauge_id'], dtype=str)
             static_df = pd.read_csv(static_fpath, index_col='gauge_id')
             static_df.index = idx['gauge_id']
@@ -1168,7 +1222,8 @@ class CAMELS_BR(Camels):
     def static_features(self):
         static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes','01_CAMELS_BR_attributes')}/*.txt")
+            files = glob.glob(
+                f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
             cols = []
             for f in files:
                 _df = pd.read_csv(f, sep=' ', index_col='gauge_id', nrows=1)
@@ -1201,9 +1256,9 @@ class CAMELS_BR(Camels):
         return stations
 
     def stations(self, to_exclude=None) -> list:
-        """Returns a list of station ids which are common among all dynamic 
+        """Returns a list of station ids which are common among all dynamic
         attributes.
-        
+
         Example
         -------
         >>> dataset = CAMELS_BR()
@@ -1232,14 +1287,14 @@ class CAMELS_BR(Camels):
                                ):
         """
         returns the dynamic/time series attribute/attributes for one station id.
-        
+
         Example
         -------
         >>> dataset = CAMELS_BR()
         >>> pcp = dataset.fetch_dynamic_features('10500000', 'precipitation_cpc')
         ... # fetch all time series data associated with a station.
         >>> x = dataset.fetch_dynamic_features('51560000', dataset.dynamic_features)
-        
+
         """
 
         attributes = check_attributes(attributes, self.dynamic_features)
@@ -1303,7 +1358,8 @@ class CAMELS_BR(Camels):
 
         static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes','01_CAMELS_BR_attributes')}/*.txt")
+            files = glob.glob(
+                f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
             static_df = pd.DataFrame()
             for f in files:
                 _df = pd.read_csv(f, sep=' ', index_col='gauge_id')
@@ -1396,7 +1452,7 @@ class CAMELS_GB(Camels):
                     fname = f
                     break
 
-            df = pd.read_csv(os.path.join(path, fname), index_col= 'date')
+            df = pd.read_csv(os.path.join(path, fname), index_col='date')
             df.index = pd.to_datetime(df.index)
             df.index.freq = pd.infer_freq(df.index)
 
@@ -1483,7 +1539,7 @@ class CAMELS_AUS(Camels):
         'streamflow_MLd_inclInfilled': f'03_streamflow{SEP}03_streamflow{SEP}streamflow_MLd_inclInfilled',
         'streamflow_mmd': f'03_streamflow{SEP}03_streamflow{SEP}streamflow_mmd',
 
-        'et_morton_actual_SILO':  f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries{SEP}et_morton_actual_SILO',
+        'et_morton_actual_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries{SEP}et_morton_actual_SILO',
         'et_morton_point_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries{SEP}et_morton_point_SILO',
         'et_morton_wet_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries{SEP}et_morton_wet_SILO',
         'et_short_crop_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries{SEP}et_short_crop_SILO',
@@ -1519,7 +1575,8 @@ class CAMELS_AUS(Camels):
                 data will downloaded.
         """
         if path is not None:
-            assert isinstance(path, str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
+            assert isinstance(path,
+                              str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
             if not os.path.exists(path) or len(os.listdir(path)) < 2:
                 raise FileNotFoundError(f"The path {path} does not exist")
         self.ds_dir = path
@@ -1614,7 +1671,6 @@ class CAMELS_AUS(Camels):
         dyn_attrs = {}
         dyn = {}
         for _attr in dynamic_features:
-
             _path = os.path.join(self.ds_dir, f'{self.folders[_attr]}.csv')
             _df = pd.read_csv(_path, na_values=['-99.99'])
             _df.index = pd.to_datetime(_df[['year', 'month', 'day']])
@@ -1644,8 +1700,10 @@ class CAMELS_AUS(Camels):
 
     def plot(self, what, stations=None, **kwargs):
         assert what in ['outlets', 'boundaries']
-        f1 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}CAMELS_AUS_BasinOutlets_adopted.shp')
-        f2 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}bonus data{SEP}Australia_boundaries.shp')
+        f1 = os.path.join(self.ds_dir,
+                          f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}CAMELS_AUS_BasinOutlets_adopted.shp')
+        f2 = os.path.join(self.ds_dir,
+                          f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}bonus data{SEP}Australia_boundaries.shp')
 
         if plot_shapefile is not None:
             return plot_shapefile(f1, bbox_shp=f2, recs=stations, rec_idx=0, **kwargs)
@@ -1689,7 +1747,7 @@ class CAMELS_CL(Camels):
                  ):
         """
         Arguments:
-            path: path where the CAMELS-AUS dataset has been downloaded. This path must
+            path: path where the CAMELS-CL dataset has been downloaded. This path must
                   contain five zip files and one xlsx file.
         """
         self.ds_dir = path
@@ -1702,7 +1760,7 @@ class CAMELS_CL(Camels):
         for _file, url in self.urls.items():
             fpath = os.path.join(self.ds_dir, _file)
             if not os.path.exists(fpath):
-                download(url+_file, fpath)
+                download(url + _file, fpath)
         _unzip(self.ds_dir)
 
         self.dyn_fname = os.path.join(self.ds_dir, 'camels_cl_dyn.nc')
@@ -1797,7 +1855,18 @@ class CAMELS_CL(Camels):
             stn_id,
             features=None
     ):
+        """
 
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_CL
+            >>> camels = CAMELS_CL()
+            >>> camels.fetch_static_features('11315001')
+            >>> camels.static_features
+            >>> camels.fetch_static_features('2110002',
+            >>> features=['slope_mean', 'q_mean', 'elev_med', 'area'])
+
+        """
         attributes = check_attributes(features, self.static_features)
 
         if isinstance(stn_id, str):
@@ -1808,10 +1877,34 @@ class CAMELS_CL(Camels):
 
 class HYPE(Camels):
     """
-    Downloads and preprocesses HYPE dataset from https://zenodo.org/record/4029572.
-    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily
+    Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_.
+    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily,
     monthly and yearly time steps.
-    paper : https://doi.org/10.2166/nh.2010.007
+
+    Examples
+    --------
+        >>> from ai4water.datasets import HYPE
+        >>> dataset = HYPE()
+        ... # get data of 5% of stations
+        >>> df = dataset.fetch(stations=0.05, as_dataframe=True)  # returns a multiindex dataframe
+        ... # fetch data of 5 (randomly selected) stations
+        >>> df = dataset.fetch(stations=5, as_dataframe=True)
+        # fetch data of 3 selected stations
+        >>> df = dataset.fetch(stations=['564','563','562'], as_dataframe=True)
+        ... # fetch data of a single stations
+        >>> df = dataset.fetch(stations='500', as_dataframe=True)
+        ...
+        # get only selected dynamic features
+        >>> df = dataset.fetch(stations='501',
+        ...    dynamic_features=['AET_mm', 'Prec_mm',  'Streamflow_mm'], as_dataframe=True)
+        # fetch data between selected periods
+        >>> df = dataset.fetch(stations='225', st="20010101", en="20101231", as_dataframe=True)
+        ... # get data at monthly time step
+        >>> dataset = HYPE(time_step="month")
+        >>> df = dataset.fetch(stations='500', as_dataframe=True)
+
+    .. [1] https://zenodo.org/record/4029572
+    .. [2] https://doi.org/10.2166/nh.2010.007
     """
     url = [
         "https://zenodo.org/record/581435",
@@ -1830,6 +1923,14 @@ class HYPE(Camels):
     ]
 
     def __init__(self, time_step: str = 'daily', **kwargs):
+        """
+        Parameters
+        ----------
+            time_step : str
+                one of ``daily``, ``month`` or ``year``
+            **kwargs
+                key word arguments
+        """
         assert time_step in ['daily', 'month', 'year']
         self.time_step = time_step
         self.ds_dir = None
@@ -1899,6 +2000,7 @@ class HYPE(Camels):
         return stns_dfs
 
     def fetch_static_features(self, stn_id, features=None):
+        """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 
     @property

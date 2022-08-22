@@ -14,6 +14,8 @@ if 230 <= tf_version < 250:
 else:
     from ai4water import Model
 
+from ai4water.functional import Model as FModel
+
 if tf_version>=210:
     tf.random.set_seed(313)
     tf.compat.v1.disable_eager_execution()
@@ -63,7 +65,7 @@ class TestNBeats(unittest.TestCase):
         x = np.random.random((100, 10, 3))
         y = np.random.random((100, 1))
 
-        model = Model(model={"layers":{
+        model = FModel(model={"layers":{
             "Input": {"shape": (10, 3)},
             "NBeats": {"lookback": 10, "forecast_len": 1, "num_exo_inputs": 2},
             "Flatten": {},

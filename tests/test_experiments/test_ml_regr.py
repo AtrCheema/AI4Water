@@ -65,12 +65,7 @@ class TestExperiments(unittest.TestCase):
         return
 
     def test_optimize(self):
-        best_models = ['GaussianProcessRegressor',
-                       #'HistGradientBoostingRegressor',
-                       #'ADABoostRegressor',
-                       #'RadiusNeighborsRegressor',  # todo error when using radusneighborsregressor
-                       'XGBRFRegressor'
-            ]
+        best_models = ['GaussianProcessRegressor', 'XGBRFRegressor']
 
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
@@ -81,7 +76,7 @@ class TestExperiments(unittest.TestCase):
         comparisons.num_samples = 2
         comparisons.fit(data=df, run_type="optimize", opt_method="random",
                         num_iterations=4,
-                        include=best_models, post_optimize='train_best')
+                        include=best_models, post_optimize='eval_best')
         comparisons.compare_errors('r2', show=False)
         comparisons.taylor_plot(show=False)
         comparisons.plot_improvement('r2', save=False)

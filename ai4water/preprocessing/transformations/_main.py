@@ -8,7 +8,12 @@ from ai4water.utils.utils import dateandtime_now, deepcopy_dict_without_clone
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
+from ._transformations import ParetoTransformer
+from ._transformations import VastTransformer
+from ._transformations import MmadTransformer
 from ._transformations import Center
+from ._transformations import HyperbolicTangentTransformer
+from ._transformations import LogisticSigmoidTransformer
 from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 
 
@@ -119,23 +124,28 @@ class Transformation(TransformationsContainer):
 
     Transformation methods
 
-        - `minmax`
-        - `maxabs`
-        - `robust`
-        - `power` same as yeo-johnson
-        - `yeo-johnson`
-        - `box-cox`
-        - `zscore`    also known as standard scalers
-        - `scale`    division by standard deviation
-        - 'center'   by subtracting mean
-        - `quantile`
-        -  `quantile_normal` quantile with normal distribution as target
-        - `log`      natural logrithmic
-        - `log10`    log with base 10
-        - `log2`  log with base 2
-        - `sqrt` square root
-        - `tan`      tangent
-        - `cumsum`   cummulative sum
+        - ``minmax``
+        - ``maxabs``
+        - ``robust``
+        - ``power`` same as yeo-johnson
+        - ``yeo-johnson`` power transformation using Yeo-Johnson method
+        - ``box-cox``  power transformation using box-cox method
+        - ``zscore``    also known as standard scalers
+        - ``scale``    division by standard deviation
+        - ``center``   by subtracting mean
+        - ``quantile``
+        - ``quantile_normal`` quantile with normal distribution as target
+        - ``log``      natural logrithmic
+        - ``log10``    log with base 10
+        - ``log2``  log with base 2
+        - ``sqrt`` square root
+        - ``tan``      tangent
+        - ``cumsum``   cummulative sum
+        - ``mmax``  median and median absolute deviation
+        - ``pareto``
+        - ``vast`` Variable Stability Scaling
+        - ``sigmoid`` logistic sigmoid
+        - ``tanh``  hyperbolic tangent
 
     To transform a datafrmae using any of the above methods use
 
@@ -159,11 +169,12 @@ class Transformation(TransformationsContainer):
         ...                       features=['a'])(data=pd.DataFrame([[1,2],[3,4], [5,6]],
         ...                                       columns=['a', 'b']))
 
-    where `method` can be any of the above mentioned methods.
+    where ``method`` can be any of the above mentioned methods.
 
     Note
     ------
-     `tan` and `cumsum` do not return original data upon inverse transformation.
+     ``tan``, ``tanh``, ``sigmoid`` and ``cumsum`` do not return original data upon
+     inverse transformation.
 
     .. _google:
         https://developers.google.com/machine-learning/data-prep/transform/normalization
@@ -186,7 +197,12 @@ class Transformation(TransformationsContainer):
         "log2": Log2Scaler,
         "sqrt": SqrtScaler,
         "tan": TanScaler,
-        "cumsum": CumsumScaler
+        "cumsum": CumsumScaler,
+        "vast": VastTransformer,
+        "pareto": ParetoTransformer,
+        "mmad": MmadTransformer,
+        "sigmoid": LogisticSigmoidTransformer,
+        "tanh": HyperbolicTangentTransformer,
     }
 
     def __init__(self,
@@ -569,24 +585,27 @@ class Transformation(TransformationsContainer):
 
         return transformer
 
-    def compare_distribution(
+    def plot_comparison(
             self,
             data,
             plot_type:str = "hist",
             show:bool=True,
+            figsize:tuple = None,
             **kwargs
     )->plt.Figure:
         """
-        compares distribution before and after transformation
+        compares original and transformed data
 
         Parameters
         ----------
             data :
                 the data on which to apply transformation. It can list, numpy array or pandas dataframe
             plot_type : str, optional (default="hist")
-                either ``hist`` or ``probplot``
+                either ``hist``, ``probplot`` or ``line``
             show : bool, optional (default=True)
                 whether to show the plot or not
+            figsize : tuple, optional (default=None)
+                figure size (width, height)
             **kwargs :
                 any keyword arguments for easy_mpl.hist or easy_mpl.plot when
                 plot_type is "hist" or "probplot" respectively.
@@ -600,24 +619,28 @@ class Transformation(TransformationsContainer):
             >>> from ai4water.preprocessing import Transformation
             >>> import numpy as np
             >>> t = Transformation()
-            >>> t.compare_distribution(np.random.randint(1, 100, (100, 2)))
-            ...
-            >>> t.compare_distribution(np.random.randint(1, 100, (100, 2)), "probplot")
+            >>> t.plot_comparison(np.random.randint(1, 100, (100, 2)))
+            ...  # compare using probability plot
+            >>> t.plot_comparison(np.random.randint(1, 100, (100, 2)), "probplot")
+            ... # or a simple line plot
+            >>> t.plot_comparison(np.random.randint(1, 100, (100, 2)), "line", figsize=(14, 6))
         """
         x_ = self.fit_transform(data)
 
-        if plot_type == "hist":
-            func = hist
-        else:
-            func = probplot
+        funcs = {
+            "hist": hist,
+            "probplot": probplot,
+            "line": plot
+        }
+        func = funcs[plot_type]
 
         if len(x_) == x_.size:
             # it is 1d
-            fig, axes = plt.subplots(1, 2, sharey="all")
+            fig, axes = plt.subplots(1, 2,  figsize=figsize)
             func(data, ax=axes[0], ** kwargs, title="original", show=False)
             func(x_, ax = axes[1], **kwargs,  title="Transformed", show=False)
         else:
-            fig, axes = plt.subplots(x_.shape[1], 2, sharey="all")
+            fig, axes = plt.subplots(x_.shape[1], 2, figsize=figsize)
             if isinstance(data, pd.DataFrame):
                 data = data.values
 
@@ -631,6 +654,7 @@ class Transformation(TransformationsContainer):
                 func(x_.iloc[:, idx], ax=axes[idx, 1], title=title2,
                         show=False, **kwargs)
 
+        plt.suptitle(self.method)
         if show:
             plt.show()
 
@@ -642,7 +666,20 @@ def hist(x, ax, **kwargs):
     return em.hist(x, ax=ax, **kwargs)
 
 
+def plot(x, ax, **kwargs):
+    # make sure that it is 1D
+    x = np.array(x)
+    assert len(x) == np.size(x)
+    x = x.reshape(-1,)
+    return em.plot(x, ax=ax, **kwargs)
+
+
 def probplot(x, ax, **kwargs):
+    # make sure that it is 1D
+    x = np.array(x)
+    assert len(x) == np.size(x)
+    x = x.reshape(-1,)
+
     (osm, osr), (slope, intercept, r) = stats.probplot(x,
                                                        dist="norm",
                                                        plot=ax)

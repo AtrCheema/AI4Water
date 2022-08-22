@@ -34,7 +34,7 @@ class TestFrontPage(unittest.TestCase):
 
         model.fit(data=data)
 
-        model.predict()
+        model.predict_on_test_data(data=data)
 
         import tensorflow as tf
         assert isinstance(model, tf.keras.Model)  # True
@@ -75,7 +75,7 @@ class TestFrontPage(unittest.TestCase):
 
         history = model.fit(data=data)
 
-        preds = model.predict()
+        preds = model.predict_on_test_data(data=data)
         return
 
     def test_example4(self):

@@ -1,5 +1,6 @@
 
 from scipy.special import boxcox
+from scipy.special import expit
 
 from ai4water.backend import np, sklearn
 from ai4water.utils.utils import jsonize
@@ -407,22 +408,7 @@ class CLR(ScalerWithConfig):
 
 class FuncTransformer(ScalerWithConfig):
 
-    def __init__(
-            self,
-            feature_dim: str = "2d"
-    ):
-        """
-        Arguments:
-            feature_dim:
-                whether the features are 2 dimensional or 1 dimensional. Only
-                relevant if the `x` to `fit_transform` is 3D. In such as case
-                if feature_dim is `1D`, it will be considered that the x consists
-                of following shape (num_examples, time_steps, num_features)
-
-        """
-        assert feature_dim in ("1d", "2d")
-        self.feature_dim = feature_dim
-
+    """function transformer. Transforms the array element wise."""
     @property
     def func(self):
         raise NotImplementedError
@@ -431,52 +417,22 @@ class FuncTransformer(ScalerWithConfig):
     def inv_func(self):
         raise NotImplementedError
 
-    def fit(self):
-        return
-
-    def _get_dim(self, x:np.ndarray):
-        dim = x.ndim
-        setattr(self, 'data_dim_', dim)
-
-        if dim > 3:
-            raise ValueError(f" dimension {dim} not allowed")
-        return dim
+    def fit(self, X, y=None):
+        return self
 
     def fit_transform(self, x:np.ndarray)->np.ndarray:
         return self.transform(x)
 
     def transform(self, x:np.ndarray)-> np.ndarray:
 
-        dim = self._get_dim(x)
-
-        if dim == 3 and self.feature_dim == "1d":
-            _x = np.full(x.shape, np.nan)
-            for time_step in range(x.shape[1]):
-                _x[:, time_step] = self.func(x[:, time_step])
-        else:
-            _x = self.func(x)
-
-        return _x
+        setattr(self, 'data_dim_', np.ndim(x))
+        return self.func(x)
 
     def inverse_transform_without_fit(self, x):
         return self._inverse_transform(x, False)
 
     def _inverse_transform(self, x, check_dim=True):
-        dim = x.ndim
-        #if check_dim:
-        #assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
-
-        if dim == 3 and self.feature_dim == "1d":
-            _x = np.full(x.shape, np.nan)
-            for time_step in range(x.shape[1]):
-                _x[:, time_step] = self.inv_func(x[:, time_step])
-
-        elif 2 <= dim < 4:
-            _x = self.inv_func(x)
-        else:
-            raise  ValueError(f" dimension {dim} not allowed")
-
-        return _x
+        return self.inv_func(x)
 
     def inverse_transform(self, x):
         return self._inverse_transform(x)
@@ -486,7 +442,7 @@ class FuncTransformer(ScalerWithConfig):
         return ['data_dim_']
 
     def get_params(self):
-        return {'feature_dim': self.feature_dim}
+        return {}
 
 
 class SqrtScaler(FuncTransformer):
@@ -544,11 +500,53 @@ class TanScaler(FuncTransformer):
         return np.tanh
 
 
+class LogisticSigmoidTransformer(FuncTransformer):
+    """logistic sigmoid transformer.
+    Note that inverse transform of logistic sigmoid does not return
+    original array.
+    """
+    @property
+    def func(self):
+        return expit
+
+    @property
+    def inv_func(self):
+        raise ValueError("inverse transform of sigmoid can not be computed")
+
+
+class HyperbolicTangentTransformer(FuncTransformer):
+    """Hyperbolic tangent"""
+    @property
+    def func(self):
+        return np.tanh
+
+    @property
+    def inv_func(self):
+        raise ValueError("inverse transform of tanh can not be computed")
+
+
 class CumsumScaler(FuncTransformer):
 
-    def fit_transform(self, x:np.ndarray) -> np.ndarray:
+    def __init__(
+            self,
+            feature_dim: str = "2d"
+    ):
+        """
+        Arguments:
+            feature_dim:
+                whether the features are 2 dimensional or 1 dimensional. Only
+                relevant if the `x` to `fit_transform` is 3D. In such as case
+                if feature_dim is `1D`, it will be considered that the x consists
+                of following shape (num_examples, time_steps, num_features)
 
-        dim = self._get_dim(x)
+        """
+        assert feature_dim in ("1d", "2d")
+        self.feature_dim = feature_dim
+
+    def fit_transform(self, x:np.ndarray) -> np.ndarray:
+        self.data_dim_ = np.ndim(x)
+
+        dim = np.ndim(x)
 
         if dim == 3 and self.feature_dim == "1d":
             _x = np.full(x.shape, np.nan)
@@ -575,6 +573,7 @@ class CumsumScaler(FuncTransformer):
             raise  ValueError(f" dimension {dim} not allowed")
 
         return _x
+
 
 class FunctionTransformer(SKFunctionTransformer):
     """Serializing a custom func/inverse_func is difficult. Therefore
@@ -704,6 +703,157 @@ class FunctionTransformer(SKFunctionTransformer):
                 raise ValueError(f"{func} is not serializable")
 
         return func
+
+
+class ParetoTransformer(ScalerWithConfig):
+    """
+    Similar to zscore/StandardScaler, but instead of dividing by standard
+    deviation, it devides by square root of standard deviation [11]_ and [12]_.
+
+    The standard score of a sample `x` is calculated as:
+    :: math
+        z = (x - u) / sqrt(s)
+
+    """
+    def __init__(
+            self,
+            feature_dim="2d",
+            axis=0
+    ):
+        self.feature_dim = feature_dim
+        self.axis = axis
+
+    def _reset(self):
+        for arg in ['mean_', 'var_', 'scale_', 'data_dim_']:
+            setattr(self, arg, None)
+        return
+
+    def fit(self, X, y=None):
+        self._reset()
+        self.data_dim_ = np.ndim(X)
+
+        self.mean_ = np.nanmean(X, axis=self.axis)
+        self.scale_ = np.sqrt(np.nanvar(X, axis=self.axis))
+        self.var_ = np.nanvar(X, axis=self.axis)
+
+        return self
+
+    def transform(self, X, y=None):
+
+        assert np.ndim(X) == self.data_dim_
+
+        X = X - self.mean_
+
+        return X / np.sqrt(self.scale_)
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X, y=y).transform(X)
+
+    def inverse_transform(self, X):
+        X = X * np.sqrt(self.scale_)
+        return X + self.mean_
+
+    @property
+    def config_paras(self):
+        return ['data_dim_', 'mean_', 'var_', 'scale_']
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim, "axis": self.axis}
+
+
+class VastTransformer(ParetoTransformer):
+    """
+    Variable Stability Scaling following the works of Nicholson et al., 2003 [11]_
+    and van der Berg et al., 2006 [12]_ .
+
+    The standard score of a sample `x` is calculated as:
+    :: math
+        z = (x - u) / s * u/s
+
+    .. [11] https://doi.org/10.1016/S0003-2670(03)00094-1
+    .. [12] https://doi.org/10.1186/1471-2164-7-142
+
+    """
+
+    def transform(self, X, y=None):
+
+        assert np.ndim(X) == self.data_dim_
+
+        X = X - self.mean_
+        X = X / self.scale_
+        # coefficient of variation
+        cv = self.mean_ / self.scale_
+        return X * cv
+
+    def inverse_transform(self, X, y=None):
+        cv = self.mean_ / self.scale_
+        X = X / cv
+        X = X * self.scale_
+        X = X + self.mean_
+        return X
+
+
+class MmadTransformer(ScalerWithConfig):
+    """
+    Median and median absolute deviation following Jain et al., 2005[13]_ and
+    Singh and Singh 2020 [14]_.
+
+    The standard score of a sample `x` is calculated as:
+    :: math
+        z = (x - median) / MAD
+
+    .. [13] https://doi.org/10.1016/j.patcog.2005.01.012
+    .. [14] https://doi.org/10.1016/j.asoc.2019.105524
+    """
+    def __init__(
+            self,
+            feature_dim="1d",
+            axis=0
+    ):
+        self.feature_dim = feature_dim
+        self.axis = axis
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim, "axis": self.axis}
+
+    def _reset(self):
+        for arg in ['med_', 'mad_', 'data_dim_']:
+            setattr(self, arg, None)
+        return
+
+    def fit(self, X, y=None):
+        """fits the data i.e. calculates median and MAD of the data.
+        These parameters will be used during transform.
+        """
+        self._reset()
+        self.data_dim_ = np.ndim(X)
+        self.med_ = np.nanmedian(X, axis=self.axis)
+
+        self.mad_ = np.nanmedian(np.absolute(X - self.med_), axis=self.axis)
+
+        return self
+
+    def transform(self, X, y=None):
+        """transforms the data i.e. changes the data using the parameters calculated
+        during ``fit``.
+        """
+        assert np.ndim(X) == self.data_dim_
+        X = X - self.med_
+        return X / self.mad_
+
+    def fit_transform(self, X, y=None):
+        """First calls fit and then calls transform."""
+        return self.fit(X, y=y).transform(X)
+
+    def inverse_transform(self, X):
+        """inverse transforms the X i.e. brings the X to original scale by using
+        the parameters calculated during ``fit``."""
+        X = X * self.mad_
+        return X + self.med_
+
+    @property
+    def config_paras(self):
+        return ['data_dim_', 'med_', 'mad_']
 
 
 def closure(mat, out=None):

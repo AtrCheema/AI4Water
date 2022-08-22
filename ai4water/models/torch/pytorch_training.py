@@ -145,6 +145,9 @@ class Learner(AttributeContainer):
         Example
         -------
             >>> from torch import nn
+            >>> import torch
+            >>> from ai4water.models.torch import Learner
+
             >>> class Net(nn.Module):
             >>>    def __init__(self, D_in, H, D_out):
             ...        super(Net, self).__init__()
@@ -153,8 +156,8 @@ class Learner(AttributeContainer):
             ...        self.linear2 = nn.Linear(H, D_out)
             >>>    def forward(self, x):
             ...        l1 = self.linear1(x)
-            ...        a1 = sigmoid(l1)
-            ...        yhat = sigmoid(self.linear2(a1))
+            ...        a1 = torch.sigmoid(l1)
+            ...        yhat = torch.sigmoid(self.linear2(a1))
             ...        return yhat
             ...
             >>> learner = Learner(model=Net(1, 2, 1),
@@ -163,7 +166,7 @@ class Learner(AttributeContainer):
             ...                      batch_size=1,
             ...                      shuffle=False)
             ...
-            >>> learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+            >>> learner.optimizer = torch.optim.SGD(learner.model.parameters(), lr=0.1)
             >>> def criterion_cross(labels, outputs):
             ...    out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
             ...    return out
@@ -620,24 +623,20 @@ class Learner(AttributeContainer):
         elif isinstance(x, np.ndarray):
             if y is not None:
                 assert isinstance(y, np.ndarray)
+                if len(y.shape) == 1:
+                    num_outs = 1
+                else:
+                    num_outs = y.shape[-1]
+
             dataset = to_torch_dataset(x, y)
 
         elif isinstance(x, torch.utils.data.Dataset):
             dataset = x
 
-            if len(x[0][1].shape) == 1:
-                num_outs = 1
-            else:
-                num_outs = x[0][1].shape[-1]
-
         elif isinstance(x, torch.utils.data.DataLoader):
             data_loader = x
 
         elif isinstance(x, torch.Tensor):
-            if len(x.shape) == 1:
-                num_outs = 1
-            else:
-                num_outs = x.shape[-1]
 
             dataset = to_torch_dataset(x=x, y=y)
 

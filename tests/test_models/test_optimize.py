@@ -136,7 +136,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         model = Model(model=self.config,
                       verbosity=0)
         optimizer = model.optimize_hyperparameters(data=data)
-        s = set([v['n_estimators'] for v in optimizer.xy_of_iterations().values()])
+        s = set([xy['x']['n_estimators'] for xy in optimizer.xy_of_iterations().values()])
         assert len(s) > 5  # assert that all suggestions are not same
         op = os.path.join(os.getcwd(), optimizer.opt_path)
         fname = os.path.join(op, "convergence.png")
@@ -374,7 +374,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
             num_iterations=5,
             process_results=False
         )
-        s = set([v['units'] for v in optimizer.xy_of_iterations().values()])
+        s = set([xy['x']['units'] for xy in optimizer.xy_of_iterations().values()])
         assert len(s) >= 3  # assert that all suggestions are not same
 
         # make sure that model's config has been updated
@@ -432,7 +432,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
         optimizer = model.optimize_hyperparameters(data=data, num_iterations=30)
 
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_score = optimizer.best_xy()['y']
         model.fit()
         val_metric_post_train = model.evaluate(data='validation', metrics='r2')
         self.assertAlmostEqual(val_metric_post_train, 1.0 - best_val_score, places=2)
@@ -462,8 +462,8 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
             data=data,
             num_iterations=12,)
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
-        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+        best_val_score = optimizer.best_xy()['y']
+        best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
         model.fit()
@@ -496,8 +496,8 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
                 y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
                 data=data,
                 num_iterations=12,)
-            best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
-            best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+            best_val_score = optimizer.best_xy()['y']
+            best_val_iter = optimizer.best_iter()
 
             # train model with optimized transformations
             model.fit()
@@ -522,7 +522,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             include=[],
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
             data=data)
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_score = optimizer.best_xy()['y']
 
         # train model with optimized transformations
         model.fit()
@@ -550,8 +550,8 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             data=data,
             num_iterations=25
             )
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
-        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+        best_val_score = optimizer.best_xy()['y']
+        best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
         model.fit()
@@ -582,8 +582,8 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             data=data,
             num_iterations=25
             )
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
-        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+        best_val_score = optimizer.best_xy()['y']
+        best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
         model.fit()
@@ -614,8 +614,8 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             data=data,
             num_iterations=25
             )
-        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
-        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+        best_val_score = optimizer.best_xy()['y']
+        best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
         model.fit()

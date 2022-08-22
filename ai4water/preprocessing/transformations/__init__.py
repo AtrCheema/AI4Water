@@ -29,3 +29,6 @@ from ._transformations import TanScaler
 from ._transformations import CumsumScaler
 from ._transformations import Center
 from ._transformations import FunctionTransformer
+from ._transformations import ParetoTransformer
+from ._transformations import VastTransformer
+from ._transformations import MmadTransformer

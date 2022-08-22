@@ -40,7 +40,7 @@ class ShapExplainer(ExplainerMixin):
     - force_plot_all
 
     Examples:
-        >>> from ai4water.postprocessing.explain import ShapExplainer
+        >>> from ai4water.postprocessing import ShapExplainer
         >>> from sklearn.model_selection import train_test_split
         >>> from sklearn import linear_model
         >>> import shap
@@ -123,6 +123,12 @@ class ShapExplainer(ExplainerMixin):
             save:
                 whether to save the plot or not
         """
+
+        assert shap is not None, f"""
+        shap package must be installed to use this class.
+        please install shap e.g with pip install shap
+        """
+
         test_data = maybe_to_dataframe(data, feature_names)
         train_data = maybe_to_dataframe(train_data, feature_names)
 

@@ -8,3 +8,5 @@ models
    models/layers
 
    models/models
+
+   models/functions

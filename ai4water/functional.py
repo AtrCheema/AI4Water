@@ -83,6 +83,12 @@ class Model(BaseModel):
         return self._model.outputs
 
     @property
+    def trainable_weights(self):
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.trainable_weights
+
+    @property
     def layer_names(self):
         _all_layers = []
         if self.category == "ML":

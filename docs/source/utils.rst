@@ -23,3 +23,8 @@ fdc_plot
 .. automodule:: ai4water.utils.visualizations
    :members: fdc_plot
 
+edf_plot
+==============
+.. automodule:: ai4water.utils.visualizations
+   :members: edf_plot
+

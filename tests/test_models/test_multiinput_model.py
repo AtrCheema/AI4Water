@@ -96,7 +96,7 @@ def build_and_run(outputs, x_transformation=None, indices=None, **kwargs):
 
     model.fit(data=ds)
 
-    return model.predict(data='test')
+    return model.predict_on_test_data(data=ds)
 
 
 class test_MultiInputModels(unittest.TestCase):

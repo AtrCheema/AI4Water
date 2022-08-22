@@ -5,15 +5,15 @@ from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from .utils.utils import rank_folders, TrainTestSplit
+from .utils.utils import clear_weights, TrainTestSplit
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config
-
 
 DEFAULTS = {
     'r2': 1.0,
     'nse': 1.0,
     'r2_score': 1.0
 }
+
 
 class ModelOptimizerMixIn(object):
 
@@ -31,7 +31,7 @@ class ModelOptimizerMixIn(object):
         self.process_results = process_results
         self.prefix = prefix
 
-    def fit(self, data=None,):
+    def fit(self, data=None, ):
 
         if isinstance(data, tuple) or isinstance(data, list):
             assert len(data) == 2
@@ -41,7 +41,7 @@ class ModelOptimizerMixIn(object):
 
         PREFIX = f"{self.prefix}_{dateandtime_now()}"
         self.iter = 0
-        print("{:<15} {:<20}".format("Iteration No.",  "Validation Score"))
+        print("{:<15} {:<20}".format("Iteration No.", "Validation Score"))
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
@@ -59,8 +59,8 @@ class ModelOptimizerMixIn(object):
         def objective_fn(
                 **suggestions,
         ):
-           # we must not set the seed here to None
-           # this will cause random splitting unpreproducible (if random splitting is applied)
+            # we must not set the seed here to None
+            # this will cause random splitting unpreproducible (if random splitting is applied)
             config['verbosity'] = 0
             config['prefix'] = PREFIX
 
@@ -76,8 +76,8 @@ class ModelOptimizerMixIn(object):
             if cross_validator is None:
 
                 if xy:  # todo, it is better to split data outside objective_fn
-                    splitter = TrainTestSplit(seed=SEED, 
-                        test_fraction=config['val_fraction'])
+                    splitter = TrainTestSplit(seed=SEED,
+                                              test_fraction=config['val_fraction'])
 
                     if config['split_random']:
                         # for reproducibility, we should use SEED so that at everay optimization
@@ -87,21 +87,21 @@ class ModelOptimizerMixIn(object):
                         train_x, test_x, train_y, test_y = splitter.split_by_slicing(*data)
 
                     _model.fit(x=train_x, y=train_y)
-                    p = _model.predict(test_x)
+                    p = _model.predict(x=test_x)
                 else:
                     _model.fit(data=data)
-                    test_y, p = _model.predict(data='validation', return_true=True,
-                                               process_results=False)
+                    test_y, p = _model.predict_on_validation_data(
+                        data=data,
+                        return_true=True,
+                        process_results=False)
 
                 metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
                 if xy:
-                    val_score = _model.cross_val_score(*data)
+                    val_score = _model.cross_val_score(*data)[0]
                 else:
-                    val_score = _model.cross_val_score(data=data)
-
-            
+                    val_score = _model.cross_val_score(data=data)[0]
 
             orig_val_score = val_score
 
@@ -130,7 +130,7 @@ class ModelOptimizerMixIn(object):
 
         optimizer.fit()
 
-        rank_folders(opt_dir=optimizer.opt_path)
+        clear_weights(optimizer.opt_path, optimizer.results)
 
         return optimizer
 
@@ -206,7 +206,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
         if isinstance(self.output_features, str):
             self.output_features = [self.output_features]
         assert len(self.output_features) == 1
-
 
     def update(self, config, suggestions):
         """updates `x_transformation` and `y_transformation` keys in config

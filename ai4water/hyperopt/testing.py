@@ -45,18 +45,16 @@ from optuna.trial import TrialState
 from optuna.importance._fanova import FanovaImportanceEvaluator
 from optuna.visualization._utils import _check_plot_args
 from optuna.importance import get_param_importances
+
 try:
     from optuna.visualization._plotly_imports import go
     from optuna.visualization._plotly_imports import _imports
 except (ImportError, ModuleNotFoundError):
     go, _imports = None, None
-    
 
 from easy_mpl import bar_chart
 
-
 logger = get_logger(__name__)
-
 
 
 def _get_distributions(study, params):
@@ -70,11 +68,11 @@ def _get_distributions(study, params):
 class ImportanceEvaluator(FanovaImportanceEvaluator):
 
     def evaluate(
-        self,
-        study: Study,
-        params: Optional[List[str]] = None,
-        *,
-        target: Optional[Callable[[FrozenTrial], float]] = None,
+            self,
+            study: Study,
+            params: Optional[List[str]] = None,
+            *,
+            target: Optional[Callable[[FrozenTrial], float]] = None,
     ):
 
         if target is None and study._is_multi_objective():
@@ -109,7 +107,7 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         nan_idx = np.isnan(trans_values)
         if nan_idx.any():
             warnings.warn("Nan value encountered in target values",
-                UserWarning)
+                          UserWarning)
             # fill nan values with mean
             trans_values[nan_idx] = np.nanmean(trans_values)
 
@@ -117,7 +115,7 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         inf_idx = np.isinf(trans_values)
         if inf_idx.any():
             warnings.warn("Infinity value encountered in target values",
-                UserWarning)
+                          UserWarning)
             # first convert infs to NaNs with np.isinf masking and then NaNs to max values
             trans_values[inf_idx] = np.nan
             trans_values[np.isnan(trans_values)] = np.nanmax(trans_values)
@@ -163,12 +161,12 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
 
 
 def plot_param_importances(
-    study: Study,
-    evaluator = None,
-    params: Optional[List[str]] = None,
-    *,
-    target: Optional[Callable[[FrozenTrial], float]] = None,
-    target_name: str = "Objective Value",
+        study: Study,
+        evaluator=None,
+        params: Optional[List[str]] = None,
+        *,
+        target: Optional[Callable[[FrozenTrial], float]] = None,
+        target_name: str = "Objective Value",
 ):
     _check_plot_args(study, target, target_name)
 
@@ -202,8 +200,8 @@ def plot_param_importances(
     param_names = list(importances.keys())
 
     ax = bar_chart(importance_values, param_names, orient='h', show=False,
-                   title="fANOVA hyperparameter importance",
-                   xlabel="Relative Importance")
+                   ax_kws={'title':"fANOVA hyperparameter importance",
+                   'xlabel':"Relative Importance"})
 
     return importances, importance_paras, ax
 

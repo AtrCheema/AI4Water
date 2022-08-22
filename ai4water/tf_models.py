@@ -396,6 +396,7 @@ class DualAttentionModel(FModel):
     def get_attention_weights(
             self,
             layer_name: str=None,
+            x = None,
             data = 'training',
     )->np.ndarray:
         """
@@ -404,6 +405,8 @@ class DualAttentionModel(FModel):
             layer_name : str, optional
                 the name of attention layer. If not given, the final attention
                 layer will be used.
+            x : optional
+                input data, if given, then ``data`` must not be given
             data : str, optional
                 the data to make forward pass to get attention weghts. Possible
                 values are
@@ -416,6 +419,10 @@ class DualAttentionModel(FModel):
         -------
             a numpy array of shape (num_examples, lookback, num_ins)
         """
+        if x is not None:
+            # default value
+            assert data=="training"
+
         layer_name = layer_name or f'attn_weight_{self.lookback - 1}_1'
 
         assert isinstance(layer_name, str), f"""
@@ -427,7 +434,10 @@ class DualAttentionModel(FModel):
         kwargs = {}
         if self.config['drop_remainder']:
             kwargs['batch_size'] = self.config['batch_size']
-        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data, **kwargs)
+        activation = Visualize(model=self).get_activations(layer_names=layer_name,
+                                                           x=x,
+                                                           data=data,
+                                                           **kwargs)
 
         activation = activation[layer_name]  # (num_examples, lookback, num_ins)
 

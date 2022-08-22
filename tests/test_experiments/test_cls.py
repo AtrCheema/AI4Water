@@ -40,6 +40,7 @@ def make_multiclass_classification(
 
 data_multiclass, input_features_cls = make_multiclass_classification(100, 10, 5)
 
+
 class TestCls(unittest.TestCase):
 
     def test_basic(self):
@@ -48,7 +49,8 @@ class TestCls(unittest.TestCase):
 
         exp.fit(data=data, exclude=[
             # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
+            'LinearDiscriminantAnalysis',
         ]
                 )
         exp.compare_errors('accuracy', show=False)
@@ -66,7 +68,9 @@ class TestCls(unittest.TestCase):
 
         exp.fit(data=data,
                 exclude=[
-                    'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
+                    'LabelPropagation', 'LabelSpreading',
+                    'QuadraticDiscriminantAnalysis',
+                    'LinearDiscriminantAnalysis'
                 ],
                 cross_validate=True,
                 )

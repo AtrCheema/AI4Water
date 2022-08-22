@@ -13,17 +13,22 @@ scikit-learn
 scikit-optimize
 plotly
 tensorflow==2.7
-torch
+protobuf==3.19.1
 seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery
 keras-tcn
 xgboost
-lightgbm
-catboost
 optuna
 
 # for hru discretization examples
 pyshp
 shapely
+
+#
+shap
+lime
+
+#
+PDPbox1

@@ -1,5 +1,6 @@
 
 import os
+import time
 import unittest
 import site
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -15,13 +16,15 @@ else:
     from ai4water import Model
 
 from ai4water.postprocessing import PermutationImportance
+from ai4water.postprocessing import PartialDependencePlot
 from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water._main import DataNotFound
 from ai4water.functional import Model as FModel
 from ai4water.preprocessing import DataSet
+from ai4water.models import LSTM
 
 
-data = busan_beach()
+data = busan_beach(inputs=['tide_cm', 'pcp_mm', 'sal_psu'])
 dh = DataSet(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 
@@ -33,6 +36,7 @@ x_cls, y_cls = dh_cls.training_data()
 
 class MyRF(RandomForestRegressor):
     pass
+
 
 def test_user_defined_data(_model, x, y):
     # using user defined x
@@ -60,7 +64,7 @@ def _test_ml_inbuilt_data_reg(_model):
     model.predict_on_training_data(data=data)
     model.predict_on_validation_data(data=data)
 
-    t, p = model.predict(data="test", return_true=True)
+    t, p = model.predict_on_test_data(data=data, return_true=True)
     assert isinstance(t, np.ndarray)
     assert isinstance(p, np.ndarray)
 
@@ -75,7 +79,7 @@ def _test_ml_inbuilt_data_cls(_model):
 
     test_user_defined_data(model, x_cls, y_cls)
 
-    t, p = model.predict(data='test', return_true=True)
+    t, p = model.predict_on_test_data(data=data_cls, return_true=True)
     assert isinstance(t, np.ndarray)
     assert isinstance(p, np.ndarray)
     assert len(t) == len(p)
@@ -236,8 +240,63 @@ class TestPermImp(unittest.TestCase):
         model = Model(model="XGBRegressor",
                       verbosity=0)
         model.fit(data=data)
-        imp = model.permutation_importance(data="validation")
+        imp = model.permutation_importance(data_type="validation", data=data)
         assert isinstance(imp, PermutationImportance)
+        return
+
+    def test_lookback(self):
+        time.sleep(1)
+        model = Model(model=LSTM(1, input_shape=(3, 3)),
+                      ts_args={"lookback": 3},
+                      verbosity=0)
+        model.fit(data=data)
+        imp = model.permutation_importance(data=data, data_type="validation")
+        assert isinstance(imp, PermutationImportance)
+        return
+
+
+class TestPDP(unittest.TestCase):
+
+    def test_basic0(self):
+        model = Model(model="XGBRegressor",
+                      verbosity=0)
+        model.fit(data=data)
+        pdp = model.partial_dependence_plot(x=data.iloc[:, 0:-1],
+                                            feature_name='tide_cm',
+                                            num_points=2)
+        assert isinstance(pdp, PartialDependencePlot)
+        return
+
+    def test_lookback(self):
+        model = Model(model=LSTM(1, input_shape=(3, 3)),
+                      ts_args={"lookback": 3},
+                      verbosity=0)
+        model.fit(data=data)
+        pdp = model.partial_dependence_plot(data=data,
+                                            feature_name='tide_cm',
+                                            num_points=2)
+        assert isinstance(pdp, PartialDependencePlot)
+        return
+
+
+class TestShapValues(unittest.TestCase):
+
+    def test_basic0(self):
+        model = Model(model="XGBRegressor",
+                      verbosity=0)
+        model.fit(data=data)
+        sv = model.shap_values(data=data)
+        assert isinstance(sv, np.ndarray)
+        return
+
+    def test_lookback(self):
+        time.sleep(1)
+        model = FModel(model=LSTM(1, input_shape=(3, 3)),
+                      ts_args={"lookback": 3},
+                      verbosity=0)
+        model.fit(data=data)
+        sv = model.shap_values(data=data)
+        assert isinstance(sv, (np.ndarray, list)), f"{type(sv)}"
         return
 
 
@@ -340,6 +399,7 @@ class TestChangeNQuantiles(unittest.TestCase):
         assert model.config['x_transformation'][1]['n_quantiles'] < 1000
 
         return
+
 
 if __name__ == "__main__":
 

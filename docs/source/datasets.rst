@@ -3,7 +3,8 @@ datasets
 
 Busan Beach data
 ================
-.. automodule:: ai4water.datasets.busan_beach
+.. automodule:: ai4water.datasets
+   :members: busan_beach
 
 Ecoli Mekong River
 ==================
@@ -142,9 +143,28 @@ WeatherJena
 
    .. automethod:: __init__
 
+Quadica
+=======
+.. autoclass:: ai4water.datasets.datasets.Quadica
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
 SWECanada
 =========
 .. autoclass:: ai4water.datasets.datasets.SWECanada
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+RRLuleaSweden
+=============
+.. autoclass:: ai4water.datasets.datasets.RRLuleaSweden
    :members:
    :undoc-members:
    :show-inheritance:

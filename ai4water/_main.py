@@ -3,7 +3,7 @@ import json
 import time
 import warnings
 from pickle import PicklingError
-from typing import Union, Callable
+from typing import Union, Callable, Tuple, List
 from types import MethodType
 
 import joblib  # since sklearn is required, this will automatically come in
@@ -18,6 +18,7 @@ from .nn_tools import NN
 from .backend import sklearn_models
 from .utils.utils import make_model
 from .postprocessing import ProcessPredictions
+from .postprocessing import prediction_distribution_plot
 from .preprocessing.transformations import Transformations
 from .utils.utils import maybe_three_outputs, get_version_info
 from .models.tensorflow.custom_training import train_step, test_step
@@ -25,6 +26,7 @@ from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
+from ai4water.backend import easy_mpl
 from ai4water.backend import np, pd, plt, os, mpl, random, h5py
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
@@ -442,8 +444,8 @@ class BaseModel(NN):
     @property
     def is_multilabel(self):
         if hasattr(self, 'dh_'):
-            if self.dh_.data is None:
-                return None
+            #if self.dh_.data is None:
+            #    return None
             return self.dh_.is_multilabel
         return None
 
@@ -590,13 +592,6 @@ class BaseModel(NN):
 
         _monitor = 'val_loss' if val_data is not None else 'loss'
         fname = "{val_loss:.5f}.hdf5" if val_data is not None else "{loss:.5f}.hdf5"
-
-        if int(''.join(tf.__version__.split('.')[0:2])) <= 115:
-            for lyr_name in self.layer_names:
-                if 'HA_weighted_input' in lyr_name or 'SeqWeightedAttention_weights' in lyr_name:
-                    self.config['save_model'] = False
-
-                    warnings.warn("Can not save Heirarchical model with tf<= 1.15")
 
         if self.config['save_model']:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
@@ -1367,13 +1362,13 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data='test',
+            data=None,
             metrics=None,
             **kwargs
     ):
         """
         Evalutes the performance of the model on a given data.
-        calls the `evaluate` method of underlying `model`. If the `evaluate`
+        calls the ``evaluate`` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
 
         Arguments:
@@ -1382,8 +1377,8 @@ class BaseModel(NN):
             y:
                 outputs/true data corresponding to `x`
             data:
-                Raw unprepared data which will be fed to [DataSet][ai4water.preprocessing.DataSet]
-                to prepare x and y. If `x` and `y` are given, this argument will have no meaning.
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1391,9 +1386,9 @@ class BaseModel(NN):
                 It can also be name of group of metrics to evaluate.
                 Following groups are available
 
-                    - `minimal`
-                    - `all`
-                    - `hydro_metrics`
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
 
                 If this argument is given, the `evaluate` function of the underlying class
                 is not called. Rather the model is evaluated manually for given metrics.
@@ -1476,11 +1471,17 @@ class BaseModel(NN):
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
-    def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
+    def call_evaluate(self, x=None,y=None, data=None, metrics=None, **kwargs):
+
+        if x is None and data is None:
+            data = "test"
 
         source = 'test'
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
             source = data
+            warnings.warn(f"""
+            argument {data} is deprecated and will be removed in future. Please 
+            use 'evaluate_on_{data}_data' method instead.""")
 
         x, y, _, _, user_defined = self._fetch_data(source, x, y, data)
 
@@ -1666,6 +1667,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="training",
             **kwargs
         )
 
@@ -1705,6 +1707,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="validation",
             **kwargs
         )
 
@@ -1744,6 +1747,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="test",
             **kwargs
         )
 
@@ -1784,6 +1788,7 @@ class BaseModel(NN):
             return_true=return_true,
             metrics=metrics,
             plots=plots,
+            prefix="all",
             **kwargs
         )
 
@@ -1791,19 +1796,26 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data='test',
+            data=None,
             process_results=True,
             metrics="minimal",
             return_true: bool = False,
             plots=None,
+            prefix=None,
             **kwargs
     ):
 
         source = 'test'
+        if x is None and data is None:
+            data = "test"
+
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
+            warnings.warn(f"""
+            argument {data} is deprecated and will be removed in future. Please 
+            use 'predict_on_{data}_data' method instead.""")
             source = data
 
-        inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+        inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
             source=source,
             x=x,
             y=y,
@@ -1817,7 +1829,7 @@ class BaseModel(NN):
                           UserWarning)
             data = "validation"
             source = data
-            inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+            inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
                 source=source,
                 x=x,
                 y=y,
@@ -1829,11 +1841,13 @@ class BaseModel(NN):
                               UserWarning)
                 data = "training"
                 source = data
-                inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+                inputs, true_outputs, _prefix, transformation_key, user_defined_data = self._fetch_data(
                     source=source,
                     x=x,
                     y=y,
                     data=data)
+
+        prefix = prefix or _prefix
 
         inputs = self._transform_x(inputs)
 
@@ -2042,14 +2056,14 @@ class BaseModel(NN):
         """
         from ai4water.postprocessing.visualize import Visualize
 
-        visualizer = Visualize(model=self)
+        visualizer = Visualize(model=self, show=show)
 
         visualizer(layer_name,
                    data=data,
                    x=x,
                    y=y,
-                   examples_to_use=examples_to_view,
-                   show=show)
+                   examples_to_use=examples_to_view
+                   )
 
         return visualizer
 
@@ -2077,7 +2091,7 @@ class BaseModel(NN):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the [explain_model][ai4water.postprocessing.explain.explain_model] function
+        """Calls the :py:meth:ai4water.postprocessing.explain.explain_model` function
          to explain the model.
          """
         from ai4water.postprocessing.explain import explain_model
@@ -2655,7 +2669,8 @@ class BaseModel(NN):
 
     def permutation_importance(
             self,
-            data="test",
+            data = None,
+            data_type: str = "test",
             x=None,
             y=None,
             scoring: Union[str, Callable] = "r2",
@@ -2669,9 +2684,13 @@ class BaseModel(NN):
 
         Parameters
         ----------
-            data:
+            data :
+                Raw unprepared data from which x,y paris of training and test
+                data are prepared.
+            data_type : str
                 one of `training`, `test` or `validation`. By default test data is
-                used based upon recommendations of Christoph Molnar's book_
+                used based upon recommendations of Christoph Molnar's book_. Only
+                valid if ``data`` argument is given.
             x:
                 inputs for the model. alternative to data
             y:
@@ -2702,16 +2721,17 @@ class BaseModel(NN):
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model="XGBRegressor")
             >>> model.fit(data=busan_beach())
-            >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+            >>> perm_imp = model.permutation_importance(data=busan_beach(),
+            ...  data_type="validation", plot_type="boxplot")
             >>> perm_imp.importances
 
         .. _book:
             https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data
         """
-        assert data in ("training", "validation", "test")
+        assert data_type in ("training", "validation", "test")
 
         if x is None:
-            data = getattr(self, f"{data}_data")()
+            data = getattr(self, f"{data_type}_data")(data=data)
             x, y = data
 
         from .postprocessing.explain import PermutationImportance
@@ -2746,7 +2766,8 @@ class BaseModel(NN):
             analyzer:Union[str, list]="sobol",
             sampler_kwds: dict = None,
             analyzer_kwds: dict = None,
-            save_plots: bool = True
+            save_plots: bool = True,
+            names: List[str] = None
     )->dict:
         """performs sensitivity analysis of the model w.r.t input features in data.
 
@@ -2778,6 +2799,8 @@ class BaseModel(NN):
         analyzer_kwds : dict
             keyword arguments for analyzer
         save_plots : bool, optional
+        names : list, optional
+            names of input features. If not given, names of input features will be used.
 
         Returns
         -------
@@ -2856,7 +2879,7 @@ class BaseModel(NN):
             bounds=bounds,
             sampler_kwds = sampler_kwds,
             analyzer_kwds = analyzer_kwds,
-            names=self.input_features
+            names=names or self.input_features
         )
 
         if save_plots:
@@ -2872,6 +2895,443 @@ class BaseModel(NN):
                 sensitivity_plots(_analyzer, result, self.path)
 
         return results
+
+    def shap_values(
+            self,
+            data,
+            layer=None
+    )->np.ndarray:
+        """
+        returns shap values
+
+        Parameters
+        ----------
+            data :
+                raw unprepared data from which training and test data are extracted.
+            layer :
+
+        Returns
+        -------
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.shap_values(data=data)
+
+        """
+
+        from .postprocessing.explain import explain_model_with_shap
+
+        explainer = explain_model_with_shap(
+            self,
+            total_data=data,
+            layer=layer,
+        )
+
+        return explainer.shap_values
+
+    def explain_example(
+            self,
+            data,
+            example_num:int,
+            method="shap"
+    ):
+        """explains a single exmaple either using shap or lime
+
+        Parameters
+        ----------
+            data :
+                the data to use
+            example_num :
+                the example/sample number/index to explain
+            method :
+                either ``shap`` or ``lime``
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.explain(data=data, example_num=2)
+
+        """
+
+        assert method in ("shap", "lime")
+
+        if method == "shap":
+            from .postprocessing.explain import explain_model_with_shap
+
+            explainer = explain_model_with_shap(
+                self,
+                total_data=data,
+                examples_to_explain=example_num)
+        else:
+            from .postprocessing.explain import explain_model_with_lime
+
+            explainer = explain_model_with_lime(
+                self,
+                total_data=data,
+                examples_to_explain=example_num)
+
+        return explainer
+
+    def partial_dependence_plot(
+            self,
+            x=None,
+            data=None,
+            data_type="all",
+            feature_name=None,
+            num_points=100,
+    ):
+        """Shows partial depedence plot for a feature.
+
+        Parameters
+        ----------
+            x :
+                the input data to use. If not given, then ``data`` must be given.
+            data :
+                raw unprepared data from which x,y paris are to be made. If
+                given, ``x`` must not be given.
+            data_type : str
+                the kind of the data to be used. It is only valid when
+                ``data`` is given.
+            feature_name : str/list
+                name/names of features. If only one feature is given, 1 dimensional
+                partial dependence plot is plotted. You can also provide a list of
+                two feature names, in which case 2d interaction plot will be plotted.
+            num_points : int
+                number of points. It is used to define grid.
+
+        Returns
+        -------
+            an instance of :py:class:`ai4water.postprocessing.PartialDependencePlot`
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.partial_dependence_plot(x=data.iloc[:, 0:-1], feature_name="tide_cm")
+            ...
+            >>> model.partial_dependence_plot(data=data, feature_name="tide_cm")
+
+        """
+        if x is None:
+            assert data is not None, f"either x or data must be given"
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
+
+        from .postprocessing.explain import PartialDependencePlot
+
+        pdp = PartialDependencePlot(
+            self.predict,
+            data=x,
+            feature_names=self.input_features,
+            num_points=num_points
+        )
+
+        if isinstance(feature_name, str):
+            pdp.plot_1d(feature=feature_name)
+        else:
+            assert isinstance(feature_name, list)
+            assert len(feature_name) == 2
+            pdp.plot_interaction(features=feature_name)
+
+        return pdp
+
+    def feature_interaction(
+            self,
+            features: List[str],
+            x: Union[np.ndarray, pd.DataFrame] = None,
+            data = None,
+            data_type: str = "all",
+            feature_names: List[str] = None,
+            plot_type="heatmap",
+            num_grid_points=None,
+            grid_types=None,
+            percentile_ranges=None,
+            grid_ranges=None,
+            cust_grid_points=None,
+            show_percentile: bool = False,
+            show_outliers: bool =False,
+            endpoint: bool = True,
+            which_classes=None,
+            ncols=2,
+            figsize: Tuple[Union[int, float]]=None,
+            annotate: bool = False,
+            annotate_counts: bool = True,
+            show: bool = True,
+            save_info: bool = True,
+            annotate_colors=("black", "white"),
+            annotate_color_threshold: float=None,
+            annotate_fmt:str = None,
+            annotate_fontsize: int = 7
+    )->Tuple[pd.DataFrame, plt.Axes]:
+        """shows prediction distribution with respect to two input features.
+
+        Parameters
+        ----------
+            x :
+                input data to the model.
+            data :
+                raw unprepared data from which x,y pairs for training,validation and test
+                are generated. It must only be given if ``x`` is not given.
+            data_type : str, optional (default="test")
+                The kind of data to be used. It is only valid if ``data`` argument is used.
+                It should be one of ``training``, ``validation``, ``test`` or ``all``.
+            features: list
+                two features to investigate
+            feature_names: list
+                feature names
+            num_grid_points: list, optional, default=None
+                number of grid points for each feature
+            grid_types: list, optional, default=None
+                type of grid points for each feature
+            percentile_ranges: list of tuple, optional, default=None
+                percentile range to investigate for each feature
+            grid_ranges: list of tuple, optional, default=None
+                value range to investigate for each feature
+            cust_grid_points: list of (Series, 1d-array, list), optional, default=None
+                customized list of grid points for each feature
+            show_percentile: bool, optional, default=False
+                whether to display the percentile buckets for both feature
+            show_outliers: bool, optional, default=False
+                whether to display the out of range buckets for both features
+            endpoint: bool, optional
+                If True, stop is the last grid point, default=True
+                Otherwise, it is not included
+            which_classes: list, optional, default=None
+                which classes to plot, only use when it is a multi-class problem
+            figsize: tuple or None, optional, default=None
+                size of the figure, (width, height)
+            ncols: integer, optional, default=2
+                number subplot columns, used when it is multi-class problem
+            annotate: bool, default=False
+                whether to annotate the points
+            annotate_counts : bool, default=False
+                whether to annotate counts or not.
+            annotate_colors : tuple
+                pair of colors
+            annotate_color_threshold : float
+                threshold value for annotation
+            annotate_fmt : str
+                format string for annotation.
+            annotate_fontsize : int, optinoal (default=7)
+                fontsize for annotation
+            plot_type : str, optional (default="circles")
+                either ``circles`` or ``hetmap``
+            show : bool, optional (default=True)
+                whether to show the  plot or not
+            save_info : bool, optional, default=True
+                whether to save the information as csv or not
+
+        Returns
+        -------
+        tuple
+            a pandas dataframe and matplotlib Axes
+
+        Examples
+        --------
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water import Model
+        ...
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> model.feature_interaction(
+        ...     ['tide_cm', 'sal_psu'],
+        ...     data=busan_beach(),
+        ...     annotate_counts=True,
+        ...     annotate_colors=("black", "black"),
+        ...     annotate_fontsize=10,
+        ...     cust_grid_points=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+        ...                       [33.45, 33.7, 33.9, 34.05, 34.4]],
+        ... )
+        """
+        if x is None:
+            assert data is not None, f"either 'x' or 'data' must be given"
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
+
+        from pdpbox.info_plots import actual_plot_interact
+
+        if not isinstance(x, pd.DataFrame):
+            assert isinstance(x, np.ndarray)
+            x = pd.DataFrame(x, columns=self.input_features)
+
+        if feature_names is None:
+            feature_names = features
+
+        fig, ax, summary_df = actual_plot_interact(
+            self,
+            x,
+            features=features,
+            feature_names=feature_names,
+            annotate=annotate,
+            annotate_counts=annotate_counts,
+            plot_type=plot_type,
+            num_grid_points=num_grid_points,
+            grid_types=grid_types,
+            percentile_ranges=percentile_ranges,
+            grid_ranges=grid_ranges,
+            cust_grid_points=cust_grid_points,
+            show_percentile=show_percentile,
+            show_outliers=show_outliers,
+            endpoint=endpoint,
+            which_classes=which_classes,
+            ncols=ncols,
+            figsize=figsize,
+            annotate_colors=annotate_colors,
+            annotate_color_threshold=annotate_color_threshold,
+            annotate_fmt=annotate_fmt,
+            annotate_fontsize=annotate_fontsize,
+        )
+
+        if save_info:
+            summary_df.to_csv(os.path.join(self.path, f"{data_type}_feature_interaction.csv"))
+
+        plt.tight_layout()
+        if show:
+            plt.show()
+
+        return summary_df, ax
+
+    def prediction_distribution(
+            self,
+            feature: Union[str, list],
+            feature_name: str = None,
+            x: Union[np.ndarray, pd.DataFrame] = None,
+            data = None,
+            data_type: str = "test",
+            num_grid_points=10,
+            grid_type='percentile',
+            percentile_range=None,
+            grid_range=None,
+            cust_grid_points=None,
+            show_percentile: bool = False,
+            show_outliers: bool = False,
+            endpoint : bool = True,
+            figsize: tuple = None,
+            ncols: int = 2,
+            save_info: bool = True,
+            show: bool = True,
+            plot_params: dict = None,
+    )->Tuple[plt.Figure, plt.Axes, pd.DataFrame]:
+        """plots distribution of prediction from the model against an input feature.
+
+        Parameters
+        ----------
+            feature : str or list
+                the name of input feature against which the distribution is to be plotted.
+                for one-hot encoding features, this must be a list
+            feature_name : str
+                only useful when feature is list i.e. it is a one-hot encoded feature
+            x :
+                input data to the model.
+            data :
+                raw unprepared data from which x,y pairs for training,validation and test
+                are generated. It must only be given if ``x`` is not given.
+            data_type : str, optional (default="test")
+                The kind of data to be used. It is only valid if ``data`` argument is used.
+                It should be one of ``training``, ``validation``, ``test`` or ``all``.
+            num_grid_points: integer, optional, default=10
+                number of grid points for numeric feature
+            grid_type: string, optional, default='percentile'
+                'percentile' or 'equal'
+                type of grid points for numeric feature
+            percentile_range: tuple or None, optional, default=None
+                percentile range to investigate
+                for numeric feature when grid_type='percentile'
+            grid_range: tuple or None, optional, default=None
+                value range to investigate
+                for numeric feature when grid_type='equal'
+            cust_grid_points: Series, 1d-array, list or None, optional, default=None
+                customized list of grid points
+                for numeric feature
+            show_percentile: bool, optional, default=False
+                whether to display the percentile buckets
+                for numeric feature when grid_type='percentile'
+            show_outliers: bool, optional, default=False
+                whether to display the out of range buckets
+                for numeric feature when percentile_range or grid_range is not None
+            endpoint: bool, optional, default=True
+                If True, stop is the last grid point
+                Otherwise, it is not included
+            figsize : tuple or None, optional, default=None
+                size of the figure, (width, height)
+            ncols : integer, optional, default=2
+                number subplot columns, used when it is multi-class problem
+            save_info : bool, optional, default=True
+                whether to save the information as csv or not
+            show : bool, optional, default=True
+                whether to show the plot or not
+            plot_params : dict or None, optional, default=None
+                parameters for the plot
+
+        Returns
+        -------
+            a tuple of plt.Figure, plt.Axes and pd.DataFrame
+
+        Examples
+        --------
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water import Model
+        ...
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> model.prediction_distribution(feature="tide_cm",
+        ... data=busan_beach(), show_percentile=True)
+
+        """
+
+        if x is None:
+            assert data is not None
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
+
+        y = self.predict(x)
+
+        if isinstance(x, np.ndarray):
+            x = pd.DataFrame(x, columns=self.input_features)
+
+        if feature_name is None:
+            if isinstance(feature, str):
+                feature_name = feature
+            else:
+                assert isinstance(feature, list)
+                feature_name = "Feature"
+
+        fig, axes, summary_df = prediction_distribution_plot(
+            self.mode,
+            inputs=x,
+            prediction=y,
+            feature=feature,
+            feature_name=feature_name,
+            n_classes=self.num_classes,
+            num_grid_points=num_grid_points,
+            grid_type=grid_type,
+            percentile_range=percentile_range,
+            grid_range=grid_range,
+            cust_grid_points=cust_grid_points,
+            show_percentile = show_percentile,
+            show_outliers = show_outliers,
+            endpoint = endpoint,
+            figsize = figsize,
+            ncols = ncols,
+            plot_params=plot_params
+        )
+
+        if save_info:
+            summary_df.to_csv(os.path.join(self.path, f"{data_type}_prediction_distribution.csv"))
+
+        if show:
+            plt.show()
+
+        return fig, axes, summary_df
 
     def _transform(self, data, name_in_config):
         """transforms the data using the transformer which has already been fit"""
@@ -2969,7 +3429,9 @@ class BaseModel(NN):
                                                                         postprocess=postprocess).reshape(-1, )
             else:  # 1d array
                 y = getattr(transformer, method)(y, postprocess=postprocess)
-        else:
+        # y can be None for example when we call model.predict(x=x),
+        # in this case we don't know what is y
+        elif y is not None:
             raise ValueError(f"can't inverse transform y of type {type(y)}")
 
         return y
@@ -2998,16 +3460,26 @@ class BaseModel(NN):
 
         if isinstance(train_x, list):
             for val in range(len(train_x)):
-                x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
+
+                # if val data is not available
+                if hasattr(val_x[val], '__len__') and len(val_x[val])==0:
+                    x_val = np.concatenate([train_x[val], test_x[val]])
+
+                # if test data is not available
+                elif hasattr(test_x[val], '__len__') and len(test_x[val])==0:
+                    x_val = np.concatenate([train_x[val], val_x[val]])
+                # supposing all three data are available
+                else:
+                    x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
                 x.append(x_val)
         else:
             for _x in [train_x, val_x, test_x]:
-                if _x is not None:
+                if _x is not None and (hasattr(_x, '__len__') and len(_x)>0):
                     x.append(_x)
             x = np.concatenate(x)
 
         for _y in [train_y, val_y, test_y]:
-            if _y is not None:
+            if _y is not None and (hasattr(_y, '__len__') and len(_y)>0):
                 y.append(_y)
 
         y = np.concatenate(y)
@@ -3076,8 +3548,13 @@ def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
     if isinstance(config, str) and config in ['quantile', 'quantile_normal']:
         config = {'method': 'quantile', 'n_quantiles': num_exs}
 
-    elif isinstance(config, dict) and config['method'] in ['quantile', 'quantile_normal']:
-        config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
+    elif isinstance(config, dict):
+        if 'method' not in config:
+            # for multiinput cases when x_transformation is defined as
+            # {'inp_1d': 'minmax', 'inp_2d': None}
+            pass # todo
+        elif config['method'] in ['quantile', 'quantile_normal']:
+            config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
 
     elif isinstance(config, list):
 

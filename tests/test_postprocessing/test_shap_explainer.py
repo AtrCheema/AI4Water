@@ -194,6 +194,7 @@ def get_dl_fmodel_for_multi_inputs():
     inp2 = np.random.random((100, 2162, 2))
     return model, [inp1, inp2]
 
+
 class TestShapExplainers(unittest.TestCase):
 
     def test_doc_example(self):
@@ -277,8 +278,6 @@ class TestShapExplainers(unittest.TestCase):
         explainer.heatmap()
         return
 
-
-
     def test_xgb(self):
 
         fit_and_interpret("XGBRegressor",
@@ -321,7 +320,6 @@ class TestShapExplainers(unittest.TestCase):
 
         return
 
-
     def test_heatmap(self):
 
         for mod in [
@@ -358,18 +356,17 @@ class TestShapExplainers(unittest.TestCase):
             time.sleep(1)
         return
 
-
     def test_ai4water_ml(self):
 
+        data = busan_beach(inputs=['wat_temp_c', 'tide_cm'])
         for m in [
             "XGBRegressor",
             "RandomForestRegressor",
             "GradientBoostingRegressor"
                   ]:
 
-            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c',
-                                                            'tide_cm']))
-            exp = explain_model_with_shap(model, examples_to_explain=2,
+            model = get_fitted_model(m, data)
+            exp = explain_model_with_shap(model, total_data=data,
                                           explainer="TreeExplainer")
             assert isinstance(exp, ShapExplainer)
 
@@ -381,7 +378,6 @@ class TestShapExplainers(unittest.TestCase):
                           draw_heatmap=False,
                           draw_beeswarm=False,
                           explainer="KernelExplainer")
-
         return
 
 
@@ -436,8 +432,6 @@ class TestDL(unittest.TestCase):
 
         return
 
-
-
     def test_lstm_model_deep_exp(self):
 
         m = make_lstm_reg_model()
@@ -465,7 +459,7 @@ class TestDL(unittest.TestCase):
         exp.plot_shap_values()
         exp.force_plot_single_example(0)
         return
-
+#
     def test_lstm_model_ai4water(self):
         time.sleep(1)
         m = make_lstm_reg_model()
@@ -483,14 +477,14 @@ class TestDL(unittest.TestCase):
         time.sleep(1)
         model = make_mlp_model()
 
-        exp = explain_model_with_shap(model, examples_to_explain=2)
+        exp = explain_model_with_shap(model, total_data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
         assert isinstance(exp, ShapExplainer)
         return
 
     def test_ai4water_lstm(self):
         m = lstm_model()
 
-        exp = explain_model_with_shap(m, examples_to_explain=2)
+        exp = explain_model_with_shap(m, total_data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
         assert isinstance(exp, ShapExplainer)
         return
 

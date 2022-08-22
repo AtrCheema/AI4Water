@@ -71,9 +71,9 @@ def MLP(
     ... # we can specify input shape as 3d (first dimension is always None)
     >>> MLP(32,  3, (5, 10))
     ... # we can also specify number of units for each layer
-    >>> MLP([32, 16, 8], 3, (10, 1))
+    >>> MLP([32, 16, 8], 3, (13, 1))
     ... # we can feed any argument which is accepted by Dense layer
-    >>> mlp =  MLP(32, 3, (10, ), use_bias=True, activation="relu")
+    >>> mlp =  MLP(32, 3, (13, ), use_bias=True, activation="relu")
     ... # we can feed the output of MLP to ai4water's Model
     >>> model = Model(model=mlp, input_features=input_features,
     >>>               output_features=output_features)

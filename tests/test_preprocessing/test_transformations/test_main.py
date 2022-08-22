@@ -16,6 +16,9 @@ from ai4water.datasets import busan_beach
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import QuantileTransformer, PowerTransformer, FunctionTransformer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+from ai4water.preprocessing.transformations import ParetoTransformer
+from ai4water.preprocessing.transformations import VastTransformer
+from ai4water.preprocessing.transformations import MmadTransformer
 
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -429,7 +432,9 @@ class test_Scalers(unittest.TestCase):
 
     def test_negative(self):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile",
-                  "power", "scale", "center", "sqrt", "yeo-johnson", "box-cox"]:
+                  "power", "scale", "center", "sqrt", "yeo-johnson", "box-cox",
+                  "mmad", "vast", "pareto",
+                  ]:
             kwargs = {}
             if m=="quantile":
                 kwargs['n_quantiles'] = 2
@@ -482,7 +487,7 @@ class test_Scalers(unittest.TestCase):
     def test_from_config_1d(self):
         for method in ["quantile", "robust", "quantile_normal",
                        "power", "box-cox", "center", "zscore", "scale",
-            "yeo-johnson"
+            "yeo-johnson", "mmad", "vast", "pareto"
                        ]:
             kwargs = {}
             if method=="quantile":
@@ -505,7 +510,8 @@ class test_Scalers(unittest.TestCase):
     def test_from_config_2d(self):
 
         for method in ["quantile", "robust", "quantile_normal",
-                       "power", "box-cox", "center", "zscore", "scale"
+                       "power", "box-cox", "center", "zscore", "scale",
+            "mmad", "vast", "pareto",
                        ]:
             kwargs = {}
             if method=="quantile":
@@ -626,5 +632,43 @@ class TestTransform(unittest.TestCase):
         test_transform(sk_tr, ai_tr, features)
 
         return
+
+    def test_pareto(self):
+        features = ['rel_hum', 'sal_psu']
+        ai_tr = Transformation('pareto', features=features)
+        sk_tr = ParetoTransformer()
+        test_transform(sk_tr, ai_tr, features)
+        return
+
+    def test_mmad(self):
+        features = ['rel_hum', 'sal_psu']
+        ai_tr = Transformation('mmad', features=features)
+        sk_tr = MmadTransformer()
+        test_transform(sk_tr, ai_tr, features)
+        return
+
+    def test_vast(self):
+        features = ['rel_hum', 'sal_psu']
+        ai_tr = Transformation('vast', features=features)
+        sk_tr = VastTransformer()
+        test_transform(sk_tr, ai_tr, features)
+        return
+
+
+class TestNotInvTransform(unittest.TestCase):
+    """Transformers whose inverse is not possible"""
+    X = np.random.randint(-100, 100, (100, 2)).astype(np.float32)
+    def test_tanh(self):
+        tr = Transformation("tanh")
+        x_ = tr.fit_transform(self.X)
+        assert np.shape(x_) == self.X.shape
+        return
+
+    def sigmoid(self):
+        tr = Transformation("sigmoid")
+        x_ = tr.fit_transform(self.X)
+        assert np.shape(x_) == self.X.shape
+        return
+
 if __name__ == "__main__":
     unittest.main()

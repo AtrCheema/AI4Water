@@ -418,6 +418,8 @@ class PartialDependencePlot(ExplainerMixin):
                             save=self.save,
                             ice_only=ice_only,
                             ice_color=ice_color)
+                else:
+                    raise ValueError(f"invalid data shape {self.data.shape}")
             else:
                 for data in self.data:
                     if self.data_is_2d:

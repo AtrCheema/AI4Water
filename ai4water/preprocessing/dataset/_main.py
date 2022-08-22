@@ -1,4 +1,3 @@
-
 import json
 import inspect
 import warnings
@@ -35,34 +34,34 @@ class _DataSet(Plots):
 
     def training_data(self):
         raise NotImplementedError
-    
+
     def validation_data(self):
         raise NotImplementedError
-    
+
     def test_data(self):
         raise NotImplementedError
-    
+
     def KFold_splits(self, n_splits=5):
         raise NotImplementedError
-    
+
     def LeaveOneOut_splits(self):
         raise NotImplementedError
-    
+
     def TimeSeriesSplit_splits(self, n_splits=5):
         raise NotImplementedError
-    
+
     @classmethod
     def from_h5(cls, h5_file: str):
         raise NotImplementedError
-    
+
     def to_disk(self, path: str):
         raise NotImplementedError
 
     def return_xy(self, x, y, initial):
 
-        if self.mode == "classification" and  self.is_binary:
+        if self.mode == "classification" and self.is_binary:
             if len(y) == y.size:
-                y = y.reshape(-1,1)
+                y = y.reshape(-1, 1)
 
         if self.verbosity > 0:
             print(f"{'*' * 5} {initial} {'*' * 5}")
@@ -110,35 +109,36 @@ class DataSet(_DataSet):
     - total_exs
 
     """
+
     def __init__(
-        self,
-        data,
-        input_features: Union[str, list]=None,
-        output_features:Union[str, list] = None,
-        dataset_args: dict = None,
+            self,
+            data,
+            input_features: Union[str, list] = None,
+            output_features: Union[str, list] = None,
+            dataset_args: dict = None,
 
-        ts_args: dict = None,
+            ts_args: dict = None,
 
-        split_random: bool = False,
-        train_fraction: float = 0.7,
-        val_fraction: float = 0.2,
-        indices: dict = None,
+            split_random: bool = False,
+            train_fraction: float = 0.7,
+            val_fraction: float = 0.2,
+            indices: dict = None,
 
-        intervals=None,
-        shuffle: bool = True,
-        allow_nan_labels: int = 0,
-        nan_filler: dict = None,
-        batch_size: int = 32,
-        drop_remainder: bool = False,
-        teacher_forcing: bool = False,
-        allow_input_nans: bool =  False,
+            intervals=None,
+            shuffle: bool = True,
+            allow_nan_labels: int = 0,
+            nan_filler: dict = None,
+            batch_size: int = 32,
+            drop_remainder: bool = False,
+            teacher_forcing: bool = False,
+            allow_input_nans: bool = False,
 
-        seed: int = 313,
-        verbosity: int = 1, 
-        mode: str = None,
-        category: str = None,
-        save: bool = False
-        ):
+            seed: int = 313,
+            verbosity: int = 1,
+            mode: str = None,
+            category: str = None,
+            save: bool = False
+    ):
         """
         Initializes the DataSet class
 
@@ -193,7 +193,7 @@ class DataSet(_DataSet):
                 and test data. If indices are given for training, then train_fraction
                 must not be given. If indices are given for validation, then indices
                 for training must also be given and  val_fraction must not be given.
-                Therefore, the possible keys in indices dictionary are follwoing 
+                Therefore, the possible keys in indices dictionary are follwoing
                     - ``training``
                     - ``training`` and ``validation``
             intervals :
@@ -312,12 +312,12 @@ class DataSet(_DataSet):
 
         if indices:
             assert split_random is False, "indices cannot be used with split_random"
-        
+
         if 'training' in indices:
             assert train_fraction == 0.7, f"""
             You can not set training data using both indices and train_fraction.
             Use either indices or train_fraction."""
-    
+
         if 'validation' in indices:
             assert val_fraction == 0.2, f"""
                 You can not set validation data using both indices and val_fraction. 
@@ -325,7 +325,7 @@ class DataSet(_DataSet):
             assert 'training' in indices, f"""
             when defining validation data using indices, training data must also be 
             defined using indices."""
-        
+
         assert val_fraction < 1.0, f"""
             val_fraction must be less than 1.0 but it is {val_fraction}.
             """
@@ -352,7 +352,7 @@ class DataSet(_DataSet):
         self.batch_size = batch_size
 
         self.intervals = intervals
-        self.allow_nan_labels=allow_nan_labels
+        self.allow_nan_labels = allow_nan_labels
         self.teacher_forcing = teacher_forcing
         self.drop_remainder = drop_remainder
         self.allow_input_nans = allow_input_nans
@@ -389,17 +389,17 @@ class DataSet(_DataSet):
         return self._ts_args
 
     @ts_args.setter
-    def ts_args(self, _ts_args:dict = None):
+    def ts_args(self, _ts_args: dict = None):
         default_args = {'input_steps': 1,
                         'lookback': 1,
-                        'forecast_len':  1,
-                        'forecast_step':  0,
+                        'forecast_len': 1,
+                        'forecast_step': 0,
                         'known_future_inputs': False
                         }
-        
+
         if _ts_args:
             default_args.update(_ts_args)
-        
+
         self._ts_args = default_args
 
     @property
@@ -502,7 +502,7 @@ class DataSet(_DataSet):
         _outputs = self.config['output_features']
 
         if _outputs is None and self.data is not None:
-            #assert isinstance(self.data, pd.DataFrame)
+            # assert isinstance(self.data, pd.DataFrame)
             if self.data.ndim == 2:
                 _outputs = [col for col in self.data.columns if col not in self.input_features]
             else:
@@ -534,7 +534,7 @@ class DataSet(_DataSet):
     @property
     def num_ins(self):
         return len(self.input_features)
-    
+
     @property
     def num_outs(self):
         return len(self.output_features)
@@ -604,7 +604,7 @@ class DataSet(_DataSet):
                 assert isinstance(output_features, list)
 
             if input_features is None:  # define dummy names for input_features
-                input_features = [f'input_{i}' for i in range(data.shape[1]-len(output_features))]
+                input_features = [f'input_{i}' for i in range(data.shape[1] - len(output_features))]
                 self.config['input_features'] = input_features
 
             return pd.DataFrame(data, columns=input_features + output_features)
@@ -614,14 +614,14 @@ class DataSet(_DataSet):
     def _get_data_from_df(self, data, input_features, output_features):
 
         if input_features is None and output_features is not None:
-                if isinstance(output_features, str):
-                    output_features = [output_features]
-                assert isinstance(output_features, list)
-                input_features = [col for col in data.columns if col not in output_features]
-                # since we have inferred the input_features, they should be put
-                # back into config
-                self.config['input_features'] = input_features
-        
+            if isinstance(output_features, str):
+                output_features = [output_features]
+            assert isinstance(output_features, list)
+            input_features = [col for col in data.columns if col not in output_features]
+            # since we have inferred the input_features, they should be put
+            # back into config
+            self.config['input_features'] = input_features
+
         return data
 
     def _get_data_from_str(self, data, input_features, output_features):
@@ -699,7 +699,7 @@ class DataSet(_DataSet):
 
         dynamic_features = self.input_features + self.output_features
 
-        data = dataset.fetch(dynamic_features = dynamic_features,
+        data = dataset.fetch(dynamic_features=dynamic_features,
                              **dataset_args)
 
         data = data.to_dataframe(['time', 'dynamic_features']).unstack()
@@ -751,14 +751,14 @@ class DataSet(_DataSet):
 
         all_indices = np.arange(tot_obs)
 
-        if len(self.indices) == 0 :
+        if len(self.indices) == 0:
             if self.train_fraction < 1.0:
                 if self.split_random:
                     train_indices, test_indices = train_test_split(
                         all_indices,
                         train_size=self.train_fraction,
                         random_state=self.seed
-                        )
+                    )
                 else:
                     train_indices, test_indices = self._get_indices_by_seq_split(
                         all_indices,
@@ -772,9 +772,9 @@ class DataSet(_DataSet):
 
             if _train_indices is not None:
                 if _val_indices is None:
-                    # even if val_fraction is > 0.0, we will separate validation 
+                    # even if val_fraction is > 0.0, we will separate validation
                     # data from training later
-                    _val_indices = np.array([])   # no validation set
+                    _val_indices = np.array([])  # no validation set
                 else:
                     assert isinstance(np.array(_val_indices), np.ndarray)
                     _val_indices = np.array(_val_indices)
@@ -788,26 +788,25 @@ class DataSet(_DataSet):
                 if _test_indices is None:
                     # get test_indices by subtracting train_indices from all indices
                     test_indices = [ind for ind in all_indices if ind not in train_indices]
-                    #_val_indices = np.array([])
-                
+                    # _val_indices = np.array([])
+
             else:  # todo
                 train_indices = []
-                
+
         setattr(self, 'train_indices', train_indices)
         setattr(self, 'test_indices', test_indices)
 
         return np.array(train_indices).astype("int32"), np.array(test_indices).astype("int32")
 
     def _get_indices_by_seq_split(
-        self, 
-        all_indices:Union[list, np.ndarray], 
-        train_fraction):
+            self,
+            all_indices: Union[list, np.ndarray],
+            train_fraction):
         """ sequential train/test split"""
 
         train_indices = all_indices[0:int(train_fraction * len(all_indices))]
         test_indices = all_indices[int(train_fraction * len(all_indices)):]
         return train_indices, test_indices
-
 
     def _training_data(self, key="_training", **kwargs):
         """training data including validation data"""
@@ -833,7 +832,7 @@ class DataSet(_DataSet):
         x, prev_y, y = self._make_data(
             data,
             intervals=self.intervals,
-            indices= indices,
+            indices=indices,
             **kwargs)
 
         if not isinstance(self.data, np.ndarray):
@@ -851,7 +850,7 @@ class DataSet(_DataSet):
             return load_data_from_hdf5('training_data', self.data)
 
         x, prev_y, y = self._training_data(key=key, **kwargs)
-        if self.val_fraction>0.0:
+        if self.val_fraction > 0.0:
             # when no output is generated, corresponding index will not be saved
             idx = self.indexes.get(key, np.arange(len(x)))  # index also needs to be split
             x, prev_y, y, idx = self._train_val_split(x, prev_y, y, idx, 'training')
@@ -868,13 +867,13 @@ class DataSet(_DataSet):
 
     def validation_data(self, key="val", **kwargs):
         """validation data"""
-        
+
         if getattr(self, '_from_h5', False):
             return load_data_from_hdf5('validation_data', self.data)
 
         x, prev_y, y = self._training_data(key=key, **kwargs)
 
-        if self.val_fraction>0.0:
+        if self.val_fraction > 0.0:
             idx = self.indexes.get(key, np.arange(len(x)))
             x, prev_y, y, idx = self._train_val_split(x, prev_y, y, idx, 'validation')
 
@@ -920,10 +919,10 @@ class DataSet(_DataSet):
             train_x, val_x, train_y, val_y = splitter.split_by_slicing(x, y)
             splitter = TrainTestSplit(test_fraction=self.val_fraction)
             train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_slicing(idx, prev_y)
-        
-        if return_type=="training":
+
+        if return_type == "training":
             return train_x, train_prev_y, train_y, train_idx
-        
+
         return val_x, val_prev_y, val_y, val_idx
 
     def test_data(self, key="test", **kwargs):
@@ -959,7 +958,7 @@ class DataSet(_DataSet):
                 if self.mode == 'classification':
                     y = check_for_classification(y, self._to_categorical)
             else:
-                x, prev_y, y = np.empty(0), np.empty(0), np.empty(0)    
+                x, prev_y, y = np.empty(0), np.empty(0), np.empty(0)
         else:
             x, prev_y, y = np.empty(0), np.empty(0), np.empty(0)
 
@@ -1002,7 +1001,7 @@ class DataSet(_DataSet):
                 if self.verbosity > 0: print("""
                 \n{} Allowing NANs in predictions {}\n""".format(10 * '*', 10 * '*'))
             elif self.allow_nan_labels == 1:
-                if self.verbosity>0: print("""
+                if self.verbosity > 0: print("""
                 \n{} Ignoring examples whose all labels are NaNs {}\n
                 """.format(10 * '*', 10 * '*'))
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
@@ -1071,7 +1070,7 @@ class DataSet(_DataSet):
                              'original': original_index}
         return data
 
-    def deindexify(self, data:np.ndarray, key):
+    def deindexify(self, data: np.ndarray, key):
 
         _data, _index = self.deindexify_nparray(data, key)
 
@@ -1118,9 +1117,9 @@ class DataSet(_DataSet):
 
     def _make_data(self, data, indices=None, intervals=None, shuffle=False):
 
-        #if indices is not None:
+        # if indices is not None:
         #    indices = np.array(indices).astype("int32")
-            #assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
+        # assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
 
         if isinstance(data, pd.DataFrame):
             data = data[self._input_features + self.output_features].copy()
@@ -1144,7 +1143,6 @@ class DataSet(_DataSet):
                 df1 = data[_st:_en]
 
                 if df1.shape[0] > 0:
-
                     x, prev_y, y = self.get_batches(df1.values)
 
                     xs.append(x)
@@ -1166,7 +1164,7 @@ class DataSet(_DataSet):
         if isinstance(data, pd.DataFrame) and 'index' in data:
             data.pop('index')
 
-        if self.ts_args['forecast_len'] == 1 and len(self.output_features)>0:
+        if self.ts_args['forecast_len'] == 1 and len(self.output_features) > 0:
             y = y.reshape(-1, len(self.output_features))
 
         return x, prev_y, y
@@ -1187,11 +1185,11 @@ class DataSet(_DataSet):
             index = np.array(index, dtype=np.int64)
         return _data, index
 
-    def total_exs(self, 
-                lookback,
-                forecast_step=0, forecast_len=1, 
-                **ts_args
-                ):
+    def total_exs(self,
+                  lookback,
+                  forecast_step=0, forecast_len=1,
+                  **ts_args
+                  ):
 
         intervals = self.intervals
         input_steps = self.ts_args['input_steps']
@@ -1204,9 +1202,9 @@ class DataSet(_DataSet):
         if not self.allow_nan_labels and intervals is None:
             _data = data[self.input_features + self.output_features] if isinstance(data, pd.DataFrame) else data
             x, _, _ = prepare_data(_data,
-                                lookback, num_outputs=num_outs,
-                                forecast_step=forecast_step,
-                                forecast_len=forecast_len, mask=np.nan, **ts_args)
+                                   lookback, num_outputs=num_outs,
+                                   forecast_step=forecast_step,
+                                   forecast_len=forecast_len, mask=np.nan, **ts_args)
             max_tot_obs = len(x)
 
         # we need to ignore some values at the start
@@ -1266,14 +1264,13 @@ class DataSet(_DataSet):
             warnings.warn("Ignoring prev_y")
         x, _, y = self._training_data()
 
-        kf = KFold(n_splits=n_splits, 
-                  random_state=self.seed if self.shuffle else None,
-                  shuffle=self.shuffle)
+        kf = KFold(n_splits=n_splits,
+                   random_state=self.seed if self.shuffle else None,
+                   shuffle=self.shuffle)
 
         spliter = kf.split(x)
 
         for tr_idx, test_idx in spliter:
-
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
     def LeaveOneOut_splits(self):
@@ -1287,7 +1284,6 @@ class DataSet(_DataSet):
         kf = LeaveOneOut()
 
         for tr_idx, test_idx in kf.split(x):
-
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
     def ShuffleSplit_splits(self, **kwargs):
@@ -1301,7 +1297,6 @@ class DataSet(_DataSet):
         sf = ShuffleSplit(**kwargs)
 
         for tr_idx, test_idx in sf.split(x):
-
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
     def TimeSeriesSplit_splits(self, n_splits=5, **kwargs):
@@ -1316,7 +1311,6 @@ class DataSet(_DataSet):
         tscv = TimeSeriesSplit(n_splits=n_splits, **kwargs)
 
         for tr_idx, test_idx in tscv.split(x):
-
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
     def plot_KFold_splits(self, n_splits=5, show=True, **kwargs):
@@ -1325,9 +1319,9 @@ class DataSet(_DataSet):
             warnings.warn("Ignoring prev_y")
         x, _, y = self._training_data()
 
-        kf = KFold(n_splits=n_splits, 
-                  random_state=self.seed if self.shuffle else None,
-                  shuffle=self.shuffle)
+        kf = KFold(n_splits=n_splits,
+                   random_state=self.seed if self.shuffle else None,
+                   shuffle=self.shuffle)
 
         spliter = kf.split(x)
 
@@ -1368,7 +1362,7 @@ class DataSet(_DataSet):
                           **kwargs)
         return
 
-    def _plot_splits(self, spliter, x, show=True,  **kwargs):
+    def _plot_splits(self, spliter, x, show=True, **kwargs):
 
         splits = list(spliter)
 
@@ -1415,7 +1409,7 @@ class DataSet(_DataSet):
 
         f = h5py.File(filepath, mode='w')
 
-        for k,v in self.init_paras().items():
+        for k, v in self.init_paras().items():
             if isinstance(v, (dict, list, tuple, float, int, str)):
                 f.attrs[k] = json.dumps(
                     v, default=jsonize).encode('utf8')

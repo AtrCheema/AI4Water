@@ -194,6 +194,7 @@
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1761
 
 import glob
+import warnings
 import zipfile
 import shutil
 from typing import Union
@@ -207,10 +208,11 @@ except (ModuleNotFoundError, OSError):
 
 from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
+from ai4water.backend import xr
 from .download_pangaea import PanDataSet
 from .download_zenodo import download_from_zenodo
 from .utils import download, download_all_http_directory
-from .utils import check_attributes, sanity_check
+from .utils import check_attributes, sanity_check, check_st_en
 
 SEP = os.sep
 # TODO, add visualization
@@ -505,8 +507,11 @@ class WeatherJena(Datasets):
     def __init__(self, obs_loc='roof'):
         """
         The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
-        Arguments:
-            obs_loc str: location of observation.
+
+        Parameters
+        ----------
+            obs_loc : str, optional (default=roof)
+                location of observation.
         """
 
         if obs_loc not in ['roof', 'soil', 'saale']:
@@ -520,23 +525,47 @@ class WeatherJena(Datasets):
         if not os.path.exists(sub_dir):
             os.makedirs(sub_dir)
 
-        download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
-        unzip_all_in_dir(sub_dir, 'zip')
+        if xr is None:
+            warnings.warn("""
+            loading data from csv files is slow. 
+            Try installing xarray and netcdf for faster loading
+            """)
+            download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+            unzip_all_in_dir(sub_dir, 'zip')
+        else:
+            nc_path = os.path.join(sub_dir, "data.nc")
+            if not os.path.exists(nc_path):
+                download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+                unzip_all_in_dir(sub_dir, 'zip')
+                print("converting data to netcdf file. This will happen only once.")
+                df = self._read_as_df()
+                ndf = pd.DataFrame()
+                for _col in df.columns:
+                    col = _col.replace("/", "_")
+                    ndf[col] = df[_col].copy()
+
+                ndf = ndf.reset_index()
+                ndf.to_xarray().to_netcdf(nc_path)
+
+    @property
+    def dynamic_features(self)->list:
+        """returns names of features availabel"""
+        return self.fetch().columns.tolist()
 
     def fetch(
             self,
-            st: str = None,
-            en: str = None
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None
     ) -> pd.DataFrame:
         """
         Fetches the time series data between given period as pandas dataframe.
 
         Parameters
         ----------
-            st :
+            st : Optional
                 start of data to be fetched. If None, the data from start (2003-01-01)
                 will be retuned
-            en :
+            en : Optional
                 end of data to be fetched. If None, the data from till (2021-12-31)
                 end be retuned.
 
@@ -550,7 +579,31 @@ class WeatherJena(Datasets):
             >>> from ai4water.datasets import WeatherJena
             >>> dataset = WeatherJena()
             >>> df = dataset.fetch()
+            ... # get data between specific period
+            >>> df = dataset.fetch("20110101", "20201231")
         """
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+
+        if xr is None:
+            df = self._read_as_df()
+        else:
+            nc_path = os.path.join(sub_dir, "data.nc")
+            df = xr.load_dataset(nc_path).to_dataframe()
+            if 'Date Time' in df:
+                df.index = pd.to_datetime(df.pop('Date Time'))
+
+        if isinstance(st, int):
+            if en is None:
+                en = len(df)
+            assert isinstance(en, int)
+            return df.iloc[st:en]
+        elif st is not None:
+            return df.loc[st:en]
+
+        return df
+
+    def _read_as_df(self)->pd.DataFrame:
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
         all_files = glob.glob(f"{sub_dir}/*.csv")
@@ -562,14 +615,7 @@ class WeatherJena(Datasets):
             f_df.index = pd.DatetimeIndex(f_df.index)
             df = pd.concat([df, f_df])  # todo, such concatenation is slow.
 
-        df = df.sort_index()
-
-        if st is None:
-            st = df.index[0]
-        if en is None:
-            en = df.index[-1]
-
-        return df[st:en]
+        return df.sort_index()
 
 
 class SWECanada(Datasets):
@@ -630,10 +676,13 @@ class SWECanada(Datasets):
         """
         Fetches time series data from selected stations.
 
-        Arguments:
-            station_id : station/stations to be retrieved. In None, then data
-                          from all stations will be returned.
-            features : Names of features to be retrieved. Following features
+        Parameters
+        ----------
+            station_id :
+                station/stations to be retrieved. In None, then data
+                from all stations will be returned.
+            features :
+                Names of features to be retrieved. Following features
                 are allowed:
 
                     - ``snw`` snow water equivalent kg/m3
@@ -641,18 +690,25 @@ class SWECanada(Datasets):
                     - ``den`` snowpack bulk density kg/m3
 
                 If None, then all three features will be retrieved.
-            q_flags : If None, then no qflags will be returned. Following q_flag
+            q_flags :
+                If None, then no qflags will be returned. Following q_flag
                 values are available.
-                    - 'data_flag_snw'
-                    - 'data_flag_snd'
-                    - 'qc_flag_snw'
-                    - 'qc_flag_snd'
-            st : start of data to be retrieved
-            en : end of data to be retrived.
-        returns:
+                    - ``data_flag_snw``
+                    - ``data_flag_snd``
+                    - ``qc_flag_snw``
+                    - ``qc_flag_snd``
+            st :
+                start of data to be retrieved
+            en :
+                end of data to be retrived.
+
+        Returns
+        -------
+        dict
             a dictionary of dataframes of shape (st:en, features + q_flags) whose
             length is equal to length of stations being considered.
         """
+        # todo, q_flags not working
 
         if station_id is None:
             station_id = self.stations()
@@ -715,22 +771,116 @@ class SWECanada(Datasets):
 
 class RRLuleaSweden(Datasets):
     """
-    Rainfall runoff data for an urban catchment from 2016-2019
-    https://doi.org/10.5194/hess-24-869-2020
+    Rainfall runoff data for an urban catchment from 2016-2019 following the work
+    of Broekhuizen et al., 2020 [11]_ .
+
+    .. [11] https://doi.org/10.5194/hess-24-869-2020
     """
     url = "https://zenodo.org/record/3931582"
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._download()
+
+    def fetch(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None
+    ):
+        """fetches rainfall runoff data
+
+        Parameters
+        ----------
+            st : optional
+                start of data to be fetched. By default the data starts from
+                2016-06-16 20:50:00
+            en : optional
+                end of data to be fetched. By default the end is 2019-09-15 18:41
+        """
+
+        flow = self.fetch_flow(st,en)
+        pcp = self.fetch_pcp(st, en)
+        return flow, pcp
+
+    def fetch_flow(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None
+    )->pd.DataFrame:
+        """fetches flow data
+
+        Parameters
+        ----------
+            st : optional
+                start of data to be fetched. By default the data starts from
+                2016-06-16 20:50:00
+            en : optional
+                end of data to be fetched. By default the end is 2019-09-15 18:35:00
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (37_618, 3)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import RRLuleaSweden
+            >>> dataset = RRLuleaSweden()
+            >>> flow = dataset.fetch_flow()
+        """
+        fname = os.path.join(self.ds_dir, "flow_2016_2019.csv")
+        df = pd.read_csv(fname, sep=";")
+        df.index = pd.to_datetime(df.pop("time"))
+        return check_st_en(df, st, en)
+
+    def fetch_pcp(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None
+    )->pd.DataFrame:
+        """fetches precipitation data
+
+        Parameters
+        ----------
+            st : optional
+                start of data to be fetched. By default the data starts from
+                2016-06-16 19:48:00
+            en : optional
+                end of data to be fetched. By default the end is 2019-10-26 23:59:00
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (967_080, 1)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import RRLuleaSweden
+            >>> dataset = RRLuleaSweden()
+            >>> pcp = dataset.fetch_pcp()
+
+        """
+
+        fname = os.path.join(self.ds_dir, "prec_2016_2019.csv")
+        df = pd.read_csv(fname, sep=";")
+        df.index = pd.to_datetime(df.pop("time"))
+        return check_st_en(df, st, en)
 
 
 class RRAlpileCatchments(Datasets):
     """
     Modelled runoff in contrasting Alpine catchments in Austria from 1981 to 2100
-    using 14 models.
+    using 14 models follwoing the work of Hanus et al., 2021 [12]_ .
     past 1981 - 2010
     future
-    https://hess.copernicus.org/preprints/hess-2021-92/
+
+    .. [12] https://hess.copernicus.org/preprints/hess-2021-92/
     """
     url = "https://zenodo.org/record/4539986"
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
+        self._download()
 
 class ETPAgroForestGermany(Datasets):
     """
@@ -766,11 +916,195 @@ class Quadica(Datasets):
 
         self._download()
 
-    def fetch_monthly(self):
+    def fetch_wrtds_monthly(
+            self,
+            features:Union[str, list] = None,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
+        """Monthly median concentrations, flow-normalized concentrations, and mean
+        fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
+        for stations with enough data availability.
+
+        Parameters
+        ----------
+            features : optional
+            st : optional
+                starting point of data. By default, the data starts from 1992-09
+            en : optional
+                end point of data. By default, the data ends at 2013-12
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (50186, 47)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_wrtds_monthly()
+
+        """
         fname = os.path.join(self.ds_dir, "quadica", "wrtds_monthly.csv")
         wrtds = pd.read_csv(fname)
         wrtds.index = pd.to_datetime(wrtds['Year'].astype(str) + ' ' + wrtds['Month'].astype(str))
-        return wrtds
+
+        if features is None:
+            features = wrtds.columns.tolist()
+        elif isinstance(features, str):
+            features = [features]
+
+        assert isinstance(features, list)
+
+        wrtds = wrtds[features]
+
+        return check_st_en(wrtds, st, en)
+
+    def fetch_wrtds_annual(
+            self,
+            features:Union[str, list] = None,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
+        """Annual median concentrations, flow-normalized concentrations, and mean
+        fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
+        for stations with enough data availability.
+
+        Parameters
+        ----------
+            features : optional
+            st : optional
+                starting point of data. By default, the data starts from 1992
+            en : optional
+                end point of data. By default, the data ends at 2013
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (4213, 46)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_wrtds_annual()
+
+        """
+        fname = os.path.join(self.ds_dir, "quadica", "wrtds_annual.csv")
+        wrtds = pd.read_csv(fname)
+        wrtds.index = pd.to_datetime(wrtds['Year'].astype(str))
+
+        if features is None:
+            features = wrtds.columns.tolist()
+        elif isinstance(features, str):
+            features = [features]
+
+        assert isinstance(features, list)
+
+        wrtds = wrtds[features]
+
+        return check_st_en(wrtds, st, en)
+
+    def fetch_metadata(self)->pd.DataFrame:
+        """fetches the metadata about the stations as dataframe.
+        Each row represents metadata about one station and each column
+        represents one feature.
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (1386, 60)
+        """
+        fname = os.path.join(self.ds_dir, "quadica", "metadata.csv")
+        return pd.read_csv(fname,encoding='cp1252')
+
+    def fetch_pet(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
+        """average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
+
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_pet() # -> (828, 1388)
+        """
+        fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
+        pet = pd.read_csv(fname)
+        return check_st_en(pet, st, en)
+
+    def fetch_tavg(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
+        """monthly median average temperatures starting from 1950-01 to 2018-09
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_tavg() # -> (828, 1388)
+        """
+
+        fname = os.path.join(self.ds_dir, "quadica", "tavg_monthly.csv")
+        pet = pd.read_csv(fname)
+        return check_st_en(pet, st, en)
+
+    def fetch_precip(
+            self,
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
+        """ sums of precipitation starting from 1950-01 to 2018-09
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (828, 1388)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_precip() # -> (828, 1388)
+        """
+
+        fname = os.path.join(self.ds_dir, "quadica", "pre_monthly.csv")
+        pet = pd.read_csv(fname)
+        return check_st_en(pet, st, en)
+
+    def monthly_medians(
+            self,
+    )->pd.DataFrame:
+        """Monthly medians over the whole time series of water quality variables
+        and discharge
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (16629, 18)
+        """
+        fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
+        return pd.read_csv(fname)
+
+    def annual_medians(
+            self,
+    )->pd.DataFrame:
+        """Annual medians over the whole time series of water quality variables
+        and discharge
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (24393, 18)
+        """
+        fname = os.path.join(self.ds_dir, "quadica", "c_annual.csv")
+        return pd.read_csv(fname)
 
     def fetch_annual(self):
         return

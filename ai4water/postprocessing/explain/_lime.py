@@ -3,6 +3,9 @@ from typing import Union
 
 from ai4water.backend import np, pd, plt, os, lime
 
+if lime is not None:
+    from lime import lime_tabular
+
 from ._explain import ExplainerMixin
 
 
@@ -13,6 +16,7 @@ class LimeExplainer(ExplainerMixin):
 
     Example:
         >>> from ai4water import Model
+        >>> from ai4water.postprocessing import LimeExplainer
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="GradientBoostingRegressor")
         >>> model.fit(data=busan_beach())

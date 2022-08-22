@@ -106,7 +106,7 @@ def train_predict(model):
     model.fit(data=data1.astype(np.float32))
     x, y = model.training_data()
 
-    test_evaluation(model)
+    test_evaluation(model, data1.astype(np.float32))
 
     return x,y
 
@@ -142,15 +142,15 @@ def test_train_val_test_data(data, **kwargs):
     return train_x, train_y
 
 
-def test_evaluation(model):
+def test_evaluation(model, data):
 
-    model.evaluate(data='training')
+    model.evaluate_on_training_data(data=data)
     _, _ = model.training_data()
 
-    model.evaluate(data='validation')
+    model.evaluate_on_validation_data(data=data)
     _, _ = model.validation_data()
 
-    model.evaluate(data='test')
+    model.evaluate_on_test_data(data=data)
     _, _ = model.test_data()
 
     return
@@ -511,14 +511,14 @@ class TestUtils(unittest.TestCase):
             split_random=True,
             verbosity=0)
 
-        t,p = model.predict(data=data1.astype(np.float32),return_true=True)
+        t,p = model.predict_on_test_data(data=data1.astype(np.float32),return_true=True)
         # the values in t must match the corresponding indices after adding 10000,
         # because y column starts from 100000
         for i in range(100):
             idx = model.dh_.test_indices[i] + model.lookback - 1
             true = int(round(t[i].item()))
             self.assertEqual(true, idx + 10000)
-        test_evaluation(model)
+        test_evaluation(model, data1.astype(np.float32))
         return
 
     def test_random_idx_with_nan_in_outputs(self):
@@ -565,7 +565,7 @@ class TestUtils(unittest.TestCase):
         assert np.max(test_indices) < exp_test_idx
         assert np.max(train_indices) < exp_train_idx
 
-        test_evaluation(model)
+        test_evaluation(model, df)
 
         return
 
@@ -590,7 +590,7 @@ class TestUtils(unittest.TestCase):
         model.fit(data=df)
         _, _ = model.training_data()
 
-        test_evaluation(model)
+        test_evaluation(model, df)
 
         # for i in range(100):
         #     idx = model.dh_.train_indices[i]
@@ -623,7 +623,7 @@ class TestUtils(unittest.TestCase):
 
         x, y = model.training_data()
 
-        test_evaluation(model)
+        test_evaluation(model, df)
 
         # for i in range(100):
         #     idx = model.train_indices[i]
@@ -673,7 +673,7 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(np.abs(np.sum(history.history['loss'])) > 0.0)
             self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
 
-            test_evaluation(model)
+            test_evaluation(model, df)
 
             return
 
@@ -706,7 +706,7 @@ class TestUtils(unittest.TestCase):
             self.assertFalse(any(np.isin(model.dh_.train_indices ,model.dh_.test_indices)))
             self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
 
-            test_evaluation(model)
+            test_evaluation(model, df.copy())
 
             return
 
@@ -889,6 +889,7 @@ class TestJsonize(unittest.TestCase):
         self.assertTrue(isinstance(b, list))
         self.assertTrue(isinstance(b[0], type(None)))
         return
+
 
 if __name__ == "__main__":
     unittest.main()

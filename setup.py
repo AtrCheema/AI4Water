@@ -19,8 +19,9 @@ min_requirements = [
     'scikit-optimize',
     'joblib',
     'requests',
-    'easy_mpl>=0.20.4',
-    'SeqMetrics>=1.3.3'
+    'easy_mpl>=0.20.5',
+    'SeqMetrics>=1.3.3',
+    'PDPbox1'
     ]
 
 extra_requires = [
@@ -54,10 +55,10 @@ extra_requires = [
 'plotly',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
                'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
                    'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
                    'SeqMetrics>=1.3.3']
 
@@ -94,7 +95,7 @@ setup(
 
     name='AI4Water',
 
-    version="1.04",
+    version="1.05",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
