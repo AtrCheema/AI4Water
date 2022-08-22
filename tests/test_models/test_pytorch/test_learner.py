@@ -55,8 +55,8 @@ def criterion_cross(labels, outputs):
     return out
 
 
-def make_learner(epochs=501, use_cuda=False):
-    model = Net(1, 2, 1)
+def make_learner(epochs=501, use_cuda=False, in_features=1):
+    model = Net(in_features, 2, 1)
     learner = Learner(model=model,
                       num_epochs=epochs,
                       patience=50,
@@ -70,8 +70,8 @@ def make_learner(epochs=501, use_cuda=False):
     return learner
 
 
-def get_xy():
-    X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
+def get_xy(in_features=1):
+    X = torch.arange(0, 40*in_features, 1).view(-1, in_features).type(torch.FloatTensor)
     Y = torch.zeros(X.shape[0])
     Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
     return X, Y
@@ -93,6 +93,12 @@ class TestLearner(unittest.TestCase):
         p = learner.predict(X, y=Y, name='training')
         assert isinstance(p, np.ndarray)
 
+        return
+
+    def test_multi_ins(self):
+        learner = make_learner(in_features=14)
+        X, Y = get_xy(in_features=14)
+        learner.fit(x=X, y=Y)
         return
 
     # def test_use_cuda(self):
