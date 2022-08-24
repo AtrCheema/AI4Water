@@ -39,7 +39,7 @@ print(tf.__version__, np.__version__, ai4water.__version__)
 
 PREFIX = f"hpo_nn_{dateandtime_now()}"
 ITER = 0
-num_iterations = 30
+num_iterations = 25
 
 # these seeds are randomly generated but we keep track of the seed
 # used at each iteration, so that when we rebuilt the model with optimized

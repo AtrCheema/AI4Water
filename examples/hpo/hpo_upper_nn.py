@@ -49,7 +49,7 @@ model = Model(
 
 optimizer = model.optimize_hyperparameters(
     data=data,
-    num_iterations=30,
+    num_iterations=25,
     process_results=False
 )
 

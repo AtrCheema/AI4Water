@@ -32,18 +32,8 @@ cases = {
     'model_None': {'y_transformation': 'none'},
     'model_minmax': {'y_transformation': 'minmax'},
     'model_zscore': {'y_transformation': 'zscore'},
-    'model_center': {'y_transformation': 'center'},
-    'model_scale': {'y_transformation': 'scale'},
-    'model_robust': {'y_transformation': 'robust'},
-    'model_quantile': {'y_transformation': 'quantile'},
-    'model_box_cox': {'y_transformation': {'method': 'box-cox', 'treat_negatives': True, 'replace_zeros': True}},
-    'model_yeo-johnson': {'y_transformation': 'yeo-johnson'},
-    'model_sqrt': {'y_transformation': 'sqrt'},
     'model_log': {'y_transformation': {'method':'log', 'treat_negatives': True, 'replace_zeros': True}},
-    'model_log10': {'y_transformation': {'method':'log10', 'treat_negatives': True, 'replace_zeros': True}},
-    "model_pareto": {"y_transformation": "pareto"},
-    "model_vast": {"y_transformation": "vast"},
-    "model_mmad": {"y_transformation": "mmad"}
+
          }
 
 
