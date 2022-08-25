@@ -18,17 +18,6 @@ seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery
-keras-tcn
-xgboost
-optuna
-
-# for hru discretization examples
-pyshp
-shapely
-
-#
-shap
-lime
 
 #
 PDPbox1
