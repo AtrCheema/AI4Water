@@ -2282,7 +2282,7 @@ class BaseModel(NN):
             config: dict,
             make_new_path: bool = False,
             **kwargs
-    ):
+    )->"BaseModel":
         """Loads the model from config dictionary i.e. model.config
 
         Arguments

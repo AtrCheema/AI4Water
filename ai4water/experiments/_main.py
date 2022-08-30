@@ -138,6 +138,8 @@ class Experiments(object):
 
         if monitor is None:
             self.monitor = Monitor[self.mode]
+        # _run_type is actually set during call to .fit
+        self._run_type = None
 
     def update_and_save_config(self, **kwargs):
         self.update_config(**kwargs)
@@ -154,9 +156,11 @@ class Experiments(object):
         dict_to_file(self.exp_path, config=self.config)
         return
 
-    def build_from_config(self, data, config_path, weights, **kwargs):
-        setattr(self, 'model_', None)
-        raise NotImplementedError
+    def build_from_config(self, config_path:str)->Model:
+        assert os.path.exists(config_path), f"{config_path} does not exist"
+        model: Model = Model.from_config_file(config_path=config_path)
+        setattr(self, 'model_', model)
+        return model
 
     @property
     def tpot_estimator(self):
@@ -295,6 +299,7 @@ class Experiments(object):
         verify_data(x, y, data, validation_data)
 
         assert run_type in ['optimize', 'dry_run']
+        self._run_type = run_type
 
         assert post_optimize in ['eval_best', 'train_best']
 
@@ -412,27 +417,33 @@ class Experiments(object):
             data,
             validation_data,
             model_type,
-            opt_dir,
-            **kwargs
+            opt_dir
     ):
         """Evaluate the best models."""
 
         folders = [path for path in os.listdir(opt_dir) if os.path.isdir(os.path.join(opt_dir, path)) and path.startswith('1_')]
-        # TODO for ML, best_models can be empty
+
         if len(folders) < 1:
             return self.train_best(x, y, data, validation_data, model_type)
+
+        assert len(folders) == 1, f"{folders}"
 
         for mod_path in folders:
             config_path = os.path.join(opt_dir, mod_path, "config.json")
             best_weights = find_best_weight(os.path.join(opt_dir, mod_path, "weights"))
 
-            train_results, test_results = self.build_from_config(
-                data,
-                config_path,
-                best_weights,
-                **kwargs)
+            model = self.build_from_config(config_path)
 
-            self._populate_results(model_type, train_results, test_results)
+            assert best_weights is not None, f"Can't find weight from {config_path}"
+            weight_file = os.path.join(model.w_path, best_weights)
+            model.update_weights(weight_file=weight_file)
+
+            train_true, train_pred = model.predict(data=data, return_true=True)
+
+            test_true, test_pred = model.predict(data='test', return_true=True)
+
+
+            self._populate_results(model_type, (train_true, train_pred), (test_true, test_pred))
         return
 
     def train_best(
@@ -663,12 +674,16 @@ Available cases are {self.models} and you wanted to include
         >>> experiment = MLRegressionExperiments()
         >>> experiment.fit(data=busan_beach(), run_type="optimize", num_iterations=30)
         >>> experiment.plot_improvement('r2')
-
-        or draw dumbell plot
-
+        ...
+        >>>  # or draw dumbell plot
+        ...
         >>> experiment.plot_improvement('r2', plot_type='bar')
 
         """
+
+        assert self._run_type == "optimize", f"""
+        when run_type argument duirng .fit() is {self._run_type}, we can
+        not have improvement plot"""
 
         data: str = 'test'
 
@@ -867,6 +882,8 @@ Available cases are {self.models} and you wanted to include
                 whether to show the plot or now
             figsize : tuple
                 size of the figure
+            start : int
+            end : int
             **kwargs :
                 any other keyword arguments to be passed to the
                 `plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot>`_
@@ -897,6 +914,9 @@ Available cases are {self.models} and you wanted to include
         """
 
         include = self._check_include_arg(include)
+
+        if self.model_.category == "ML":
+            raise NotImplementedError(f"Non neural network models can not have loss comparison")
 
         loss_curves = {}
         for _model, _path in self.config['eval_models'].items():
@@ -1573,23 +1593,6 @@ be used to build ai4water's Model class.
 
         setattr(self, 'model_', model)
         return
-
-    def build_from_config(self, data, config_path, weight_file, **kwargs):
-        model = Model.from_config_file(config_path=config_path)
-        assert weight_file is not None, f"{config_path}"
-        weight_file = os.path.join(model.w_path, weight_file)
-        model.update_weights(weight_file=weight_file)
-
-        model = self.process_model_before_fit(model)
-
-        train_true, train_pred = model.predict(data=data, return_true=True)
-
-        test_true, test_pred = model.predict(data='test', return_true=True)
-
-        model.dh_.config['allow_nan_labels'] = 1
-        model.predict()
-
-        return (train_true, train_pred), (test_true, test_pred)
 
     def process_model_before_fit(self, model):
         """So that the user can perform procesisng of the model by overwriting this method"""

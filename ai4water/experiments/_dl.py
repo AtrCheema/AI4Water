@@ -1,7 +1,5 @@
 __all__ = ["DLRegressionExperiments"]
 
-from ai4water import Model
-from ai4water.backend import os
 from ai4water.hyperopt import Integer, Real, Categorical
 from ai4water.utils.utils import dateandtime_now
 from ai4water.models import MLP, CNN, LSTM, CNNLSTM, LSTMAutoEncoder, TFT, TCN
@@ -134,20 +132,6 @@ class DLRegressionExperiments(Experiments):
     @property
     def tpot_estimator(self):
         return None
-
-    def build_from_config(self, data, config_path, weight_file, **kwargs):
-
-        model = Model.from_config_file(config_path=config_path)
-        weight_file = os.path.join(model.w_path, weight_file)
-        model.update_weights(weight_file=weight_file)
-
-        test_true, test_pred = model.predict(data=data, return_true=True)
-
-        train_true, train_pred = model.predict(data='training', return_true=True)
-
-        setattr(self, 'model_', model)
-
-        return (train_true, train_pred), (test_true, test_pred)
 
     def model_MLP(self, **kwargs):
         """multi-layer perceptron model"""
