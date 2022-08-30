@@ -1444,6 +1444,36 @@ class BaseModel(NN):
     def evaluate_on_training_data(self, data, metrics=None, **kwargs):
         """evaluates the model on training data.
 
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
         Examples
         --------
             >>> from ai4water import Model
@@ -1452,22 +1482,117 @@ class BaseModel(NN):
             >>> model.fit(data=busan_beach())
             ... # for evaluation on training data
             >>> model.evaluate_on_training_data(data=busan_beach())
+            >>> model.evaluate(data=busan_beach(), metrics='pbias')
         """
         x, y = self.training_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_validation_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on validation data."""
+        """evaluates the model on validation data.
+
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=busan_beach())
+            ... # for evaluation on validation data
+            >>> model.evaluate_on_validation_data(data=busan_beach())
+            >>> model.evaluate_on_validation_data(data=busan_beach(), metrics='pbias')
+        """
+
         x, y = self.validation_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_test_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on test data."""
+        """evaluates the model on test data.
+
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=busan_beach())
+            ... # for evaluation on test data
+            >>> model.evaluate_on_test_data(data=busan_beach())
+            >>> model.evaluate_on_test_data(data=busan_beach(), metrics='pbias')
+        """
         x, y = self.test_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_all_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on all i.e. training+validation+test data."""
+        """evaluates the model on all i.e. training+validation+test data.
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=busan_beach())
+            ... # for evaluation on all data
+            >>> print(model.evaluate_on_all_data(data=busan_beach())))
+            >>> print(model.evaluate_on_all_data(data=busan_beach(), metrics='pbias'))
+        """
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
@@ -2413,8 +2538,8 @@ class BaseModel(NN):
                     - raw unprepared data in the form of a numpy array or pandas dataframe
                     - a tuple of x,y pairs
                 If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
-                which prepares x,y pairs from it. The ``DataSet`` class also 
-                splits the data into training, validation and tests sets. If it 
+                which prepares x,y pairs from it. The ``DataSet`` class also
+                splits the data into training, validation and tests sets. If it
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
@@ -2513,8 +2638,8 @@ class BaseModel(NN):
                     - raw unprepared data in the form of a numpy array or pandas dataframe
                     - a tuple of x,y pairs
                 If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
-                which prepares x,y pairs from it. The ``DataSet`` class also 
-                splits the data into training, validation and tests sets. If it 
+                which prepares x,y pairs from it. The ``DataSet`` class also
+                splits the data into training, validation and tests sets. If it
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
@@ -2536,7 +2661,7 @@ class BaseModel(NN):
                 - ``sqrt``    square root
 
             include : list, dict, str, optional
-                the name/names of input features to include. If you don't want 
+                the name/names of input features to include. If you don't want
                 to include any feature. Set this to an empty list
             exclude: the name/names of input features to exclude
             append:
