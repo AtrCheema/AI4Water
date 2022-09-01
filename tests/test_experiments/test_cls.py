@@ -7,6 +7,8 @@ site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import numpy as np
 import pandas as pd
 
+from SeqMetrics import ClassificationMetrics
+
 from ai4water.experiments import MLClassificationExperiments
 
 from ai4water.datasets import MtropicsLaos
@@ -18,6 +20,10 @@ data = MtropicsLaos().make_classification(
 
 inputs = data.columns.tolist()[0:-1]
 outputs = data.columns.tolist()[-1:]
+
+
+def f1_score(t,p)->float:
+    return ClassificationMetrics(t, p).f1_score(average="macro")
 
 
 def make_multiclass_classification(
@@ -44,8 +50,11 @@ data_multiclass, input_features_cls = make_multiclass_classification(100, 10, 5)
 class TestCls(unittest.TestCase):
 
     def test_basic(self):
-        exp = MLClassificationExperiments(input_features=inputs,
-                                          output_features=outputs)
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            monitor = [f1_score, "accuracy"]
+        )
 
         exp.fit(data=data, exclude=[
             # giving nan predictions
@@ -53,7 +62,9 @@ class TestCls(unittest.TestCase):
             'LinearDiscriminantAnalysis',
         ]
                 )
-        exp.compare_errors('accuracy', show=False)
+        exp.compare_errors('accuracy', show=False, save=False)
+        exp.compare_errors('f1_score', show=False, save=False)
+
         return
 
     def test_binary_cv(self):

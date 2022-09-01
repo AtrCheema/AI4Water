@@ -1,6 +1,6 @@
 import json
 import math
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Callable
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
@@ -93,7 +93,7 @@ class Experiments(object):
             exp_name: str = None,
             num_samples: int = 5,
             verbosity: int = 1,
-            monitor: Union[str, list] = None,
+            monitor: Union[str, list, Callable] = None,
     ):
         """
 
@@ -110,11 +110,23 @@ class Experiments(object):
                 determines the amount of information
             monitor : str, list, optional
                 list of performance metrics to monitor. It can be any performance
-                metric `SeqMetrics_ <https://seqmetrics.readthedocs.io>` library.
+                metric SeqMetrics_ library.
                 By default ``r2``, ``corr_coeff, ``mse``, ``rmse``, ``r2_score``,
                 ``nse``, ``kge``, ``mape``, ``pbias``, ``bias`` ``mae``, ``nrmse``
                 ``mase`` are considered for regression and ``accuracy``, ``precision``
-                ``recall`` are considered for classification.
+                ``recall`` are considered for classification. The user can also put a
+                custom metric to monitor. In such a case we it should be callable which
+                accepts two input arguments. The first one is array of true and second is
+                array of predicted values.
+
+                >>> def f1_score(t,p)->float:
+                >>>     return ClassificationMetrics(t, p).f1_score(average="macro")
+                >>> monitor = [f1_score, "accuracy"]
+
+                Here ``f1_score`` is a function which accepts two arays.
+
+        .. _SeqMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/index.html
         """
         self.opt_results = None
         self.optimizer = None
@@ -138,6 +150,11 @@ class Experiments(object):
 
         if monitor is None:
             self.monitor = Monitor[self.mode]
+        else:
+            if not isinstance(monitor, list):
+                monitor = [monitor]
+
+            self.monitor = monitor
         # _run_type is actually set during call to .fit
         self._run_type = None
 
@@ -313,18 +330,18 @@ class Experiments(object):
         if hpo_kws is None:
             hpo_kws = {}
 
-        include = self._check_include_arg(include)
+        models_to_consider = self._check_include_arg(include)
 
         if exclude is None:
             exclude = []
         elif isinstance(exclude, str):
             exclude = [exclude]
 
-        consider_exclude(exclude, self.models, include)
+        consider_exclude(exclude, self.models, models_to_consider)
 
         self._reset()
 
-        for model_type in include:
+        for model_type in models_to_consider:
 
             model_name = model_type.split('model_')[1]
 
@@ -496,27 +513,30 @@ class Experiments(object):
                     'std': np.std(test_results[1])}}}
 
         # save performance metrics of train and test
-        metrics = Metrics[self.mode](train_results[0],
-                                     train_results[1],
-                                     replace_nan=True,
-                                     replace_inf=True,
-                                     multiclass=self.model_.is_multiclass)
-        train_metrics = {}
-        for metric in self.monitor:
-            train_metrics[metric] = getattr(metrics, metric)()
+        train_metrics = self._get_metrics(train_results[0], train_results[1])
 
-        metrics = Metrics[self.mode](test_results[0],
-                                     test_results[1],
-                                     replace_nan=True,
-                                     replace_inf=True,
-                                     multiclass=self.model_.is_multiclass)
-        test_metrics = {}
-        for metric in self.monitor:
-            test_metrics[metric] = getattr(metrics, metric)()
+        test_metrics = self._get_metrics(test_results[0], test_results[1])
 
-        self.metrics[model_type] = {'train': train_metrics,
-                                    'test': test_metrics}
+        self.metrics[model_type] = {'train': train_metrics, 'test': test_metrics}
         return
+
+    def _get_metrics(self, true:np.ndarray, predicted:np.ndarray)->dict:
+        # get the performance metrics being monitored given true and predicted data
+        metrics_inst = Metrics[self.mode](true, predicted,
+                                     replace_nan=True,
+                                     replace_inf=True,
+                                     multiclass=self.model_.is_multiclass)
+        metrics = {}
+        for metric in self.monitor:
+            if isinstance(metric, str):
+                metrics[metric] = getattr(metrics_inst, metric)()
+            elif callable(metric):
+                # metric is a callable
+                metrics[metric.__name__] = metric(true, predicted)
+            else:
+                raise ValueError(f"invalid metric f{metric}")
+
+        return metrics
 
     def taylor_plot(
             self,
@@ -758,17 +778,17 @@ Available cases are {self.models} and you wanted to include
 
         Parameters
         ----------
-            matric_name:
+            matric_name : str
                  performance matric whose value to plot for all the models
-            cutoff_val:
+            cutoff_val : float
                  if provided, only those models will be plotted for whome the
                  matric is greater/smaller than this value. This works in conjuction
                  with `cutoff_type`.
-            cutoff_type:
+            cutoff_type : str
                  one of ``greater``, ``greater_equal``, ``less`` or ``less_equal``.
                  Criteria to determine cutoff_val. For example if we want to
                  show only those models whose $R^2$ is > 0.5, it will be 'max'.
-            save:
+            save : bool, optional (default = True)
                 whether to save the plot or not
             sort_by:
                 either ``test`` or ``train``. How to sort the results for plotting.
@@ -1611,7 +1631,8 @@ def sort_array(array):
 
 def consider_exclude(exclude: Union[str, list],
                      models,
-                     models_to_filter: Union[list, dict] = None):
+                     models_to_filter: Union[list, dict] = None
+                     ):
     if isinstance(exclude, str):
         exclude = [exclude]
 
@@ -1624,11 +1645,15 @@ def consider_exclude(exclude: Union[str, list],
                 {exclude}"""
 
             if models_to_filter is not None:
-                assert elem in models_to_filter, f'{elem} is not in models'
-                if isinstance(models_to_filter, list):
-                    models_to_filter.remove(elem)
+                # maybe the model has already been removed from models_to_filter
+                # when we considered include keyword argument.
+                if elem in models_to_filter:
+                    if isinstance(models_to_filter, list):
+                        models_to_filter.remove(elem)
+                    else:
+                        models_to_filter.pop(elem)
                 else:
-                    models_to_filter.pop(elem)
+                    assert elem in models, f'{elem} is not in models'
     return
 
 

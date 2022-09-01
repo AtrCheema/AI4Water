@@ -25,13 +25,16 @@ class MLClassificationExperiments(Experiments):
     >>> exp.compare_errors('accuracy', show=False)
     """
 
-    def __init__(self,
-                 param_space=None,
-                 x0=None,
-                 cases=None,
-                 exp_name='MLClassificationExperiments',
-                 num_samples=5,
-                 **model_kwargs):
+    def __init__(
+            self,
+            param_space=None,
+            x0=None,
+            cases=None,
+            exp_name='MLClassificationExperiments',
+            num_samples=5,
+            monitor = None,
+            **model_kwargs
+    ):
         """
 
         Parameters
@@ -42,6 +45,7 @@ class MLClassificationExperiments(Experiments):
             exp_name : str, optional
                 name of experiment
             num_samples : int, optional
+            monitor : list/str, optional
             **model_kwargs :
                 keyword arguments for :py:class:`ai4water.Model` class
         """
@@ -53,7 +57,10 @@ class MLClassificationExperiments(Experiments):
 
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
+        super().__init__(cases=cases,
+                         exp_name=exp_name,
+                         num_samples=num_samples,
+                         monitor=monitor)
 
     @property
     def tpot_estimator(self):
