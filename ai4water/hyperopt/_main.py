@@ -17,7 +17,7 @@ from .utils import loss_histogram, plot_hyperparameters
 
 from ai4water.utils.utils import JsonEncoder
 from ai4water.utils.utils import clear_weights
-from ai4water.utils.utils import Jsonize, dateandtime_now
+from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
@@ -895,7 +895,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                              **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
-            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4, cls=JsonEncoder)
+            json.dump(jsonize(trials.trials), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         setattr(self, 'trials', trials)
         # self.results = trials.results
@@ -1238,7 +1238,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def serialize(self):
         return {'fun': '',
                 'x': '',
-                "best_paras": Jsonize(self.best_paras())(),
+                "best_paras": jsonize(self.best_paras()),
                 'space': {k: v.serialize() for k, v in self.space().items()},
                 'fun_vals': self.func_vals(),
                 # 'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
@@ -1261,7 +1261,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         class _Trial:
             state = TrialState.COMPLETE
             def __init__(self, number:int, values:list, params:dict, distributions:dict):
-                values = Jsonize(values)()
+                values = jsonize(values)
                 self._number = number
                 self._values = values
                 if isinstance(values, list):
@@ -1318,7 +1318,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         iterations = self.xy_of_iterations()
 
-        jsonized_iterations = Jsonize(iterations)()
+        jsonized_iterations = jsonize(iterations)
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:

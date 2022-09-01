@@ -1,7 +1,7 @@
 
 from typing import Union
 
-from ai4water.utils.utils import Jsonize
+from ai4water.utils.utils import jsonize
 from ai4water.backend import np, skopt, optuna
 from ai4water.backend import hp
 
@@ -154,7 +154,7 @@ class Real(_Real):
 
     def serialize(self):
         """Serializes the `Real` object so that it can be saved in json"""
-        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum = {k: jsonize(v) for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Real'})
         return _raum
 
@@ -275,7 +275,7 @@ class Integer(_Integer):
 
     def serialize(self):
         """Serializes the `Integer` object so that it can be saved in json"""
-        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum = {k: jsonize(v) for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Integer'})
         return _raum
 
@@ -327,7 +327,7 @@ class Categorical(_Categorical):
 
     def serialize(self):
         """Serializes the `Categorical object` so that it can be saved in json"""
-        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum = {k: jsonize(v) for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Integer'})
         return _raum
 

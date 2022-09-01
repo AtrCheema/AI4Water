@@ -8,7 +8,7 @@ try:
 except ImportError:
     plot_evaluations, plot_objective = None, None
 
-from ai4water.utils.utils import Jsonize, clear_weights
+from ai4water.utils.utils import jsonize, clear_weights
 from ai4water.backend import os, np, pd, mpl, plt, skopt, easy_mpl
 from ai4water.backend import hyperopt as _hyperopt
 from ._space import Categorical, Real, Integer
@@ -475,7 +475,7 @@ class SerializeSKOptResults(object):
         """Serializes list of parameters"""
         _x = []
         for para in x:
-            _x.append(Jsonize(para)())
+            _x.append(jsonize(para))
         return _x
 
     def x0(self):
@@ -488,7 +488,7 @@ class SerializeSKOptResults(object):
                 if isinstance(para, list):
                     _x0.append(self.para_list(para))
                 else:
-                    _x0.append(Jsonize(para)())
+                    _x0.append(jsonize(para))
         return _x0
 
     def y0(self):
@@ -498,10 +498,10 @@ class SerializeSKOptResults(object):
         if isinstance(__y0, list):
             _y0 = []
             for y in self.results['specs']['args']['y0']:
-                _y0.append(Jsonize(y)())
+                _y0.append(jsonize(y))
             return _y0
 
-        return Jsonize(self.results['specs']['args']['y0'])()
+        return jsonize(self.results['specs']['args']['y0'])
 
     def fun(self):
         return float(self.results['fun'])
@@ -514,7 +514,7 @@ class SerializeSKOptResults(object):
         for i in range(self.iters):
             x = []
             for para in self.results['x_iters'][i]:
-                x.append(Jsonize(para)())
+                x.append(jsonize(para))
 
             out_x.append(x)
 
@@ -524,20 +524,20 @@ class SerializeSKOptResults(object):
         raum = {}
         for sp in self.results['space'].dimensions:
             if sp.__class__.__name__ == 'Categorical':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if k in ['categories', 'transform_',
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if k in ['categories', 'transform_',
                                                                                   'prior', '_name']}
                 _raum.update({'type': 'Categorical'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Integer':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base',
                                              'dtype', 'log_base']}
                 _raum.update({'type': 'Integer'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Real':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype',
                                              'log_base']}
                 _raum.update({'type': 'Real'})
@@ -582,7 +582,7 @@ class SerializeSKOptResults(object):
 
     def singleton_kernel(self, k):
         """Serializes Kernels such as  Matern, White, Constant Kernels"""
-        return {k: Jsonize(v)() for k, v in k.__dict__.items()}
+        return {k: jsonize(v) for k, v in k.__dict__.items()}
 
     def specs(self):
         _specs = {}
@@ -596,7 +596,7 @@ class SerializeSKOptResults(object):
         args['dimensions'] = self.space()
 
         be = self.results['specs']['args']['base_estimator']
-        b_e = {k: Jsonize(v)() for k, v in be.__dict__.items() if
+        b_e = {k: jsonize(v) for k, v in be.__dict__.items() if
                                        k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y',
                                              'copy_X_train', 'random_state']}
         b_e['kernel'] = self.kernel(be.kernel)
@@ -607,7 +607,7 @@ class SerializeSKOptResults(object):
             if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func',
                      'acq_optimizer', 'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa',
                      'n_jobs', 'model_queue_size']:
-                args[k] = Jsonize(v)()
+                args[k] = jsonize(v)
 
         args['x0'] = self.x0()
         args['y0'] = self.y0()
@@ -619,7 +619,7 @@ class SerializeSKOptResults(object):
 
         mods = []
         for model in self.results['models']:
-            mod = {k: Jsonize(v)() for k, v in model.__dict__.items() if k in [
+            mod = {k: jsonize(v) for k, v in model.__dict__.items() if k in [
                 'noise','alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
                 '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train',
                 'log_marginal_likelihood', 'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}

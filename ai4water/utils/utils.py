@@ -5,7 +5,7 @@ import datetime
 import warnings
 from typing import Union
 from shutil import rmtree
-from collections import OrderedDict
+from types import FunctionType
 from typing import Tuple, List
 import collections.abc as collections_abc
 
@@ -152,7 +152,7 @@ def dict_to_file(path, config=None, errors=None, indices=None, others=None, name
         if data['config'].get('model', None) is not None:
             model = data['config']['model']
             if 'layers' not in model:  # because ML args which come algorithms may not be of json serializable.
-                model = Jsonize(model)()
+                model = jsonize(model)
                 data['config']['model'] = model
 
     with open(fpath, 'w') as fp:
@@ -645,101 +645,77 @@ def to_datetime_index(idx_array, fmt='%Y%m%d%H%M') -> pd.DatetimeIndex:
     return idx
 
 
-class Jsonize(object):
-    """Converts the objects to json compatible format i.e to native python types.
-    If the object is sequence then each member of the sequence is checked and
-    converted if needed. Same goes for nested sequences like lists of lists
+def jsonize(obj):
+    """
+    Serializes an object to python's native types so that it can be saved
+    in json file format. If the object is a sequence, then each member of th sequence
+    is serialized. Same goes for nested sequences like lists of lists
     or list of dictionaries.
 
-    Examples:
-    ---------
-    >>>import numpy as np
-    >>>from ai4water.utils.utils import Jsonize
-    >>>a = np.array([2.0])
-    >>>b = Jsonize(a)(a)
-    >>>type(b)  # int
+    Parameters
+    ----------
+    obj :
+        any python object that needs to be serialized.
+
+    Return
+    ------
+        a serialized python object
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>>from ai4water.utils import jsonize
+    >>> a = np.array([2.0])
+    >>> b = jsonize(a)
+    >>> type(b)  # int
     """
-    # TODO, repeating code in __call__ and stage2
-    # TODO, stage2 not considering tuple
+    if 'int' in obj.__class__.__name__:
+        return int(obj)
 
-    def __init__(self, obj):
-        self.obj = obj
+    if 'float' in obj.__class__.__name__:
+        return float(obj)
 
-    def __call__(self):
-        """Serializes one object"""
-        if 'int' in self.obj.__class__.__name__:
-            return int(self.obj)
-        if 'float' in self.obj.__class__.__name__:
-            return float(self.obj)
+    if isinstance(obj, dict):
+        return {jsonize(k): jsonize(v) for k, v in obj.items()}
 
-        if isinstance(self.obj, dict):
-            return {k: self.stage2(v) for k, v in self.obj.items()}
+    if isinstance(obj, tuple):
+        return tuple([jsonize(val) for val in obj])
 
-        if hasattr(self.obj, '__len__') and not isinstance(self.obj, str):
-            return [self.stage2(i) for i in self.obj]
+    # if obj is a python 'type' such as jsonize(list)
+    if type(obj).__name__ == type.__name__:
+        return obj.__name__
 
-        # if obj is a python 'type'
-        if type(self.obj).__name__ == type.__name__:
-            return self.obj.__name__
+    if hasattr(obj, '__len__') and not isinstance(obj, str):
 
-        if isinstance(self.obj, collections_abc.Mapping):
-            return dict(self.obj)
+        if hasattr(obj, 'shape') and len(obj.shape) == 0:
+            # for cases such as np.array(1)
+            return jsonize(obj.item())
 
-        if self.obj is Ellipsis:
-            return {'class_name': '__ellipsis__'}
+        if obj.__class__.__name__ in ['Series', 'DataFrame']:
+            # simple list comprehension will iterate over only column names
+            # if we simply do jsonize(obj.values()), it will not save column names
+            return {jsonize(k): jsonize(v) for k,v in obj.items()}
 
-        if wrapt and isinstance(self.obj, wrapt.ObjectProxy):
-            return self.obj.__wrapped__
+        return [jsonize(val) for val in obj]
 
-        return str(self.obj)
-
-    def stage2(self, obj):
-        """Serializes one object"""
-        if any([isinstance(obj, _type) for _type in [bool, set, type(None)]]) or callable(obj):
-            return obj
-
-        if 'int' in obj.__class__.__name__:
-            return int(obj)
-
-        if 'float' in obj.__class__.__name__:
-            return float(obj)
-
-        # tensorflow tensor shape
-        if obj.__class__.__name__ == 'TensorShape':
-            return obj.as_list()
-
-        if isinstance(obj, dict):  # iterate over obj until it is a dictionary
-            return {k: self.stage2(v) for k, v in obj.items()}
-
-        if hasattr(obj, '__len__') and not isinstance(obj, str):
-            if len(obj) > 1:  # it is a list like with length greater than 1
-                return [self.stage2(i) for i in obj]
-            elif isinstance(obj, list) and len(obj) > 0:  # for cases like obj is [np.array([1.0])] -> [1.0]
-                return [self.stage2(obj[0])]
-            elif len(obj) == 1:  # for cases like obj is np.array([1.0])
-                if isinstance(obj, list) or isinstance(obj, tuple):
-                    return obj  # for cases like (1, ) or [1,]
-                return self.stage2(obj[0])
-            else:  # when object is []
-                return obj
-
-        # if obj is a python 'type'
-        if type(obj).__name__ == type.__name__:
+    if callable(obj):
+        if isinstance(obj, FunctionType):
             return obj.__name__
-
-        if obj is Ellipsis:
-            return {'class_name': '__ellipsis__'}
-
-        if wrapt and isinstance(obj, wrapt.ObjectProxy):
-            return obj.__wrapped__
-
-        # last solution, it must be of of string type
+        if hasattr(obj, '__module__'):
+            return obj.__module__
         return str(obj)
 
+    if isinstance(obj, collections_abc.Mapping):
+        return dict(obj)
 
-def jsonize(obj):
-    """functional interface to `Jsonize` class"""
-    return Jsonize(obj)()
+    if obj is Ellipsis:
+        return {'class_name': '__ellipsis__'}
+
+    if wrapt and isinstance(obj, wrapt.ObjectProxy):
+        return obj.__wrapped__
+
+    # last resort, call the __str__ method of object on it
+    return str(obj)
 
 
 def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
@@ -883,7 +859,7 @@ def clear_weights(
     if rename:
         rank_folders(opt_dir, results, best_results)
 
-    results = {k: Jsonize(v)() for k, v in results.items()}
+    results = {k: jsonize(v) for k, v in results.items()}
 
     if write:
         sorted_fname = os.path.join(opt_dir, fname)
@@ -1192,7 +1168,7 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
             warnings.warn(f"""Unable to calculate Harmonic mean for {name}. Harmonic mean only defined if all
                           elements are greater than or equal to zero""", UserWarning)
 
-    return Jsonize(stats)()
+    return jsonize(stats)
 
 
 def prepare_data(
@@ -1586,7 +1562,10 @@ class JsonEncoder(json.JSONEncoder):
         elif 'bool' in obj.__class__.__name__:
             return bool(obj)
         elif callable(obj) and hasattr(obj, '__module__'):
-            return obj.__module__
+            if isinstance(obj, FunctionType):
+                return obj.__name__
+            else:
+                return obj.__module__
         else:
             return super(JsonEncoder, self).default(obj)
 

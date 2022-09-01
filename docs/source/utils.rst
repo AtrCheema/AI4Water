@@ -24,7 +24,11 @@ fdc_plot
    :members: fdc_plot
 
 edf_plot
-==============
+========
 .. automodule:: ai4water.utils.visualizations
    :members: edf_plot
 
+jsonize
+=======
+.. automodule:: ai4water.utils.utils
+   :members: jsonize
