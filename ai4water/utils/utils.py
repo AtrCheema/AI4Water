@@ -669,6 +669,10 @@ def jsonize(obj):
     >>> b = jsonize(a)
     >>> type(b)  # int
     """
+    # boolean type
+    if isinstance(obj, bool):
+        return obj
+
     if 'int' in obj.__class__.__name__:
         return int(obj)
 

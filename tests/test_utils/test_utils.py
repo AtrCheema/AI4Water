@@ -979,6 +979,10 @@ class TestJsonize(unittest.TestCase):
             json.dump(jsonize(busan_beach.iloc[0]), fp)
         return
 
+    def test_bool(self):
+        assert isinstance(jsonize(True), bool)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()
