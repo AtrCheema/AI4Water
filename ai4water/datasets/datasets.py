@@ -197,7 +197,7 @@ import glob
 import warnings
 import zipfile
 import shutil
-from typing import Union
+from typing import Union, Tuple, Any, Optional
 
 try:
     from shapely.geometry import shape, mapping
@@ -205,6 +205,8 @@ try:
 except (ModuleNotFoundError, OSError):
     shape, mapping, unary_union = None, None, None
 
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
@@ -1108,6 +1110,134 @@ class Quadica(Datasets):
 
     def fetch_annual(self):
         return
+
+
+def mg_photodegradation(
+        inputs: list = None,
+        target: str = "Efficiency (%)",
+        encoding:str = None
+)->Tuple[Union[pd.DataFrame, Any], Union[Optional[LabelEncoder], Any], Optional[LabelEncoder]]:
+    """
+    This is data about photocatalytic degradation of melachite green dye using
+    nobel metal dobe BiFeO3. For further description of this data see [1]_ and
+    the use of this data for removal efficiency prediction see [2]_ . This dataset
+    consists of over 1200 points collected during around 135 samples.
+
+    Parameters
+    ----------
+        inputs : list, optional
+            features to use as input. By default following features are used as input
+
+                - ``Catalyst_type``
+                - ``Surface area``
+                - ``Pore Volume``
+                - ``Catalyst_loading (g/L)``
+                - ``Light_intensity (W)``
+                - ``time (min)``
+                - ``solution_pH``
+                - ``HA (mg/L)``
+                - ``Anions``
+                - ``Ci (mg/L)``
+                - ``Cf (mg/L)``
+
+        target : str, optional
+            features to use as target. By default ``Efficiency (%)`` is used as target
+            which is photodegradation removal efficiency of dye from wastewater. Following
+            are valid target names
+
+                - ``Efficiency (%)``
+                - ``k_first``
+                - ``k_2nd``
+
+        encoding : str
+            type of encoding to use for the two categorical features i.e., ``Catalyst_type``
+            and ``Anions``, to convert them into numberical. Available options are ``ohe``,
+            ``le`` and None. If ohe is selected the original input columns are replaced
+            with ohe hot encoded columns. This will result in 6 columns for Anions and
+            15 columns for Catalyst_type.
+
+    Returns
+    -------
+    pd.DataFrame
+        a pandas dataframe consisting of input and output features. The default
+        setting will result in dataframe shape of (1200, 12)
+
+    Examples
+    --------
+    >>> from ai4water.datasets import mg_photodegradation
+    >>> mg_data, catalyst_encoder, anion_encoder = mg_photodegradation()
+    ... # the decault encoding is None, but if we want to use one hot encoder
+    >>> mg_data_le, _, _ = mg_photodegradation(encoding="ohe")
+    ... # if we want to use label encoder
+    >>> mg_data_none, _, _ = mg_photodegradation(encoding="le")
+    ... # By default the target is efficiency but if we want
+    ... # to use first order k as target
+    >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")
+    ... # if we want to use 2nd order k as target
+    >>> mg_data_k2, _, _ = mg_photodegradation(target="k_2nd")
+    """
+
+    df = pd.read_csv(
+    "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
+    )
+    default_inputs = ['Catalyst_type', 'Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
+                      'Light_intensity (W)', 'time (min)', 'solution_pH', 'HA (mg/L)',
+                      'Anions', 'Ci (mg/L)', 'Cf (mg/L)'
+                      ]
+    default_targets = ['Efficiency (%)', 'k_first', 'k_2nd']
+
+    # first order
+    df["k"] = np.log(df["Ci (mg/L)"] / df["Cf (mg/L)"]) / df["time (min)"]
+
+    # k second order
+    df["k_2nd"] = ((1 / df["Cf (mg/L)"]) - (1 / df["Ci (mg/L)"])) / df["time (min)"]
+
+    if inputs is None:
+        inputs = default_inputs
+
+    if not isinstance(target, list):
+        if isinstance(target, str):
+            target = [target]
+    elif isinstance(target, list):
+        pass
+    else:
+        target = default_targets
+
+    assert isinstance(target, list)
+
+    assert all(trgt in default_targets for trgt in target)
+
+    df = df[inputs + target]
+
+    # consider encoding of categorical features
+    cat_encoder, an_encoder = None, None
+    if encoding:
+        if encoding == "ohe":
+            df, cols_added, cat_encoder = _ohe_encoder(df, "Catalyst_type")
+            df, an_added, an_encoder = _ohe_encoder(df, "Anions")
+        else:
+            df, cat_encoder = _le_encoder(df, "Catalyst_type")
+            df, an_encoder = _le_encoder(df, "Anions")
+
+    return df, cat_encoder, an_encoder
+
+
+def _ohe_encoder(df:pd.DataFrame, col_name:str)->tuple:
+    assert isinstance(col_name, str)
+
+    encoder = OneHotEncoder(sparse=False)
+    ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
+    cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
+
+    df[cols_added] = ohe_cat
+
+    return df, cols_added, encoder
+
+
+def _le_encoder(df:pd.DataFrame, col_name):
+    encoder = LabelEncoder()
+    df[col_name] = encoder.fit_transform(df[col_name])
+    return df, encoder
 
 
 def _maybe_download(ds_dir, overwrite, url, _name):

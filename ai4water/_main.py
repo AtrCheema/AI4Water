@@ -1274,8 +1274,29 @@ class BaseModel(NN):
 
         return cv_scores
 
-    def fit_on_all_training_data(self, data=None, **kwargs):
-        """trains the model on training+validation data"""
+    def fit_on_all_training_data(self, x=None, y=None, data=None, **kwargs):
+        """
+        This function trains the model on training + validation data.
+
+        Parameters
+        ----------
+            x :
+                x data which is supposed to be consisting of training and validation.
+                If not given, then ``data`` must be given.
+            y :
+                label/target data corresponding to x data.
+            data :
+                raw data from which training and validation x,y pairs are drawn.
+                The x data from training and validation is concatenated.
+                Similarly, y data from training and validation is concatenated
+            **kwargs
+                any keyword arguemnts for ``fit`` method.
+
+        """
+        if data is None:
+            assert x is not None, f"if data is not given, x,y pairs must be given"
+            return self.fit(x=x, y=y, **kwargs)
+
         x_train, y_train = self.training_data(data=data)
         x_val, y_val = self.validation_data()
 

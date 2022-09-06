@@ -26,6 +26,12 @@ Ecoli data from Mekong river (2016)
 .. automodule:: ai4water.datasets.mtropics
    :members: ecoli_mekong_2016
 
+
+Photodegradation of Melachite Green
+===================================
+.. automodule:: ai4water.datasets.mg_photodegradation
+
+
 Datasets
 ========
 .. autoclass:: ai4water.datasets.mtropics.Datasets

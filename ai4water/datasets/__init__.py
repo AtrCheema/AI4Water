@@ -48,11 +48,13 @@ from .mtropics import ecoli_mekong
 from .datasets import Quadica
 from .datasets import RRAlpileCatchments
 from .datasets import RRLuleaSweden
+from .datasets import mg_photodegradation
 
 
-def busan_beach(inputs: list = None,
-                target: Union[list, str] = 'tetx_coppml'
-                ) -> pd.DataFrame:
+def busan_beach(
+        inputs: list = None,
+        target: Union[list, str] = 'tetx_coppml'
+) -> pd.DataFrame:
     """
     Loads the Antibiotic resitance genes (ARG) data from a recreational beach
     in Busan, South Korea along with environment variables.

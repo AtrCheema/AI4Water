@@ -18,6 +18,7 @@ for  :doc:`declarative_def_torch` .
     :members:
         __init__,
         fit,
+        fit_on_all_training_data,
         evaluate,
         evaluate_on_training_data,
         evaluate_on_validation_data,
