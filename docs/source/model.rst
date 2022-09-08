@@ -85,11 +85,16 @@ Thus, this module does not do any pre-processing, model building and post-proces
 This module is inspired from fastai's Learner_ and keras's Model_ class.
 
 .. autoclass:: ai4water.models.torch.Learner
-   :members:
    :undoc-members:
    :show-inheritance:
-
-   .. automethod:: __init__
+   :members:
+        __init__,
+        fit,
+        evaluate,
+        predict,
+        update_metrics,
+        update_weights,
+        plot_model,
 
 
 

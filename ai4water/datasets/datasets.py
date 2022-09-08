@@ -1118,10 +1118,10 @@ def mg_photodegradation(
         encoding:str = None
 )->Tuple[Union[pd.DataFrame, Any], Union[Optional[LabelEncoder], Any], Optional[LabelEncoder]]:
     """
-    This is data about photocatalytic degradation of melachite green dye using
+    This data is about photocatalytic degradation of melachite green dye using
     nobel metal dobe BiFeO3. For further description of this data see [1]_ and
     the use of this data for removal efficiency prediction see [2]_ . This dataset
-    consists of over 1200 points collected during around 135 samples.
+    consists of 1200 points collected during around 135 samples.
 
     Parameters
     ----------
@@ -1187,7 +1187,7 @@ def mg_photodegradation(
     default_targets = ['Efficiency (%)', 'k_first', 'k_2nd']
 
     # first order
-    df["k"] = np.log(df["Ci (mg/L)"] / df["Cf (mg/L)"]) / df["time (min)"]
+    df["k_first"] = np.log(df["Ci (mg/L)"] / df["Cf (mg/L)"]) / df["time (min)"]
 
     # k second order
     df["k_2nd"] = ((1 / df["Cf (mg/L)"]) - (1 / df["Ci (mg/L)"])) / df["time (min)"]
