@@ -11,7 +11,7 @@ This class interacts with pre-processing and post-processing modules.
 The `Model` class uses a python dictionary to build layers of neural networks.
 
 To build Tensorflow based models using python dictionary see the guide
-for :doc:`declarative_def_tf`. To build pytorch based NN models using python dicitonary see the guide
+for :doc:`declarative_def_tf`. To build pytorch based NN models using python dictionary see the guide
 for  :doc:`declarative_def_torch` .
 
 .. autoclass:: ai4water._main.BaseModel

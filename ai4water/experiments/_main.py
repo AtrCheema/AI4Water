@@ -94,6 +94,7 @@ class Experiments(object):
             num_samples: int = 5,
             verbosity: int = 1,
             monitor: Union[str, list, Callable] = None,
+            **model_kws,
     ):
         """
 
@@ -124,6 +125,9 @@ class Experiments(object):
                 >>> monitor = [f1_score, "accuracy"]
 
                 Here ``f1_score`` is a function which accepts two arays.
+            **model_kws :
+            keyword arguments which are to be passed to `Model`
+                and are not optimized.
 
         .. _SeqMetrics:
             https://seqmetrics.readthedocs.io/en/latest/index.html
@@ -155,6 +159,9 @@ class Experiments(object):
                 monitor = [monitor]
 
             self.monitor = monitor
+
+        self.model_kws = model_kws
+
         # _run_type is actually set during call to .fit
         self._run_type = None
 
@@ -178,6 +185,19 @@ class Experiments(object):
         model: Model = Model.from_config_file(config_path=config_path)
         setattr(self, 'model_', model)
         return model
+
+    def update_model_weight(
+            self,
+            model:Model,
+            config_path:str
+    ):
+        """updates the weight of model. """
+        best_weights = find_best_weight(os.path.join(config_path, "weights"))
+
+        assert best_weights is not None, f"Can't find weight from {config_path}"
+        weight_file = os.path.join(model.w_path, best_weights)
+        model.update_weights(weight_file=weight_file)
+        return
 
     @property
     def tpot_estimator(self):
@@ -205,6 +225,8 @@ class Experiments(object):
         self.metrics = {}
         self.features = {}
         self.iter_metrics = {}
+
+        self.considered_models = []
 
         return
 
@@ -315,10 +337,10 @@ class Experiments(object):
 
         verify_data(x, y, data, validation_data)
 
-        assert run_type in ['optimize', 'dry_run']
+        assert run_type in ['optimize', 'dry_run'], f"run_type mus"
         self._run_type = run_type
 
-        assert post_optimize in ['eval_best', 'train_best']
+        assert post_optimize in ['eval_best', 'train_best'], f"post_optimize must be either 'eval_best' or 'train_best' but it is {post_optimize}"
 
         if exclude == '':
             exclude = []
@@ -340,6 +362,8 @@ class Experiments(object):
         consider_exclude(exclude, self.models, models_to_consider)
 
         self._reset()
+
+        setattr(self, 'considered_models', models_to_consider)
 
         for model_type in models_to_consider:
 
@@ -363,7 +387,7 @@ class Experiments(object):
                     else:
                         raise TypeError
 
-                    return self._build_and_run(
+                    return self._build_fit_eval(
                         x=x,
                         y=y,
                         data=data,
@@ -382,6 +406,12 @@ class Experiments(object):
                     if self.verbosity >= 0: print(f"running  {model_type} model")
                     train_results, test_results = objective_fn(**self._named_x0())
                     self._populate_results(model_name, train_results, test_results)
+
+                    if cross_validate:
+                        cv_scoring = self.model_.val_metric
+                        self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
+                        setattr(self, '_cv_scoring', cv_scoring)
+
                 else:
                     opt_dir = os.path.join(os.getcwd(),
                                            f"results{SEP}{self.exp_name}{SEP}{model_name}")
@@ -404,6 +434,12 @@ class Experiments(object):
 
                     self.config['optimized_models'][model_type] = self.optimizer.opt_path
 
+                    if cross_validate:
+                        # if we do train_best, self.model_ will change and this
+                        cv_scoring = self.model_.val_metric
+                        self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
+                        setattr(self, '_cv_scoring', cv_scoring)
+
                     if post_optimize == 'eval_best':
                         self.eval_best(x, y, data, validation_data, model_name, opt_dir)
                     elif post_optimize == 'train_best':
@@ -412,11 +448,6 @@ class Experiments(object):
                 if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
                     raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
                 self.config['eval_models'][model_type] = self.model_.path
-
-                if cross_validate:
-                    cv_scoring = self.model_.val_metric
-                    self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
-                    setattr(self, '_cv_scoring', cv_scoring)
 
                 self.iter_metrics[model_type] = self.model_iter_metric
 
@@ -447,13 +478,14 @@ class Experiments(object):
 
         for mod_path in folders:
             config_path = os.path.join(opt_dir, mod_path, "config.json")
-            best_weights = find_best_weight(os.path.join(opt_dir, mod_path, "weights"))
+            # best_weights = find_best_weight(os.path.join(opt_dir, mod_path, "weights"))
 
             model = self.build_from_config(config_path)
 
-            assert best_weights is not None, f"Can't find weight from {config_path}"
-            weight_file = os.path.join(model.w_path, best_weights)
-            model.update_weights(weight_file=weight_file)
+            self.update_model_weight(model, os.path.join(opt_dir, mod_path))
+            # assert best_weights is not None, f"Can't find weight from {config_path}"
+            # weight_file = os.path.join(model.w_path, best_weights)
+            # model.update_weights(weight_file=weight_file)
 
             train_true, train_pred = model.predict(data=data, return_true=True)
 
@@ -477,14 +509,15 @@ class Experiments(object):
             _model = 'layers'
         else:
             _model = model_type
-        train_results, test_results = self._build_and_run(
+        train_results, test_results = self._build_fit_eval(
             x=x,
             y=y,
             data=data,
             validation_data=validation_data,
             predict=True,
             model={_model: self.optimizer.best_paras()},
-            title=f"{self.exp_name}{SEP}{model_type}{SEP}best"
+            title=f"{self.exp_name}{SEP}{model_type}{SEP}best",
+            fit_on_all_training_data=True,
         )
 
         self._populate_results(model_type, train_results, test_results)
@@ -1375,7 +1408,7 @@ Available cases are {self.models} and you wanted to include
             json.dump(tpot.evaluated_individuals_, fp, indent=True)
         return tpot
 
-    def _build_and_run(
+    def _build_fit_eval(
             self,
             x=None,
             y=None,
@@ -1384,7 +1417,8 @@ Available cases are {self.models} and you wanted to include
             predict=True,
             view=False,
             title=None,
-            cross_validate=False,
+            cross_validate: bool=False,
+            fit_on_all_training_data: bool=False,
             **kwargs
     ):
 
@@ -1393,6 +1427,10 @@ Available cases are {self.models} and you wanted to include
 
         Since an experiment consists of many models, this method
         is also run many times.
+        fit_on_all_training_data : bool
+            This means fit on training + validation data. This is true
+            when we have optimized the hyperparameters and now we would
+            like to fit on training + validation data as well.
         """
         model: Model = self._build(title=title, **kwargs)
 
@@ -1401,7 +1439,9 @@ Available cases are {self.models} and you wanted to include
             y=y,
             data=data,
             validation_data=validation_data,
-            cross_validate=cross_validate)
+            cross_validate=cross_validate,
+            fit_on_all_training_data = fit_on_all_training_data,
+        )
 
         if view:
             model.view()
@@ -1415,10 +1455,10 @@ Available cases are {self.models} and you wanted to include
             )
 
         # return the validation score
-        return self._evaluate(validation_data=validation_data)
+        return self._evaluate(data=data, validation_data=validation_data)
 
     def _build(self, title=None, **suggested_paras):
-        """Builds the ai4water Model class"""
+        """Builds the ai4water Model class and makes it a class attribute."""
 
         suggested_paras = jsonize(suggested_paras)
 
@@ -1442,18 +1482,39 @@ Available cases are {self.models} and you wanted to include
             y,
             data,
             validation_data,
-            cross_validate=False
+            cross_validate: bool = False,
+            fit_on_all_training_data: bool = False
     ):
         """Trains the model"""
 
         if cross_validate:
             if validation_data is None:
-                return self.model_.cross_val_score(data=data,
-                                                   scoring=self.model_.config['val_metric'])
-            else:
-                return self.model._cross_val_score(
-                    x=x, y=y  # todo, combine validation data here with x,y
+                assert x is None, NotImplementedError
+                return self.model_.cross_val_score(
+                    data=data,
+                    scoring=self.model_.config['val_metric']
                 )
+            else:
+                x, y, data = _combine_training_validation_data(
+                    x,
+                    y,
+                    data,
+                    validation_data,
+                    self.model_.is_binary
+                )
+                return self.model_.cross_val_score(
+                    x=x, y=y
+                )
+
+        if fit_on_all_training_data:
+            # we need to combine training (x,y) + validation data.
+            x, y, data = _combine_training_validation_data(
+                x,
+                y,
+                data=data,
+                validation_data=validation_data,
+                is_binary=self.model_.is_binary)
+            return self.model_.fit_on_all_training_data(x=x, y=y, data=data)
 
         return self.model_.fit(x=x, y=y, data=data)
 
@@ -1476,6 +1537,7 @@ Available cases are {self.models} and you wanted to include
                 *validation_data
             )
 
+        test_metrics = self._get_metrics(t, p)
         metrics = Metrics[self.mode](t, p,
                                      remove_zero=True,
                                      remove_neg=True,
@@ -1483,16 +1545,14 @@ Available cases are {self.models} and you wanted to include
                                      replace_inf=True,
                                      multiclass=self.model_.is_multiclass)
 
-        test_metrics = {}
-        for metric in self.monitor:
-            test_metrics[metric] = getattr(metrics, metric)()
         self.model_iter_metric[self.iter_] = test_metrics
         self.iter_ += 1
 
         val_score = getattr(metrics, self.model_.val_metric)()
 
         if self.model_.config['val_metric'] in [
-            'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score', 'accuracy', 'f1_score']:
+            'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score'
+        ] or self.mode == "classification":
             val_score = 1.0 - val_score
 
         if not math.isfinite(val_score):
@@ -1575,14 +1635,16 @@ class TransformationExperiments(Experiments):
                  **model_kws):
         self.param_space = param_space
         self.x0 = x0
-        self.model_kws = model_kws
 
         exp_name = exp_name or 'TransformationExperiments' + f'_{dateandtime_now()}'
 
-        super().__init__(cases=cases,
-                         exp_name=exp_name,
-                         num_samples=num_samples,
-                         verbosity=verbosity)
+        super().__init__(
+            cases=cases,
+            exp_name=exp_name,
+            num_samples=num_samples,
+            verbosity=verbosity,
+            **model_kws
+        )
 
     @property
     def tpot_estimator(self):
@@ -1720,3 +1782,50 @@ def verify_data(
         val_data['y'] = validation_data[1]
 
     return train_data, val_data
+
+
+def _combine_training_validation_data(
+        x_train,
+        y_train,
+        data=None,
+        validation_data=None,
+        is_binary:bool = False
+)->tuple:
+    """
+    combines x,y pairs of training and validation data.
+    If ``data`` is given, then it is returned as it is.
+    """
+    if data is None:
+        x_val, y_val = validation_data
+
+        if isinstance(x_train, list):
+            x = []
+            for val in range(len(x_train)):
+                if x_val is not None:
+                    _val = np.concatenate([x_train[val], x_val[val]])
+                    x.append(_val)
+                else:
+                    _val = x_train[val]
+
+            y = y_train
+            if hasattr(y_val, '__len__') and len(y_val) > 0:
+                y = np.concatenate([y_train, y_val])
+
+        elif isinstance(x_train, np.ndarray):
+            x, y = x_train, y_train
+            # if not validation data is available then use only training data
+            if x_val is not None:
+                if hasattr(x_val, '__len__') and len(x_val)>0:
+                    x = np.concatenate([x_train, x_val])
+                    y = np.concatenate([y_train, y_val])
+        else:
+            raise NotImplementedError
+
+        if is_binary:
+            if len(y) != y.size: # when sigmoid is used for binary
+                # convert the output to 1d
+                y = np.argmax(y, 1).reshape(-1, 1)
+    else:
+        x, y = None, None
+
+    return x, y, data

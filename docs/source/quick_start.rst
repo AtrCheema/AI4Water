@@ -3,7 +3,7 @@ quick start
 
 
 Build a `Model` by providing all the arguments to initiate it.
-For building deep learning mdoels, we can use higher level functions such as :py:class:`ai4water.models.LSTM`.
+For building deep learning models, we can use higher level functions such as :py:class:`ai4water.models.LSTM`.
 
 
 .. code-block:: python
@@ -34,7 +34,7 @@ Make predictions from it
     >>> predicted = model.predict()
 
 
-The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
+The model object returned from initiating AI4Water's `Model` is same as that of Keras' `Model`
 We can verify it by checking its type
 
 .. code-block:: python
@@ -77,7 +77,7 @@ input output paris to `data` argument to `fit` and/or `predict` methods.
     ...
     >>> batch_size = 16
     >>> lookback = 15
-    >>> inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
+    >>> inputs = ['dummy1', 'dummy2', 'dummy3', 'dummy4', 'dummy5']  # just dummy names for plotting and saving results.
     >>> outputs=['DummyTarget']
     ...
     >>> model = Model(
@@ -126,7 +126,7 @@ However, integration of ML based models is not complete yet.
 Using your own (custom) model
 =============================
 If you don't want to use sklearn/xgboost/catboost/lgbm's Models and you
-have your own model. You can use this model seamlessley as far as this
+have your own model. You can use this model seamlessly as far as this
 model has .fit, .evaluate and .predict methods.
 
 .. code-block:: python

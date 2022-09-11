@@ -10,7 +10,7 @@
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/AtrCheema/AI4Water/master)
 
 
-A uniform and simplified framework for rapid experimentation with deep leanring and machine learning based models
+A uniform and simplified framework for rapid experimentation with deep leaning and machine learning based models
 for time series and tabular data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
 
 `Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
@@ -20,12 +20,12 @@ for time series and tabular data. To put into Andrej Karapathy's [words](https:/
 The specific purposes of the repository are
 
 -    compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
- post processing easeier for time-series prediction/classification problems (also holds
+ post-processing easier for time-series prediction/classification problems (also holds
  true for any tabular data).
  
 -    save, load/reload or build models from readable json file. This repository 
  provides a framework to build layered models using python dictionary and with 
- several helper tools which fasten the process of  modeling time-series forcasting.
+ several helper tools which fasten the process of  modeling time-series forecasting.
 
 -    provide a uniform interface for optimizing hyper-parameters for 
  [skopt](https://scikit-optimize.github.io/stable/index.html);
@@ -41,15 +41,15 @@ The specific purposes of the repository are
   See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  
   using its application.
  
--    cut short the time to write boiler plate code in developing machine learning 
+-    cut short the time to write boilerplate code in developing machine learning 
  based models.
 
 -    It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` 
  by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
- `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
+ `view_model` methods of `Model` class, but you can go as low as you could go with tensorflow/keras. 
 
--    All of the above functionalities should be available without complicating keras 
+-    All the above functionalities should be available without complicating keras 
  implementation.
 
 
@@ -59,7 +59,7 @@ An easy way to install ai4water is using pip
 
     pip install ai4water
 
-You can also use github link
+You can also use GitHub link
 
 	python -m pip install git+https://github.com/AtrCheema/AI4Water.git
 
@@ -67,7 +67,7 @@ or using setup file, go to folder where repo is downloaded
 
     python setup.py install
 
-The latest code however (possibly with less bugs and more features) can be insalled from `dev` branch instead
+The latest code however (possibly with fewer bugs and more features) can be installed from `dev` branch instead
 
     python -m pip install git+https://github.com/AtrCheema/AI4Water.git@dev
 
@@ -110,7 +110,7 @@ Make predictions from it
 predicted = model.predict(data=data)
 ```
 
-The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
+The model object returned from initiating AI4Water's `Model` is same as that of Keras' `Model`
 We can verify it by checking its type
 ```python
 import tensorflow as tf
@@ -127,7 +127,7 @@ from ai4water import Model  # import any of the above model
 
 batch_size = 16
 lookback = 15
-inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
+inputs = ['dummy1', 'dummy2', 'dummy3', 'dummy4', 'dummy5']  # just dummy names for plotting and saving results.
 outputs=['DummyTarget']
 
 model = Model(

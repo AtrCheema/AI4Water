@@ -15,8 +15,8 @@ except ModuleNotFoundError:
     wandb = None
 
 mdates = mpl.dates
-plot_roc_curve = sklearn.metrics.plot_roc_curve
-plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
+plot_roc_curve = sklearn.metrics.RocCurveDisplay.from_estimator
+plot_precision_recall_curve = sklearn.metrics.PrecisionRecallDisplay.from_estimator
 
 # in order to unify the use of metrics
 Metrics = {
@@ -66,7 +66,7 @@ class ProcessPredictions(Plot):
         ----------
             mode : str
                 either "regression" or "classification"
-            forecast_len : int
+            forecast_len : int, optional (default=None)
                 forecast length, only valid when mode is regression
             output_features : str, optional
                 names of output features
@@ -78,7 +78,7 @@ class ProcessPredictions(Plot):
             is_multilabel : bool, optional (default=None)
                 whether the results correspond to multilabel classification problem.
                 Only valid if mode is classification
-            plots : int, list
+            plots : int/list, optional (default=None)
                 the names of plots to draw. Following plots are avialble.
 
                     ``residual``

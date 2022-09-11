@@ -48,12 +48,13 @@ class DLRegressionExperiments(Experiments):
             exp_name: str = None,
             num_samples: int = 5,
             verbosity: int = 1,
-            **model_kws):
+            **model_kws
+    ):
         """initializes the experiment."""
         self.input_features = input_features
         self.param_space = param_space
         self.x0 = x0
-        self.model_kws = model_kws
+
 
         self.lookback_space = []
         self.batch_size_space = Categorical(categories=[4, 8, 12, 16, 32],
@@ -62,10 +63,13 @@ class DLRegressionExperiments(Experiments):
 
         exp_name = exp_name or 'DLExperiments' + f'_{dateandtime_now()}'
 
-        super().__init__(cases=cases,
-                         exp_name=exp_name,
-                         num_samples=num_samples,
-                         verbosity=verbosity)
+        super().__init__(
+            cases=cases,
+            exp_name=exp_name,
+            num_samples=num_samples,
+            verbosity=verbosity,
+            **model_kws
+        )
 
         self.spaces = dl_space(num_samples=num_samples)
 

@@ -64,6 +64,8 @@ class TestCls(unittest.TestCase):
                 )
         exp.compare_errors('accuracy', show=False, save=False)
         exp.compare_errors('f1_score', show=False, save=False)
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values, show=False, save=False)
+        exp.compare_roc_curves(data[inputs].values, data[outputs].values, show=False, save=False)
 
         return
 
@@ -145,6 +147,27 @@ class TestCls(unittest.TestCase):
                 )
 
         exp.plot_cv_scores(show=False)
+
+        return
+
+    def test_optimize_wtih_cv(self):
+
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            cross_validator={'KFold': {'n_splits': 5}},
+        )
+
+        exp.fit(data=data,
+                run_type="optimize",
+                opt_method="random",
+                num_iterations=5,
+                cross_validate=True,
+                post_optimize="train_best",
+                include=[
+                    'model_LinearSVC',
+                ]
+                )
 
         return
 

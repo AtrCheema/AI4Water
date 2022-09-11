@@ -7,7 +7,7 @@ We can construct a normal layered model using keras layers by placing the layers
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 
 differentiate it from other similar layers in the model. For example `Dense_0` and `Dense_1` are two 
 Dense_ layers.
-The input/initializating arguments in the layer must be
+The input/initializing arguments in the layer must be
 enclosed in a dictionary within the layer. To find out what input/initializing arguments can be used, check
 documentation of corresponding layer in Tensorflow_  docs.
 It should be noted that the layer name is case-sensitive. Therefore, Dense layer cannot be DENSE.
@@ -73,7 +73,7 @@ second `LSTM` layer.
 
 1d CNN based model
 ====================
-If a layer does not receive any input arguments for its initialization, still an empty dictioanry must be provided.  
+If a layer does not receive any input arguments for its initialization, still an empty dictionary must be provided.
 Activation functions can also be used as a separate layer.
 
 .. code-block:: python
@@ -132,7 +132,7 @@ when the input is > 3d or the number of inputs are more than one.
 CNN -> LSTM
 ==========================
 If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed by `TimeDistributed` as shown below.
-In following, 3 `Conv1D` layers are enclosed in `TimeDistributed` layer. Similary `Flatten` and `MaxPool1D` are also 
+In following, 3 `Conv1D` layers are enclosed in `TimeDistributed` layer. Similarly `Flatten` and `MaxPool1D` are also
 wrapped in `TimeDistributed` layer.
 
 .. code-block:: python
@@ -212,7 +212,7 @@ Multiple Inputs
 ===============
 In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
 for the layer and specify which inputs the layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
-case whose members must be the names of the layers which must have been defined earlier. The input/initializating 
+case whose members must be the names of the layers which must have been defined earlier. The input/initializing
 arguments in the layer must be enclosed in a `config` dictionary within the layer in such cases.
 
 .. code-block:: python
@@ -221,7 +221,7 @@ arguments in the layer must be enclosed in a `config` dictionary within the laye
     >>> class MyModel(Model):
     ...
     >>>     def training_data(self, **kwargs) -> (list, list):
-    ...         """ write code which returns x and y where x consits of [(samples, 5, 10), (samples, 10)] and y consits of
+    ...         """ write code which returns x and y where x consists of [(samples, 5, 10), (samples, 10)] and y consists of
     ...             list [(samples, 1)]
     ...          """
     >>>         return
@@ -345,7 +345,7 @@ lambda layer definition in the `config` as following:
     ...     "Dense": {"config": {"units": 1}}
     >>> }
 
-    ... # The model can be seelessly loaded from the saved json file using
+    ... # The model can be seamlessly loaded from the saved json file using
 
     >>> config_path = "path like"
     >>> model = Model.from_config(config_path=config_path)

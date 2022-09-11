@@ -1,10 +1,14 @@
 
 __all__ = ["MLClassificationExperiments"]
 
+import os.path
+
+import matplotlib.pyplot as plt
+
 from ._main import Experiments
 from .utils import classification_space
 from ai4water.utils.utils import dateandtime_now
-
+from ai4water.backend import os, sklearn
 
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without
@@ -33,7 +37,7 @@ class MLClassificationExperiments(Experiments):
             exp_name='MLClassificationExperiments',
             num_samples=5,
             monitor = None,
-            **model_kwargs
+            **model_kws
     ):
         """
 
@@ -46,21 +50,24 @@ class MLClassificationExperiments(Experiments):
                 name of experiment
             num_samples : int, optional
             monitor : list/str, optional
-            **model_kwargs :
+            **model_kws :
                 keyword arguments for :py:class:`ai4water.Model` class
         """
         self.param_space = param_space
         self.x0 = x0
-        self.model_kws = model_kwargs
 
-        self.spaces = classification_space(num_samples=num_samples)
+        self.spaces = classification_space(num_samples=num_samples,)
 
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
-        super().__init__(cases=cases,
-                         exp_name=exp_name,
-                         num_samples=num_samples,
-                         monitor=monitor)
+
+        super().__init__(
+            cases=cases,
+            exp_name=exp_name,
+            num_samples=num_samples,
+            monitor=monitor,
+            **model_kws
+        )
 
     @property
     def tpot_estimator(self):
@@ -73,6 +80,151 @@ class MLClassificationExperiments(Experiments):
     @property
     def mode(self):
         return "classification"
+
+    def _compare_cls_curves(self, x, y, save, show, func, name):
+
+        model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path,p))]
+
+        _, ax = plt.subplots()
+
+        # find all the model folders
+        m_paths = []
+        for m in model_folders:
+            if any(m in m_ for m_ in self.considered_models):
+                m_paths.append(m)
+
+        # load all models from config
+        for m_path in m_paths:
+
+            m_path = os.path.join(self.exp_path, m_path)
+            assert len(os.listdir(m_path)) == 1
+            m_path = os.path.join(m_path, os.listdir(m_path)[0])
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            kws = {'estimator': model, 'X': x, 'y': y.reshape(-1, ), 'ax': ax, 'name': model.model_name}
+            if 'LinearSVC' in model.model_name:
+                # sklearn LinearSVC does not have predict_proba but ai4water Model does have this method
+                # which will only throw error
+                kws['estimator'] = model._model
+            func(**kws)
+
+        if save:
+            fname = os.path.join(self.exp_path, f"{name}.png")
+            plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+        return ax
+
+    def compare_precision_recall_curves(
+            self,
+            x,
+            y,
+            save:bool = True,
+            show:bool = True,
+    ):
+        """compares precision recall curves of the all the models.
+
+        parameters
+        ---------
+        x :
+            input data
+        y :
+            labels for the input data
+        save :
+            whether to save the plot or not.
+        show :
+            whether to show the plot or not
+
+        Returns
+        -------
+        plt.Axes
+            matplotlib axes on which figure is drawn
+
+        Example
+        -------
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        # define inputs and outputs
+        >>> inputs = data.columns.tolist()[0:-1]
+        >>> outputs = data.columns.tolist()[-1:]
+        # initiate the experiment
+        >>> exp = MLClassificationExperiments(
+        ...     input_features=inputs,
+        ...     output_features=outputs)
+        # run the experiment
+        >>> exp.fit(data=data, include=["model_LGBMClassifier",
+        ...                             "model_XGBClassifier",
+        ...                             "RandomForestClassifier"])
+        ... # Compare Precision Recall curves
+        >>> exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
+        """
+
+        return self._compare_cls_curves(
+            x,
+            y,
+            save,
+            show,
+            name="precision_recall_curves",
+            func=sklearn.metrics.PrecisionRecallDisplay.from_estimator
+        )
+
+    def compare_roc_curves(
+            self,
+            x,
+            y,
+            save:bool = True,
+            show:bool = True,
+    ):
+        """compares roc curves of the all the models.
+
+        parameters
+        ---------
+        x :
+            input data
+        y :
+            labels for the input data
+        save :
+            whether to save the plot or not.
+        show :
+            whether to show the plot or not
+
+        Returns
+        -------
+        plt.Axes
+            matplotlib axes on which figure is drawn
+
+        Example
+        -------
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        # define inputs and outputs
+        >>> inputs = data.columns.tolist()[0:-1]
+        >>> outputs = data.columns.tolist()[-1:]
+        # initiate the experiment
+        >>> exp = MLClassificationExperiments(
+        ...     input_features=inputs,
+        ...     output_features=outputs)
+        # run the experiment
+        >>> exp.fit(data=data, include=["model_LGBMClassifier",
+        ...                             "model_XGBClassifier",
+        ...                             "RandomForestClassifier"])
+        ... # Compare ROC curves
+        >>> exp.compare_roc_curves(data[inputs].values, data[outputs].values)
+        """
+
+        return self._compare_cls_curves(
+            x=x,
+            y=y,
+            save=save,
+            show=show,
+            name="roc_curves",
+            func=sklearn.metrics.RocCurveDisplay.from_estimator
+        )
 
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html

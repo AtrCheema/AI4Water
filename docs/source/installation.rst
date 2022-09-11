@@ -21,7 +21,7 @@ You can use github link for install ai4water.
 ::
     python -m pip install git+https://github.com/AtrCheema/AI4Water.git
 
-The latest code however (possibly with less bugs and more features) can be insalled from ``dev`` branch instead
+The latest code however (possibly with less bugs and more features) can be installed from ``dev`` branch instead
 ::
     python -m pip install git+https://github.com/AtrCheema/AI4Water.git@dev
 

@@ -34,7 +34,7 @@ class MLRegressionExperiments(Experiments):
                  exp_name='MLRegressionExperiments',
                  num_samples=5,
                  verbosity=1,
-                 **model_kwargs):
+                 **model_kws):
         """
         Initializes the class
 
@@ -44,7 +44,7 @@ class MLRegressionExperiments(Experiments):
             x0 list: initial values of the parameters which are to be optimized.
                 These can be overwritten in `models`
             exp_name str: name of experiment, all results will be saved within this folder
-            model_kwargs dict: keyword arguments which are to be passed to `Model`
+            model_kws dict: keyword arguments which are to be passed to `Model`
                 and are not optimized.
 
         Examples:
@@ -75,12 +75,17 @@ class MLRegressionExperiments(Experiments):
         """
         self.param_space = param_space
         self.x0 = x0
-        self.model_kws = model_kwargs
 
         if exp_name == "MLRegressionExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
 
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
+        super().__init__(
+            cases=cases,
+            exp_name=exp_name,
+            num_samples=num_samples,
+            verbosity=verbosity,
+            **model_kws
+        )
 
         self.spaces = regression_space(num_samples=num_samples)
 

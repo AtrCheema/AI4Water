@@ -51,7 +51,7 @@ API in ai4water, you can do as following
     ... # build a neural network based model
     >>> model = Model(model=MLP())
     >>> isinstance(model, tf.keras.Model)  # -> False
-    .. # However, model._mdoel is tensorflow Model
+    .. # However, model._model is tensorflow Model
     >>> isinstance(model._model, tf.keras.Model)  # -> True
 
 It should be noted that the front-end/user-end is almost exactly same whether you are using functional API
@@ -59,7 +59,7 @@ or model-subclassing.
 
 As has been mentioned earlier that for sklearn/xgboost/catboost/lightgbm based models, whether you
 use functional API or model-sublcassing API, there is no difference. In these cases, ``model._model``
-object will point out the object from underlying library. The following example will make it clearn
+object will point out the object from underlying library. The following example will make it clear
 
 .. code-block:: python
 
