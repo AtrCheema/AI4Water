@@ -109,6 +109,9 @@ class MLClassificationExperiments(Experiments):
                 # sklearn LinearSVC does not have predict_proba but ai4water Model does have this method
                 # which will only throw error
                 kws['estimator'] = model._model
+
+            if 'NearestCentroid' in model.model_name:
+                continue
             func(**kws)
 
         if save:
