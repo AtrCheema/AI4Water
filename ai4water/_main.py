@@ -2072,10 +2072,10 @@ class BaseModel(NN):
                     if self.category == 'ML':  # todo, also plot for DL
                         # if model does not have predict_proba method, we can't plot following
                         if hasattr(self._model, 'predict_proba'):
-                            # if data is user defined, we don't know whether it is binary or not
-                            if not user_defined_data and self.is_binary:
-                                pp.precision_recall_curve(self, x=inputs, y=true_outputs)
-                                pp.roc_curve(self, x=inputs, y=true_outputs)
+                            # todo if data is user defined, we don't know whether it is binary or not
+                            if self.is_binary:
+                                pp.precision_recall_curve(self, x=inputs, y=true_outputs, prefix=prefix)
+                                pp.roc_curve(self, x=inputs, y=true_outputs, prefix=prefix)
         else:
             assert self.num_outs == 1
 

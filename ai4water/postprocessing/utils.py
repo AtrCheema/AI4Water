@@ -516,7 +516,7 @@ class ProcessPredictions(Plot):
         self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
         return
 
-    def roc_curve(self, estimator, x, y):
+    def roc_curve(self, estimator, x, y, prefix=None):
 
         if hasattr(estimator, '_model'):
             if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x,
@@ -524,26 +524,26 @@ class ProcessPredictions(Plot):
                 x = pd.DataFrame(x, columns=estimator.input_features)
 
         plot_roc_curve(estimator, x, y.reshape(-1, ))
-        self.save_or_show(fname="roc")
+        self.save_or_show(fname=f"{prefix}_roc")
         return
 
-    def confusion_matrx(self, true, predicted, **kwargs):
+    def confusion_matrx(self, true, predicted, prefix=None, **kwargs):
 
         cm = ClassificationMetrics(true, predicted, multiclass=self.is_multiclass).confusion_matrix()
 
         ep.imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
 
-        self.save_or_show(fname="confusion_matrix")
+        self.save_or_show(fname=f"{prefix}_confusion_matrix")
         return
 
-    def precision_recall_curve(self, estimator, x, y):
+    def precision_recall_curve(self, estimator, x, y, prefix=None):
 
         if hasattr(estimator, '_model'):
             if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x,
                                                                                                           np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
         plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
-        self.save_or_show(fname="plot_precision_recall_curve")
+        self.save_or_show(fname=f"{prefix}_plot_precision_recall_curve")
         return
 
     def process_rgr_results(
@@ -679,7 +679,7 @@ class ProcessPredictions(Plot):
         if self.output_features is None:
             self.output_features = [f'feature_{i}' for i in range(self.n_classes(true))]
 
-        self.confusion_matrx(true, predicted)
+        self.confusion_matrx(true, predicted, prefix=prefix)
 
         fname = os.path.join(self.path, f"{prefix}_prediction.csv")
         pd.DataFrame(np.concatenate([true, predicted], axis=1),
@@ -705,7 +705,7 @@ class ProcessPredictions(Plot):
         elif true.size != len(true):
             true = np.argmax(true, axis=1).reshape(-1, 1)
 
-        self.confusion_matrx(true, predicted)
+        self.confusion_matrx(true, predicted, prefix=prefix)
 
         fpath = os.path.join(self.path, prefix)
         if not os.path.exists(fpath):
