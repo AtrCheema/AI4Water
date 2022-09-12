@@ -1,6 +1,6 @@
 import json
 import math
-from typing import Union, Tuple, List, Callable
+from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
@@ -56,7 +56,7 @@ class Experiments(object):
     """
     Base class for all the experiments.
 
-    All the expriments must be subclasses of this class.
+    All the experiments must be subclasses of this class.
     The core idea of ``Experiments`` is based upon ``model``. An experiment
     consists of one or more models. The models differ from each other in their
     structure/idea/concept/configuration. When :py:meth:`ai4water.experiments.Experiments.fit`
@@ -112,8 +112,8 @@ class Experiments(object):
             monitor : str, list, optional
                 list of performance metrics to monitor. It can be any performance
                 metric SeqMetrics_ library.
-                By default ``r2``, ``corr_coeff, ``mse``, ``rmse``, ``r2_score``,
-                ``nse``, ``kge``, ``mape``, ``pbias``, ``bias`` ``mae``, ``nrmse``
+                By default ``r2``, ``corr_coeff``, ``mse``, ``rmse``, ``r2_score``,
+                ``nse``, ``kge``, ``mape``, ``pbias``, ``bias``, ``mae``, ``nrmse``
                 ``mase`` are considered for regression and ``accuracy``, ``precision``
                 ``recall`` are considered for classification. The user can also put a
                 custom metric to monitor. In such a case we it should be callable which
@@ -374,7 +374,7 @@ class Experiments(object):
                 self.model_iter_metric = {}
                 self.iter_ = 0
 
-                def objective_fn(**suggested_paras):
+                def objective_fn(**suggested_paras)->float:
                     # the config must contain the suggested parameters by the hpo algorithm
                     if model_type in self.cases:
                         config = self.cases[model_type]
@@ -392,7 +392,6 @@ class Experiments(object):
                         y=y,
                         data=data,
                         validation_data=validation_data,
-                        predict=predict,
                         cross_validate=cross_validate,
                         title=f"{self.exp_name}{SEP}{model_name}",
                         **config)
@@ -404,7 +403,12 @@ class Experiments(object):
 
                 if run_type == 'dry_run':
                     if self.verbosity >= 0: print(f"running  {model_type} model")
-                    train_results, test_results = objective_fn(**self._named_x0())
+                    _ = objective_fn(**self._named_x0())
+                    train_results, test_results = self._predict(model=self.model_,
+                                                                x=x,
+                                                                y=y,
+                                                                data=data,
+                                                                validation_data=validation_data)
                     self._populate_results(model_name, train_results, test_results)
 
                     if cross_validate:
@@ -478,19 +482,16 @@ class Experiments(object):
 
         for mod_path in folders:
             config_path = os.path.join(opt_dir, mod_path, "config.json")
-            # best_weights = find_best_weight(os.path.join(opt_dir, mod_path, "weights"))
 
             model = self.build_from_config(config_path)
 
             self.update_model_weight(model, os.path.join(opt_dir, mod_path))
-            # assert best_weights is not None, f"Can't find weight from {config_path}"
-            # weight_file = os.path.join(model.w_path, best_weights)
-            # model.update_weights(weight_file=weight_file)
 
-            train_true, train_pred = model.predict(data=data, return_true=True)
-
-            test_true, test_pred = model.predict(data='test', return_true=True)
-
+            (train_true, train_pred), (test_true, test_pred) = self._predict(model,
+                                                                             x=x,
+                                                                             y=y,
+                                                                             validation_data=validation_data,
+                                                                             data=data)
 
             self._populate_results(model_type, (train_true, train_pred), (test_true, test_pred))
         return
@@ -503,27 +504,27 @@ class Experiments(object):
             validation_data,
             model_type
     ):
-        """Train the best model."""
+        """Finds the best model, builts it, fits it and makes predictions from it."""
         best_paras = self.optimizer.best_paras()
         if best_paras.get('lookback', 1) > 1:
             _model = 'layers'
         else:
             _model = model_type
-        train_results, test_results = self._build_fit_eval(
+        train_results, test_results = self._build_fit_predict(
             x=x,
             y=y,
             data=data,
             validation_data=validation_data,
-            predict=True,
             model={_model: self.optimizer.best_paras()},
             title=f"{self.exp_name}{SEP}{model_type}{SEP}best",
-            fit_on_all_training_data=True,
+            refit=True,
         )
 
         self._populate_results(model_type, train_results, test_results)
         return
 
-    def _populate_results(self, model_type: str,
+    def _populate_results(self,
+                          model_type: str,
                           train_results: Tuple[np.ndarray, np.ndarray],
                           test_results: Tuple[np.ndarray, np.ndarray]
                           ):
@@ -554,7 +555,7 @@ class Experiments(object):
         return
 
     def _get_metrics(self, true:np.ndarray, predicted:np.ndarray)->dict:
-        # get the performance metrics being monitored given true and predicted data
+        """get the performance metrics being monitored given true and predicted data"""
         metrics_inst = Metrics[self.mode](true, predicted,
                                      replace_nan=True,
                                      replace_inf=True,
@@ -690,7 +691,7 @@ Available cases are {self.models} and you wanted to include
     def plot_improvement(
             self,
             metric_name: str,
-            plot_type: str = 'dumbell',
+            plot_type: str = 'dumbbell',
             save: bool = True,
             name: str = '',
             dpi: int = 200,
@@ -706,7 +707,7 @@ Available cases are {self.models} and you wanted to include
             metric_name :
                 the peformance metric for comparison
             plot_type : str, optional
-                the kind of plot to draw. Either ``dumbell`` or ``bar``
+                the kind of plot to draw. Either ``dumbbell`` or ``bar``
             save : bool
                 whether to save the plot or not
             name : str, optional
@@ -728,14 +729,14 @@ Available cases are {self.models} and you wanted to include
         >>> experiment.fit(data=busan_beach(), run_type="optimize", num_iterations=30)
         >>> experiment.plot_improvement('r2')
         ...
-        >>>  # or draw dumbell plot
+        >>>  # or draw dumbbell plot
         ...
         >>> experiment.plot_improvement('r2', plot_type='bar')
 
         """
 
         assert self._run_type == "optimize", f"""
-        when run_type argument duirng .fit() is {self._run_type}, we can
+        when run_type argument during .fit() is {self._run_type}, we can
         not have improvement plot"""
 
         data: str = 'test'
@@ -752,7 +753,7 @@ Available cases are {self.models} and you wanted to include
 
             improvement.loc[key] = [initial, final]
 
-        if plot_type == "dumbell":
+        if plot_type == "dumbbell":
             ax = dumbbell_plot(
                 improvement['start'], improvement['end'],
                 improvement.index.tolist(),
@@ -1069,6 +1070,74 @@ Available cases are {self.models} and you wanted to include
         if show:
             plt.show()
         return axis
+
+    def compare_regression_plots(
+            self,
+            x,
+            y,
+            save: Optional[bool] = True,
+            show: Optional[bool] = True,
+            fname: Optional[str] = ""
+    ):
+        """compare regression plots of all the models which have been fitted.
+        This plot is only available for regression problems.
+
+        parameters
+        ----------
+        x :
+            input data
+        y :
+            target data
+        save : bool, optional (default=True)
+            whether to save the plot or not?
+        show : bool, optional (default=True)
+            whether to show the plot or not?
+        fname : str, optional
+
+        Returns
+        -------
+        plt.Figure
+            matplotlib
+
+        Example
+        -------
+        """
+        assert self.mode == "regression"
+        raise NotImplementedError
+
+    def compare_residual_plots(
+            self,
+            x,
+            y,
+            save: Optional[bool] = True,
+            show: Optional[bool] = True,
+            fname: Optional[str] = ""
+    ):
+        """compare residual plots of all the models which have been fitted.
+        This plot is only available for regression problems.
+
+        parameters
+        ----------
+        x :
+            input data
+        y :
+            target data
+        save : bool, optional (default=True)
+            whether to save the plot or not?
+        show : bool, optional (default=True)
+            whether to show the plot or not?
+        fname : str, optional
+
+        Returns
+        -------
+        plt.Figure
+            matplotlib
+
+        Example
+        -------
+        """
+        assert self.mode == "regression"
+        raise NotImplementedError
 
     @classmethod
     def from_config(
@@ -1403,10 +1472,72 @@ Available cases are {self.models} and you wanted to include
         tpot.export(os.path.join(self.exp_path, "tpot_fitted_pipeline.py"))
 
         # save each iteration
-        fname = os.path.join(self.exp_path, "evaludated_individuals.json")
+        fname = os.path.join(self.exp_path, "evaluated_individuals.json")
         with open(fname, 'w') as fp:
             json.dump(tpot.evaluated_individuals_, fp, indent=True)
         return tpot
+
+    def _build_fit(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data=None,
+            view=False,
+            title=None,
+            cross_validate: bool=False,
+            refit: bool=False,
+            **kwargs
+    )->Model:
+        model: Model = self._build(title=title, **kwargs)
+
+        self._fit(
+            model,
+            x=x,
+            y=y,
+            data=data,
+            validation_data=validation_data,
+            cross_validate=cross_validate,
+            refit = refit,
+        )
+
+        if view:
+            model.view()
+
+        return model
+
+    def _build_fit_predict(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data=None,
+            view=False,
+            title=None,
+            cross_validate: bool=False,
+            refit: bool=False,
+            **kwargs
+    )->Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+
+        """
+        Builds and run one 'model' of the experiment.
+
+        Since an experiment consists of many models, this method
+        is also run many times.
+        reft : bool
+            This means fit on training + validation data. This is true
+            when we have optimized the hyperparameters and now we would
+            like to fit on training + validation data as well.
+        """
+        model = self._build_fit(x, y, data, validation_data, view, title, cross_validate, refit, **kwargs)
+
+        return self._predict(
+            model,
+            x=x,
+            y=y,
+            data=data,
+            validation_data=validation_data
+        )
 
     def _build_fit_eval(
             self,
@@ -1414,48 +1545,27 @@ Available cases are {self.models} and you wanted to include
             y=None,
             data=None,
             validation_data=None,
-            predict=True,
             view=False,
             title=None,
             cross_validate: bool=False,
-            fit_on_all_training_data: bool=False,
+            refit: bool=False,
             **kwargs
-    ):
+    )->float:
 
         """
         Builds and run one 'model' of the experiment.
 
         Since an experiment consists of many models, this method
         is also run many times.
-        fit_on_all_training_data : bool
+        refit : bool
             This means fit on training + validation data. This is true
             when we have optimized the hyperparameters and now we would
             like to fit on training + validation data as well.
         """
-        model: Model = self._build(title=title, **kwargs)
-
-        self._fit(
-            x=x,
-            y=y,
-            data=data,
-            validation_data=validation_data,
-            cross_validate=cross_validate,
-            fit_on_all_training_data = fit_on_all_training_data,
-        )
-
-        if view:
-            model.view()
-
-        if predict:
-            return self._predict(
-                x=x,
-                y=y,
-                data=data,
-                validation_data=validation_data
-            )
+        model = self._build_fit(x, y, data, validation_data, view, title, cross_validate, refit, **kwargs)
 
         # return the validation score
-        return self._evaluate(data=data, validation_data=validation_data)
+        return self._evaluate(model, data=data, validation_data=validation_data)
 
     def _build(self, title=None, **suggested_paras):
         """Builds the ai4water Model class and makes it a class attribute."""
@@ -1478,21 +1588,22 @@ Available cases are {self.models} and you wanted to include
 
     def _fit(
             self,
+            model:Model,
             x,
             y,
             data,
             validation_data,
             cross_validate: bool = False,
-            fit_on_all_training_data: bool = False
+            refit: bool = False
     ):
         """Trains the model"""
 
         if cross_validate:
             if validation_data is None:
                 assert x is None, NotImplementedError
-                return self.model_.cross_val_score(
+                return model.cross_val_score(
                     data=data,
-                    scoring=self.model_.config['val_metric']
+                    scoring=model.config['val_metric']
                 )
             else:
                 x, y, data = _combine_training_validation_data(
@@ -1500,38 +1611,39 @@ Available cases are {self.models} and you wanted to include
                     y,
                     data,
                     validation_data,
-                    self.model_.is_binary
+                    model.is_binary
                 )
-                return self.model_.cross_val_score(
+                return model.cross_val_score(
                     x=x, y=y
                 )
 
-        if fit_on_all_training_data:
+        if refit:
             # we need to combine training (x,y) + validation data.
             x, y, data = _combine_training_validation_data(
                 x,
                 y,
                 data=data,
                 validation_data=validation_data,
-                is_binary=self.model_.is_binary)
-            return self.model_.fit_on_all_training_data(x=x, y=y, data=data)
+                is_binary=model.is_binary)
+            return model.fit_on_all_training_data(x=x, y=y, data=data)
 
-        return self.model_.fit(x=x, y=y, data=data)
+        return model.fit(x=x, y=y, data=data)
 
     def _evaluate(
             self,
+            model:Model,
             validation_data=None,
             data="validation"
     ) -> float:
         """Evaluates the model"""
 
         if validation_data is None:
-            t, p = self.model_.predict_on_validation_data(
+            t, p = model.predict_on_validation_data(
                 data=data,
                 return_true=True,
                 process_results=False)
         else:
-            t, p = self.model_.predict(
+            t, p = model.predict(
                 return_true=True,
                 process_results=False,
                 *validation_data
@@ -1543,14 +1655,14 @@ Available cases are {self.models} and you wanted to include
                                      remove_neg=True,
                                      replace_nan=True,
                                      replace_inf=True,
-                                     multiclass=self.model_.is_multiclass)
+                                     multiclass=model.is_multiclass)
 
         self.model_iter_metric[self.iter_] = test_metrics
         self.iter_ += 1
 
-        val_score = getattr(metrics, self.model_.val_metric)()
+        val_score = getattr(metrics, model.val_metric)()
 
-        if self.model_.config['val_metric'] in [
+        if model.config['val_metric'] in [
             'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score'
         ] or self.mode == "classification":
             val_score = 1.0 - val_score
@@ -1563,21 +1675,30 @@ Available cases are {self.models} and you wanted to include
 
     def _predict(
             self,
+            model: Model,
             x=None,
             y=None,
             data=None,
             validation_data=None,
-    ):
-        """Makes predictions on training and test data from the model.
+    )->Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        """
+        Makes predictions on training and test data from the model.
         It is supposed that the model has been trained before."""
 
         if validation_data is None:
-            test_true, test_pred = self.model_.predict(data=data, return_true=True)
+            # only data is given
+            train_true, train_pred = model.predict_on_training_data(data=data, return_true=True)
+            test_true, test_pred = model.predict_on_validation_data(data=data, return_true=True)
 
-            train_true, train_pred = self.model_.predict_on_training_data(data=data, return_true=True)
+            test_x, test_y = model.test_data(data=data)
+            # when we don't have any test_data, then consider val predictions for test
+            # todo, above supposition may confuse many
+            if len(test_x) >1:
+                test_true, test_pred = model.predict_on_test_data(data=data, return_true=True)
         else:
-            test_true, test_pred = self.model_.predict(*validation_data, return_true=True)
-            train_true, train_pred = self.model_.predict(x=x, y=y, return_true=True)
+            # x,y and validation_data is given
+            test_true, test_pred = model.predict(*validation_data, return_true=True)
+            train_true, train_pred = model.predict(x=x, y=y, return_true=True)
 
         return (train_true, train_pred), (test_true, test_pred)
 
@@ -1674,10 +1795,10 @@ be used to build ai4water's Model class.
         )
 
         setattr(self, 'model_', model)
-        return
+        return model
 
     def process_model_before_fit(self, model):
-        """So that the user can perform procesisng of the model by overwriting this method"""
+        """So that the user can perform processing of the model by overwriting this method"""
         return model
 
 
