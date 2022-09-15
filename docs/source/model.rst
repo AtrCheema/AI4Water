@@ -17,6 +17,10 @@ for  :doc:`declarative_def_torch` .
 .. autoclass:: ai4water._main.BaseModel
     :members:
         __init__,
+        training_data,
+        validation_data,
+        test_data,
+        all_data,
         fit,
         fit_on_all_training_data,
         evaluate,
