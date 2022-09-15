@@ -983,6 +983,11 @@ class TestJsonize(unittest.TestCase):
         assert isinstance(jsonize(True), bool)
         return
 
+    def test_none(self):
+        # None should be None
+        assert jsonize(None) is None
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

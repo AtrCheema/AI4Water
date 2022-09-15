@@ -664,10 +664,14 @@ def jsonize(obj):
     Examples
     --------
     >>> import numpy as np
-    >>>from ai4water.utils import jsonize
+    >>> from ai4water.utils import jsonize
     >>> a = np.array([2.0])
     >>> b = jsonize(a)
     >>> type(b)  # int
+    ... # if a data container consists of mix of native and third party types
+    ... # only third party types are converted into native types
+    >>> print(jsonize({1: [1, None, True, np.array(3)], 'b': np.array([1, 3])}))
+    ... {1: [1, None, True, 3], 'b': [1, 2, 3]}
     """
     # boolean type
     if isinstance(obj, bool):
@@ -684,6 +688,9 @@ def jsonize(obj):
 
     if isinstance(obj, tuple):
         return tuple([jsonize(val) for val in obj])
+
+    if obj.__class__.__name__ == 'NoneType':
+        return obj
 
     # if obj is a python 'type' such as jsonize(list)
     if type(obj).__name__ == type.__name__:
