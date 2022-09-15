@@ -1738,3 +1738,76 @@ METRIC_TYPES = {
     "bias": "min",
     "med_seq_error": "min",
 }
+
+
+class AttribtueSetter(object):
+
+    def __init__(self, obj, y: np.ndarray, from_fit=None):
+
+        if obj.mode is None:
+            if 'float' in y.dtype.name:
+                obj.mode = "regression"
+            else:
+                obj.mode = "regression"
+            warnings.warn(f"inferred mode is {obj.mode}. Ignore this messare if the inferred mode is correct.")
+
+        self.mode = obj.mode
+
+        obj.classes_ = self.classes(y)  # for sklearn
+
+        obj.num_classes_ = len(obj.classes_)
+
+        obj.is_binary_ = self.is_binary(y)
+
+        outs = getattr(obj, 'output_features', '') or ''
+
+        obj.is_multiclass_ = self.is_multiclass(y, outs)
+
+        obj.is_multilabel_ = self.is_multilabel(outs)
+
+        obj.is_fitted_ = from_fit
+
+        return
+
+    def is_multiclass(self, y, output_features='') -> bool:
+        """Returns True if the porblem is multiclass classification"""
+        _default = False
+        if self.mode == 'classification':
+            if len(output_features) <= 1: # also consider 0 bcz when when output_features is None/'', it will be 0
+                if len(self.classes(y)) > 2:
+                    _default = True
+            # elif len(y) == y.size:  # this means the names of
+            #     pass
+            else:
+                pass  # todo, check when output columns are one-hot encoded
+
+        return _default
+
+    def is_multilabel(self,
+                      output_features='',
+                      ):
+        if self.mode == "classification":
+            if len(output_features) > 1:
+                return True
+        return False
+
+    def classes(self, y: np.ndarray):
+
+        if self.mode == "regression":
+            return []
+        if len(y) != y.size:
+            # nd array, one hot encoded
+            return [i for i in range(y.shape[-1])]
+        return list(np.unique(y[~np.isnan(y)]))
+
+    def is_binary(self, y):
+        if self.mode == "regression":
+            return False
+
+        if len(y) != y.size:  # nd array, may be one hot encoded
+            if y.shape[-1] == 2 and len(np.unique(y[~np.isnan(y)])) == 2:
+                return True  # binary, one hot encoded
+            return False
+        if len(np.unique(y[~np.isnan(y)])) == 2:
+            return True
+        return False

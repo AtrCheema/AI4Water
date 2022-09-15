@@ -31,6 +31,7 @@ def get_history(keys, add_val=False):
 
 
 class TestLossCurve(unittest.TestCase):
+    show = False
 
     def test_plot_loss_1(self):
         visualizer = ProcessPredictions(mode="regression", show=False)
@@ -76,7 +77,6 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="regression",
                                 forecast_len=1,
                                 output_features=['a'],
-                                is_multiclass=False,
                                 plots=["residual", "murphy"],
                                 show=self.show,
                                 save=False,
@@ -89,7 +89,6 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="regression",
                                 forecast_len=1,
                                 output_features=['a'],
-                                is_multiclass=False,
                                 plots=["residual", "murphy"],
                                 show=self.show,
                                 save=False,
@@ -102,7 +101,6 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="regression",
                                 forecast_len=1,
                                 output_features=['a', 'b'],
-                                is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
                                 save=False,
@@ -115,7 +113,6 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="classification",
                                 forecast_len=1,
                                 output_features=['a'],
-                                is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
                                 save=False,
@@ -128,7 +125,6 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="classification",
                                 forecast_len=1,
                                 output_features=['a'],
-                                is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
                                 save=False,
@@ -154,7 +150,7 @@ class TestProcessPrediction(unittest.TestCase):
         """don't tell explicitly that it is multiclass"""
         pp = ProcessPredictions(mode="classification",
                                 forecast_len=1,
-                                output_features=['a', 'b'],
+                                #output_features=['a', 'b'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
                                 save=False,

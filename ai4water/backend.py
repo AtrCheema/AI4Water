@@ -12,7 +12,8 @@ __all__ = ["np", "os", "plt", "mpl", "pd", "random", "scipy", "stats",
            "sns", "imageio", "shapefile", "tf", "torch", "keras",
            "requests", "plotly", "h5py", "lime",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
-           "get_attributes"]
+           "get_attributes",
+           "wandb", "WandbCallback"]
 
 from types import FunctionType
 
@@ -278,6 +279,13 @@ keras = keras
 torch = torch
 tf = tf
 
+
+try:
+    from wandb.keras import WandbCallback
+    import wandb
+except ModuleNotFoundError:
+    WandbCallback = None
+    wandb = None
 
 if tf is not None:
     BACKEND = 'tensorflow'

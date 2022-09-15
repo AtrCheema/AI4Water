@@ -457,8 +457,21 @@ def CNNLSTM(
 
     Examples
     --------
+    >>> from ai4water import Model
     >>> from ai4water.models import CNNLSTM
-    >>>model = CNNLSTM(input_shape=(9, 13), sub_sequences=3)
+    >>> from ai4water.datasets import busan_beach
+    ... # define data and input/output features
+    >>> data = busan_beach()
+    >>> inputs = data.columns.tolist()[0:-1]
+    >>> outputs = [data.columns.tolist()[-1]]
+    >>> lookback_steps = 9
+    ... # get configuration of CNNLSTM as dictionary which can be given to Model
+    >>> model_config = CNNLSTM(input_shape=(lookback_steps, len(inputs)), sub_sequences=3)
+    ... # build the model
+    >>> model = Model(model=model_config, input_features=inputs,
+    ...    output_features=outputs, ts_args={"lookback": lookback_steps})
+    ... # train the model
+    >>> model.fit(data=data)
 
     """
     assert len(input_shape) == 2

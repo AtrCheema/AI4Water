@@ -1,3 +1,4 @@
+import warnings
 from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
@@ -5,8 +6,11 @@ from SeqMetrics.utils import plot_metrics
 
 from ai4water.backend import easy_mpl as ep
 from ai4water.backend import np, pd, mpl, plt, os, sklearn
-from ai4water.utils.visualizations import Plot, init_subplots
+
+from ai4water.utils.utils import AttribtueSetter
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
+
+from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.visualizations import murphy_diagram, fdc_plot, edf_plot
 
 try:
@@ -51,9 +55,6 @@ class ProcessPredictions(Plot):
             mode: str,
             forecast_len: int = None,
             output_features: Union[list, str] = None,
-            is_multiclass: bool = None,
-            is_binary: bool = None,
-            is_multilabel: bool = None,
             wandb_config: dict = None,
             path: str = None,
             dpi: int = 300,
@@ -70,14 +71,6 @@ class ProcessPredictions(Plot):
                 forecast length, only valid when mode is regression
             output_features : str, optional
                 names of output features
-            is_binary : bool, optional (default=None)
-                whether the results correspond to binary classification problem.
-            is_multiclass : bool
-                whether the results correspond to multiclass classification problem.
-                Only valid if mode is classification
-            is_multilabel : bool, optional (default=None)
-                whether the results correspond to multilabel classification problem.
-                Only valid if mode is classification
             plots : int/list, optional (default=None)
                 the names of plots to draw. Following plots are avialble.
 
@@ -117,9 +110,6 @@ class ProcessPredictions(Plot):
         self.mode = mode
         self.forecast_len = forecast_len
         self.output_features = output_features
-        self.is_multiclass = is_multiclass
-        self.is_binary = is_binary
-        self.is_multilabel = is_multilabel
         self.wandb_config = wandb_config
         self.quantiles = None
         self.show = show
@@ -144,14 +134,14 @@ class ProcessPredictions(Plot):
     def quantiles(self, x):
         self._quantiles = x
 
-    def classes(self, array):
+    def _classes(self, array):
         if self.mode == "classification":
             return np.unique(array)
         return []
 
     def n_classes(self, array):
         if self.mode == "classification":
-            return len(self.classes(array))
+            return len(self._classes(array))
         return None
 
     def save_or_show(self, show=None, **kwargs):
@@ -168,6 +158,8 @@ class ProcessPredictions(Plot):
             index=None,
             inputs=None
     ):
+
+        AttribtueSetter(self, true_outputs)
 
         key = {"regression": "rgr", "classification": "cls"}
 
@@ -290,7 +282,7 @@ class ProcessPredictions(Plot):
 
     def errors_plot(self, true, predicted, prefix, where, **kwargs):
 
-        errors = Metrics[self.mode](true, predicted, multiclass=self.is_multiclass)
+        errors = Metrics[self.mode](true, predicted, multiclass=self.is_multiclass_)
 
         return plot_metrics(
             errors.calculate_all(),
@@ -529,7 +521,7 @@ class ProcessPredictions(Plot):
 
     def confusion_matrx(self, true, predicted, prefix=None, **kwargs):
 
-        cm = ClassificationMetrics(true, predicted, multiclass=self.is_multiclass).confusion_matrix()
+        cm = ClassificationMetrics(true, predicted, multiclass=self.is_multiclass_).confusion_matrix()
 
         ep.imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
 
@@ -642,16 +634,11 @@ class ProcessPredictions(Plot):
     ):
         """post-processes classification results."""
 
-        if self.is_multiclass is None and self.is_binary is None and self.is_multilabel is None:
-            if self.n_classes(true) == 2:
-                self.is_binary = True
-            else:
-                self.is_multiclass = True
 
-        if self.is_multilabel:
+        if self.is_multilabel_:
             return self.process_multilabel(true, predicted, metrics, prefix, index)
 
-        if self.is_multiclass:
+        if self.is_multiclass_:
             return self.process_multiclass(true, predicted, metrics, prefix, index)
         else:
             return self.process_binary(true, predicted, metrics, prefix, index)
@@ -796,3 +783,4 @@ def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
                                            title=name)
     })
     return
+

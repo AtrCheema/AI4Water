@@ -15,18 +15,24 @@ except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
 from .nn_tools import NN
-from .backend import sklearn_models
+
 from .utils.utils import make_model
-from .postprocessing import ProcessPredictions
-from .postprocessing import prediction_distribution_plot
-from .preprocessing.transformations import Transformations
-from .utils.utils import maybe_three_outputs, get_version_info
-from .models.tensorflow.custom_training import train_step, test_step
+from .utils.utils import AttribtueSetter
 from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
+from .utils.utils import maybe_three_outputs, get_version_info
+
+from .postprocessing import ProcessPredictions
+from .postprocessing import prediction_distribution_plot
+
+from .preprocessing.transformations import Transformations
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
-from ai4water.backend import easy_mpl
+
+from .models.tensorflow.custom_training import train_step, test_step
+
+from .backend import sklearn_models
+from ai4water.backend import wandb, WandbCallback
 from ai4water.backend import np, pd, plt, os, mpl, random, h5py
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
@@ -36,13 +42,6 @@ if K.BACKEND == 'tensorflow' and tf is not None:
 
 elif K.BACKEND == 'pytorch' and torch is not None:
     from ai4water.models.torch import LOSSES, OPTIMIZERS
-
-try:
-    from wandb.keras import WandbCallback
-    import wandb
-except ModuleNotFoundError:
-    WandbCallback = None
-    wandb = None
 
 
 class BaseModel(NN):
@@ -304,6 +303,8 @@ class BaseModel(NN):
             self.verbosity = verbosity
             self.category = self.config['category']
 
+            self.mode = self.config.get('mode', None)
+
             self.info = {}
 
     @property
@@ -322,10 +323,17 @@ class BaseModel(NN):
             return list(model_def.keys())[0]
 
     @property
-    def mode(self)->str:
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, _mode=None):
         from .experiments.utils import regression_models, classification_models
-        if self.config.get('mode', None):
-            return self.config['mode']
+
+        if _mode:
+            pass
+        elif self.config['mode']:
+            _mode =  self.config['mode']
         elif self.is_custom_model:
             if self.config['loss'] in ['sparse_categorical_crossentropy',
                                        'categorical_crossentropy',
@@ -363,7 +371,7 @@ class BaseModel(NN):
         # so that next time don't have to go through all these ifelse statements
         self.config['mode'] = _mode
         self.data_config['mode'] = _mode
-        return _mode
+        self._mode = _mode
 
     @property
     def _estimator_type(self):
@@ -411,43 +419,6 @@ class BaseModel(NN):
         if hasattr(self, 'dh_'):
             return self.dh_.ts_args['forecast_step']
         return self.config['ts_args']['forecast_step']
-
-    @property
-    def is_binary(self):
-        if hasattr(self, 'dh_'):
-            return self.dh_.is_binary
-        return None
-
-    @property
-    def is_multiclass(self)->bool:
-        if self.mode == "classification":
-            if hasattr(self, 'dh_'):
-                return self.dh_.is_multiclass
-            if len(self.classes_)>2:
-                return True
-        return False
-
-    @property
-    def classes_(self):
-        if self.mode == "classification" and  hasattr(self, 'dh_'):
-            return self.dh_.classes
-        elif self.category == "ML" and self.mode == "classification":
-            return self._model.classes_
-        raise NotImplementedError
-
-    @property
-    def num_classes(self):
-        if hasattr(self, 'dh_'):
-            return self.dh_.num_classes
-        raise NotImplementedError
-
-    @property
-    def is_multilabel(self):
-        if hasattr(self, 'dh_'):
-            #if self.dh_.data is None:
-            #    return None
-            return self.dh_.is_multilabel
-        return None
 
     def _get_dummy_input_shape(self):
         raise NotImplementedError
@@ -648,7 +619,7 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:  # x,y is numpy array
-                if not user_defined and self.is_binary:
+                if not user_defined and self.is_binary_:
                     if y.shape[1] > self.output_shape[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
@@ -1021,6 +992,11 @@ class BaseModel(NN):
 
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
+        if 'Dataset' in inputs.__class__.__name__:
+            pass
+        else:
+            AttribtueSetter(self, outputs)
+
         num_examples = _find_num_examples(inputs)
         if num_examples:  # for tf.data, we can't find num_examples
             self._maybe_reduce_nquantiles(num_examples)
@@ -1040,10 +1016,10 @@ class BaseModel(NN):
 
                 elif self.mode == 'classification' and not user_defined_x:
                     activation = self.layers[-1].get_config()['activation']
-                    if self.is_binary:
+                    if self.is_binary_:
                         if activation == "softmax":
-                            assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
-                                    {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                            assert model_output_shape[0] == self.num_classes_, f"""inferred number of classes are 
+                                    {self.num_classes_} while model's output has {model_output_shape[0]} nodes """
                         else:
                             if outputs.shape[1] > model_output_shape[0]:
                                 outputs = np.argmax(outputs, 1).reshape(-1, 1)
@@ -1323,7 +1299,12 @@ class BaseModel(NN):
         else:
             raise NotImplementedError
 
-        if self.is_binary:
+        if 'Dataset' in x.__class__.__name__:
+            pass
+        else:
+            AttribtueSetter(self, y)
+
+        if self.is_binary_:
             if len(y) != y.size: # when sigmoid is used for binary
                 # convert the output to 1d
                 y = np.argmax(y, 1).reshape(-1, 1)
@@ -1647,6 +1628,9 @@ class BaseModel(NN):
                 source = data
                 x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
 
+        if not getattr(self, 'is_fitted', True):
+            AttribtueSetter(self, y)
+
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
@@ -1675,7 +1659,7 @@ class BaseModel(NN):
 
             errs = RegressionMetrics(t, p)
         else:
-            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass)
+            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass_)
 
         if isinstance(metrics, str):
 
@@ -1884,7 +1868,13 @@ class BaseModel(NN):
                 any keyword argument for .predict method.
         """
 
-        x, y = self.test_data(data=data)
+        if isinstance(data, _DataSet):
+            x, y = data.test_data()
+        else:
+            x, y = self.test_data(data=data)
+
+        if not _find_num_examples(x):
+            raise DataNotFound(f"test")
 
         return self.call_predict(
             x=x,
@@ -1993,6 +1983,10 @@ class BaseModel(NN):
                     y=y,
                     data=data)
 
+        if not getattr(self, 'is_fitted', True):
+            # prediction without fitting
+            AttribtueSetter(self, y)
+
         prefix = prefix or _prefix
 
         inputs = self._transform_x(inputs)
@@ -2031,7 +2025,10 @@ class BaseModel(NN):
                 return true_outputs, predicted
             return predicted
 
-        dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
+        if isinstance(true_outputs, dict):
+            dt_index = np.arange(set([len(v) for v in true_outputs.values()]).pop())
+        else:
+            dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
 
         if not user_defined_data:
             dt_index = self.dh_.indexes[transformation_key]
@@ -2049,8 +2046,6 @@ class BaseModel(NN):
             path=self.path,
             forecast_len=self.forecast_len,
             output_features=self.output_features,
-            is_multiclass=self.is_multiclass,
-            is_multilabel=self.is_multilabel,
             plots=plots,
             show=bool(self.verbosity),
         )
@@ -2061,10 +2056,7 @@ class BaseModel(NN):
             true_outputs = get_values(true_outputs)
             predicted = get_values(predicted)
 
-            if process_results: # if mode has not been inferred yet, try to infer it
-                if self.mode is None:  # because metrics cannot be calculated with wrong mode
-                    if len(self.classes_) == 0:
-                        pp.mode = "regression"
+            if process_results:
 
                 pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs)
                 if self.mode == 'classification':
@@ -2073,7 +2065,7 @@ class BaseModel(NN):
                         # if model does not have predict_proba method, we can't plot following
                         if hasattr(self._model, 'predict_proba'):
                             # todo if data is user defined, we don't know whether it is binary or not
-                            if self.is_binary:
+                            if pp.is_binary_:
                                 pp.precision_recall_curve(self, x=inputs, y=true_outputs, prefix=prefix)
                                 pp.roc_curve(self, x=inputs, y=true_outputs, prefix=prefix)
         else:
@@ -3583,19 +3575,66 @@ class BaseModel(NN):
         return y
 
     def training_data(self, x=None, y=None, data='training', key='train')->tuple:
-        #x,y are not used but only given to be used if user overwrites this method
+        """
+        returns the x,y pairs for training. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def training_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
         return self.__fetch('training', data,key)
 
-    def validation_data(self, x=None, y=None, data='validation', key="val", **kwargs)->tuple:
-        """This method should return x,y pairs of validation data"""
+    def validation_data(self, x=None, y=None, data='validation', key="val")->tuple:
+        """
+        returns the x,y pairs for validation. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def validation_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
+
         return self.__fetch('validation', data, key)
 
     def test_data(self, x=None, y=None, data='test', key="test")->tuple:
-        """This method should return x,y pairs of validation data"""
+        """
+        returns the x,y pairs for test. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def ttest_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
         return self.__fetch('test', data, key)
 
     def all_data(self, x=None, y=None, data=None)->tuple:
-        """it returns all i.e. training+validation+test data"""
+        """it returns all i.e. training+validation+test data
+        Example
+        -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> model = Model(model="XGBRegressor")
+        >>> train_x, train_y = model.training_data(data=data)
+        >>> print(train_x.shape, train_y.shape)
+        >>> val_x, val_y = model.validation_data(data=data)
+        >>> print(val_x.shape, val_y.shape)
+        ... # all_data will contain both training and validation data
+        >>> all_x, all_y = model.all_data(data=data)
+        >>> print(all_x.shape, all_y.shape
+        """
 
         train_x, train_y = self.training_data(x=x, y=y, data=data)
         val_x, val_y = self.validation_data(x=x, y=y, data=data)
@@ -3669,8 +3708,9 @@ class BaseModel(NN):
             user_defined_x = False
             key=f"5_{source}"
 
-            # the user has provided DataSet from which training/test data needs to be extracted
             if isinstance(data, _DataSet):
+                # the user has provided DataSet from which training/test data
+                # needs to be extracted
                 setattr(self, 'dh_', data)
                 data = getattr(data, f'{source}_data')(key=key)
 
