@@ -1,4 +1,4 @@
-import warnings
+
 from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
@@ -19,8 +19,14 @@ except ModuleNotFoundError:
     wandb = None
 
 mdates = mpl.dates
-plot_roc_curve = sklearn.metrics.RocCurveDisplay.from_estimator
-plot_precision_recall_curve = sklearn.metrics.PrecisionRecallDisplay.from_estimator
+
+try:
+    plot_roc_curve = sklearn.metrics.RocCurveDisplay.from_estimator
+    plot_precision_recall_curve = sklearn.metrics.PrecisionRecallDisplay.from_estimator
+except AttributeError:
+    plot_roc_curve = sklearn.metrics.plot_roc_curve
+    plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
+
 
 # in order to unify the use of metrics
 Metrics = {

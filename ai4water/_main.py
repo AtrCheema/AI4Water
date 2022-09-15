@@ -1005,30 +1005,7 @@ class BaseModel(NN):
         inputs = self._fit_transform_x(inputs)
         outputs = self._fit_transform_y(outputs)
 
-        if isinstance(outputs, np.ndarray) and self.category == "DL":
-
-            if isinstance(self.ai4w_outputs, list):
-                assert len(self.ai4w_outputs) == 1
-                model_output_shape = tuple(self.ai4w_outputs[0].shape.as_list()[1:])
-
-                if getattr(self, 'quantiles', None) is not None:
-                    assert model_output_shape[0] == len(self.quantiles) * self.num_outs
-
-                elif self.mode == 'classification' and not user_defined_x:
-                    activation = self.layers[-1].get_config()['activation']
-                    if self.is_binary_:
-                        if activation == "softmax":
-                            assert model_output_shape[0] == self.num_classes_, f"""inferred number of classes are 
-                                    {self.num_classes_} while model's output has {model_output_shape[0]} nodes """
-                        else:
-                            if outputs.shape[1] > model_output_shape[0]:
-                                outputs = np.argmax(outputs, 1).reshape(-1, 1)
-
-                    assert model_output_shape[0] == outputs.shape[1]
-                else:
-                    assert model_output_shape == outputs.shape[1:], f"""
-    ShapeMismatchError: Shape of model's output is {model_output_shape}
-    while the prepared targets have shape {outputs.shape[1:]}."""
+        self._verify_output_shape(outputs)
 
         self.info['training_start'] = dateandtime_now()
 
@@ -1051,6 +1028,34 @@ class BaseModel(NN):
 
         self.is_training = False
         return history
+
+    def _verify_output_shape(self, outputs):
+        """verifies that shape of target/true/labels is correct"""
+        if isinstance(outputs, np.ndarray) and self.category == "DL":
+
+            if isinstance(self.ai4w_outputs, list):
+                assert len(self.ai4w_outputs) == 1
+                model_output_shape = tuple(self.ai4w_outputs[0].shape.as_list()[1:])
+
+                if getattr(self, 'quantiles', None) is not None:
+                    assert model_output_shape[0] == len(self.quantiles) * self.num_outs
+
+                elif self.mode == 'classification':
+                    activation = self.layers[-1].get_config()['activation']
+                    if self.is_binary_:
+                        if activation == "softmax":
+                            assert model_output_shape[0] == self.num_classes_, f"""inferred number of classes are 
+                                        {self.num_classes_} while model's output has {model_output_shape[0]} nodes """
+                        else:
+                            if outputs.shape[1] > model_output_shape[0]:
+                                outputs = np.argmax(outputs, 1).reshape(-1, 1)
+
+                    assert model_output_shape[0] == outputs.shape[1]
+                else:
+                    assert model_output_shape == outputs.shape[1:], f"""
+        ShapeMismatchError: Shape of model's output is {model_output_shape}
+        while the prepared targets have shape {outputs.shape[1:]}."""
+
 
     def load_best_weights(self) -> None:
         if self.config['backend'] != 'pytorch':
@@ -1829,6 +1834,9 @@ class BaseModel(NN):
         """
 
         x, y = self.validation_data(data=data)
+
+        if _find_num_examples(x):
+            raise DataNotFound("Validation")
 
         return self.call_predict(
             x=x,

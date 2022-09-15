@@ -559,7 +559,7 @@ class Experiments(object):
         metrics_inst = Metrics[self.mode](true, predicted,
                                      replace_nan=True,
                                      replace_inf=True,
-                                     multiclass=self.model_.is_multiclass)
+                                     multiclass=self.model_.is_multiclass_)
         metrics = {}
         for metric in self.monitor:
             if isinstance(metric, str):
@@ -1655,7 +1655,7 @@ Available cases are {self.models} and you wanted to include
                                      remove_neg=True,
                                      replace_nan=True,
                                      replace_inf=True,
-                                     multiclass=model.is_multiclass)
+                                     multiclass=model.is_multiclass_)
 
         self.model_iter_metric[self.iter_] = test_metrics
         self.iter_ += 1

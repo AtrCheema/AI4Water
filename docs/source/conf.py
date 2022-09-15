@@ -22,7 +22,7 @@ copyright = '2022, Ather Abbas'
 author = 'Ather Abbas'
 
 # The full version, including alpha/beta/rc tags
-release = "1.04"
+release = "1.06"
 
 # -- General configuration ---------------------------------------------------
 
