@@ -27,7 +27,7 @@ np.random.seed(313)
 optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 from ai4water.tf_attributes import tf
-from ai4water.utils.utils import Jsonize, dateandtime_now
+from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
@@ -105,25 +105,44 @@ def check_attrs(optimizer, paras):
     return
 
 
-def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
+
+def run_unified_interface(algorithm,
+                          backend,
+                          num_iterations,
+                          num_samples=None,
+                          process_results=True,
+                          use_kws=False,
+                          ):
 
     prefix = f'test_{algorithm}_xgboost_{backend}{dateandtime_now()}'
 
-    def fn(**suggestion):
-        model = Model(
-            input_features=inputs,
-            output_features=outputs,
-            model={"XGBRegressor": suggestion},
-            prefix=prefix,
-            split_random=True,
-            verbosity=0)
+    if use_kws:
+        def fn(**suggestion):
+            model = Model(
+                input_features=inputs,
+                output_features=outputs,
+                model={"XGBRegressor": suggestion},
+                prefix=prefix,
+                split_random=True,
+                verbosity=0)
 
-        model.fit(data=data)
+            model.fit(data=data)
 
-        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
-        mse = RegressionMetrics(t, p).mse()
+            t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
+            mse = RegressionMetrics(t, p).mse()
 
-        return mse
+            return mse
+    else:
+
+        def fn(a=2, **suggestion):
+            model = Model(
+                input_features=inputs,
+                output_features=outputs,
+                model={"XGBRegressor": suggestion},
+                prefix=prefix,
+                verbosity=0)
+
+            return np.random.randn()
 
     search_space = [
         Categorical(['gbtree', 'dart'], name='booster'),
@@ -135,17 +154,21 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
                          backend=backend,
                          num_iterations=num_iterations,
                          verbosity=0,
-                         opt_path=os.path.join(os.getcwd(), f'results\\{prefix}'))
+                         opt_path=os.path.join(os.getcwd(), f'results\\{prefix}'),
+                         process_results=process_results
+                         )
 
     optimizer.fit()
     check_attrs(optimizer, len(search_space))
 
-    for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json",
-              "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
-              'distributions.png', "fanova_importance_hist.png"
-              ]:
-        fpath = os.path.join(optimizer.opt_path, f)
-        assert os.path.exists(fpath)
+    if process_results:
+
+        for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json",
+                  "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
+                  'distributions.png', "fanova_importance_hist.png"
+                  ]:
+            fpath = os.path.join(optimizer.opt_path, f)
+            assert os.path.exists(fpath)
     return optimizer
 
 
@@ -307,7 +330,7 @@ class TestHyperOpt(unittest.TestCase):
 
             kwargs['objective'] = 'reg:squarederror'
 
-            kwargs = Jsonize(kwargs)()
+            kwargs = jsonize(kwargs)
 
             model = Model(
                 input_features=inputs,
@@ -453,6 +476,21 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('bayes_rf', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
+        return
+
+    def test_kwargs_in_objective_fn(self):
+
+        run_unified_interface('tpe', 'optuna', 5, process_results=False, use_kws=True)
+        run_unified_interface('cmaes', 'optuna', 5, process_results=False, use_kws=True)
+        run_unified_interface('random', 'optuna', 5, process_results=False, use_kws=True)
+        run_unified_interface('grid', 'optuna', 5, num_samples=3, process_results=False, use_kws=True)
+        run_unified_interface('tpe', 'hyperopt', 5, process_results=False, use_kws=True)
+        #run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        run_unified_interface('random', 'hyperopt', 5, process_results=False, use_kws=True)
+        run_unified_interface('bayes', 'skopt', 12, process_results=False, use_kws=True)
+        run_unified_interface('bayes_rf', 'skopt', 12, process_results=False, use_kws=True)
+        run_unified_interface('random', 'sklearn', 5, num_samples=5, process_results=False, use_kws=True)
+        run_unified_interface('grid', 'sklearn', None, num_samples=2, process_results=False, use_kws=True)
         return
 
 

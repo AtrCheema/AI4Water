@@ -644,7 +644,20 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return paras
 
     def fit(self, *args, **kwargs):
-        """Makes and calls the underlying fit method"""
+        """Makes and calls the underlying fit method
+
+        parameters
+        ----------
+        **kwargs :
+            any keyword arguments for the userdefined objective function
+
+        Example
+        -------
+        >>> def objective_fn(a=2, b=5, **suggestions)->float:
+        ...     # do something e.g calcualte validation score
+        >>>     val_score = 2.0
+        >>>     return val_score
+        """
 
         if self.use_sklearn or self.use_skopt_bayes:
             fit_fn = self.optfn.fit
@@ -691,7 +704,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # this will be used for gp_minimize
         return list(self.param_space)
 
-    def model_for_gpmin(self):
+    def model_for_gpmin(self, **kws):
         """
         This function can be called in two cases
             - The user has made its own objective_fn.
@@ -708,13 +721,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             # external function and this function accepts named args.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
-                return self.objective_fn(**kwargs)
+                return self.objective_fn(**kwargs, **kws)
             return fitness
 
         raise ValueError(f"used named args is {self.use_named_args}")
 
-    def own_fit(self):
-
+    def own_fit(self, **kws):
+        """kws are the keyword arguments to user objective function
+        by the user
+        """
         if self.algorithm == "bayes":
             minimize_func = gp_minimize
         else: # bayes_rf
@@ -725,9 +740,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             kwargs['n_calls'] = kwargs.pop('num_iterations')
 
         try:
-            search_result = minimize_func(func=self.model_for_gpmin(),
-                                        dimensions=self.dims(),
-                                        **kwargs)
+            search_result = minimize_func(
+                func=self.model_for_gpmin(**kws),
+                dimensions=self.dims(),
+                **kwargs)
         except ValueError as e:
             if int(''.join(sklearn.__version__.split('.')[1])) > 22:
                 raise ValueError(f"""
@@ -769,17 +785,20 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return search_result
 
-    def eval_sequence(self, params):
-
+    def eval_sequence(self, params, **kwargs):
+        """"
+        kwargs :
+            any additional keyword arguments for objective_fn
+        """
         if self.verbosity > 0:
             print(f"total number of iterations: {len(params)}")
         for idx, para in enumerate(params):
 
             if self.use_named_args:  # objective_fn is external but uses kwargs
-                err = self.objective_fn(**para)
+                err = self.objective_fn(**para, **kwargs)
             else:  # objective_fn is external and does not uses keywork arguments
                 try:
-                    err = self.objective_fn(*list(para.values()))
+                    err = self.objective_fn(*list(para.values()), **kwargs)
                 except TypeError:
                     raise TypeError(f"""
                         use_named_args argument is set to {self.use_named_args}. If your
@@ -798,15 +817,21 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return self.results
 
-    def grid_search(self):
+    def grid_search(self, **kwargs):
 
         params = list(ParameterGrid(self.param_space))
         self.param_grid = params
 
-        return self.eval_sequence(params)
+        return self.eval_sequence(params, **kwargs)
 
-    def random_search(self):
-
+    def random_search(self, **kwargs):
+        """
+        objective function that will used during random search method.
+        parameters
+        ----------
+            kwargs :
+                keyword arguments in the user defined objective function.
+        """
         for k, v in self.param_space.items():
             if v is None:
                 grid = self.space()[k].grid
@@ -824,10 +849,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         self.param_grid = param_list
 
-        return self.eval_sequence(param_list)
+        return self.eval_sequence(param_list, **kwargs)
 
     def optuna_objective(self, **kwargs):
-
+        """
+        objective function that will used during random search method.
+        parameters
+        ----------
+            kwargs :
+                keyword arguments in the user defined objective function.
+        """
         if self.verbosity == 0:
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
@@ -842,7 +873,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             suggestion = {}
             for space_name, _space in self.param_space.items():
                 suggestion[space_name] = _space.suggest(trial)
-            return self.objective_fn(**suggestion)
+            return self.objective_fn(**suggestion, **kwargs)
 
         if self.algorithm in ['tpe', 'cmaes', 'random']:
             study = optuna.create_study(direction='minimize', sampler=sampler[self.algorithm]())
