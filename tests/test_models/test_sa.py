@@ -9,7 +9,7 @@ from ai4water import Model
 from ai4water.datasets import busan_beach
 
 data = busan_beach()
-input_features=data.columns.tolist()[0:-1]
+input_features=data.columns.tolist()[0:3]
 output_features = data.columns.tolist()[-1:]
 
 model=Model(model="RandomForestRegressor",

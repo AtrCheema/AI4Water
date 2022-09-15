@@ -51,7 +51,8 @@ class TestOptimize(unittest.TestCase):
             data=df,
             exclude="tide_cm",
             algorithm="random",
-            num_iterations=30)
+            num_iterations=3,
+            process_results=False,)
 
         assert isinstance(model.config['x_transformation'], list)
         assert model.config['y_transformation'] is None
@@ -69,7 +70,9 @@ class TestOptimize(unittest.TestCase):
             exclude="tide_cm",
             algorithm="random",
             y_transformations=['log', 'sqrt'],
-            num_iterations=3)
+            num_iterations=3,
+            process_results=False,
+        )
 
         assert isinstance(model.config['x_transformation'], list)
         assert isinstance(model.config['y_transformation'], list)
@@ -135,9 +138,11 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
         model = Model(model=self.config,
                       verbosity=0)
-        optimizer = model.optimize_hyperparameters(data=data)
+        optimizer = model.optimize_hyperparameters(data=data, algorithm='random',
+                                                   num_iterations=6
+                                                   )
         s = set([xy['x']['n_estimators'] for xy in optimizer.xy_of_iterations().values()])
-        assert len(s) > 5  # assert that all suggestions are not same
+        assert len(s) >= 5, s  # assert that all suggestions are not same
         op = os.path.join(os.getcwd(), optimizer.opt_path)
         fname = os.path.join(op, "convergence.png")
         assert os.path.exists(fname)
@@ -153,6 +158,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       verbosity=0)
         x, y = DataSet(data.values).training_data()
         optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)),
+                                                   algorithm = 'random', num_iterations = 3,
                                                    process_results=False)
 
         # make sure that model's config has been updated
@@ -364,7 +370,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       verbosity=0,
                       input_features=input_features,
                       output_features=output_features,
-                      ts_args = {"lookback": 15},
+                      ts_args = {"lookback": 5},
                       epochs=5)
 
         print(model.path, 'model.path')
@@ -430,11 +436,11 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
         )
 
-        optimizer = model.optimize_hyperparameters(data=data, num_iterations=30)
+        optimizer = model.optimize_hyperparameters(data=data, num_iterations=5, algorithm='random')
 
         best_val_score = optimizer.best_xy()['y']
-        model.fit()
-        val_metric_post_train = model.evaluate(data='validation', metrics='r2')
+        model.fit(data=data)
+        val_metric_post_train = model.evaluate_on_validation_data(data=data, metrics='r2')
         self.assertAlmostEqual(val_metric_post_train, 1.0 - best_val_score, places=2)
         return
 
@@ -461,14 +467,16 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             include=[],
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
             data=data,
-            num_iterations=12,)
+            num_iterations=4,
+            algorithm='random',
+            process_results=False)
         best_val_score = optimizer.best_xy()['y']
         best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
-        model.fit()
+        model.fit(data=data)
 
-        t, p = model.predict(data='validation', return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
         val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
 
@@ -495,14 +503,17 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
                 include=[],
                 y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
                 data=data,
-                num_iterations=12,)
+                num_iterations=4,
+                algorithm='random',
+                process_results=False
+            )
             best_val_score = optimizer.best_xy()['y']
             best_val_iter = optimizer.best_iter()
 
             # train model with optimized transformations
-            model.fit()
+            model.fit(data=data)
 
-            t, p = model.predict(data='validation', return_true=True, process_results=False)
+            t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
             val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
 
@@ -521,13 +532,17 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
         optimizer = model.optimize_transformations(
             include=[],
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
-            data=data)
+            data=data,
+            num_iterations=4,
+            algorithm='random',
+            process_results=False
+        )
         best_val_score = optimizer.best_xy()['y']
 
         # train model with optimized transformations
-        model.fit()
+        model.fit(data=data)
 
-        t, p = model.predict(data='validation', return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
         val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
         self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
@@ -544,19 +559,20 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             )
 
         optimizer = model.optimize_transformations(
-            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
-                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
-            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            transformations=['log', 'log2'],
+            y_transformations=['log', 'log2'],
             data=data,
-            num_iterations=25
+            num_iterations=4,
+            algorithm='random',
+            process_results=False
             )
         best_val_score = optimizer.best_xy()['y']
         best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
-        model.fit()
+        model.fit(data=data)
 
-        t, p = model.predict(data='validation', return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
         val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
         print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
@@ -576,19 +592,20 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             )
 
         optimizer = model.optimize_transformations(
-            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
-                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
-            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            transformations=['log', 'log2'],
+            y_transformations=['log', 'log2'],
             data=data,
-            num_iterations=25
+            num_iterations=4,
+            algorithm='random',
+            process_results=False
             )
         best_val_score = optimizer.best_xy()['y']
         best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
-        model.fit()
+        model.fit(data=data)
 
-        t, p = model.predict(data='validation', return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
         val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
         print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
@@ -608,19 +625,19 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             )
 
         optimizer = model.optimize_transformations(
-            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
-                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
-            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
             data=data,
-            num_iterations=25
+            num_iterations=4,
+            algorithm='random',
+            process_results=False
             )
         best_val_score = optimizer.best_xy()['y']
         best_val_iter = optimizer.best_iter()
 
         # train model with optimized transformations
-        model.fit()
+        model.fit(data=data)
 
-        t, p = model.predict(data='validation', return_true=True, process_results=False)
+        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
 
         val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
         print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")

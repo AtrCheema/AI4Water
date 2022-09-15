@@ -177,6 +177,7 @@ class test_MultiInputModels(unittest.TestCase):
         model = MyModel(train_fraction=1.0, verbosity=0, category="DL")
 
         hist = model.fit()
+        assert model.mode == "regression"
         self.assertGreater(len(hist.history['loss']), 1)
 
         return
@@ -224,7 +225,7 @@ class test_MultiInputModels(unittest.TestCase):
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
         model.fit(data=data.astype(np.float32))
 
-        t,p = model.predict(return_true=True)
+        t,p = model.predict_on_test_data(data=data.astype(np.float32), return_true=True)
         assert p.shape[1]==3
         return
 

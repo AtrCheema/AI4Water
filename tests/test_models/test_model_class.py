@@ -174,7 +174,7 @@ class TestPredictMethod(unittest.TestCase):
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
                     verbosity=0)
-        p = model.predict(data=data)
+        p = model.predict_on_test_data(data=data)
         assert isinstance(p, np.ndarray)
         return
 
@@ -206,8 +206,9 @@ class TestPredictMethod(unittest.TestCase):
         model = Model(model="RandomForestRegressor",
             train_fraction=1.0, verbosity=0)
         model.fit(data=data)
-        model.predict()
+        statement = model.predict_on_test_data
 
+        self.assertRaises(DataNotFound, statement, data=data)
         return
 
     def test_with_no_val_and_test_data(self):
@@ -216,7 +217,9 @@ class TestPredictMethod(unittest.TestCase):
             train_fraction=1.0,
             val_fraction=0.0, verbosity=0)
         model.fit(data=data)
-        model.predict()
+        statement = model.predict_on_test_data
+
+        self.assertRaises(DataNotFound, statement, data=data)
 
         return
 
