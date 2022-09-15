@@ -127,11 +127,6 @@ class DualAttentionModel(FModel):
 
         setattr(self, 'category', "DL")
 
-    @property
-    def mode(self) ->str:
-        self.config['mode'] = "regression"
-        return self.config['mode']
-
     def build(self, input_shape=None):
 
         self.config['dec_config'] = self.dec_config
