@@ -761,6 +761,11 @@ def TFT(
 
     Examples
     --------
+    >>> from ai4water import Model
+    >>> from ai4water.models import TFT
+    >>> from ai4water.datasets import busan_beach
+    >>> model = Model(model=TFT(input_shape=(14, 13)),
+    ...                   ts_args={"lookback": 14})
     """
     import tensorflow as tf
 

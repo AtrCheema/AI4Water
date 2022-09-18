@@ -115,7 +115,7 @@ However, integration of ML based models is not complete yet.
     ...         val_fraction=0.0,
     ...         #  any regressor from https://scikit-learn.org/stable/modules/classes.html
     ...         model={"RandomForestRegressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
-    ...     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
+    ...     # some of the parameters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
     ...               )
     ...
     >>> history = model.fit(data=data)

@@ -228,7 +228,7 @@ class ProcessPredictions(Plot):
         raise NotImplementedError
 
     def edf_plot(self, true, predicted, prefix, where, **kwargs):
-        """cummulative distribution function of absolute error between true and predicted."""
+        """cumulative distribution function of absolute error between true and predicted."""
 
         if isinstance(true, (pd.DataFrame, pd.Series)):
             true = true.values
@@ -382,7 +382,7 @@ class ProcessPredictions(Plot):
         legends = {
             'mean_absolute_error': 'Mean Absolute Error',
             'mape': 'Mean Absolute Percentage Error',
-            'mean_squared_logarithmic_error': 'Mean Squared Logrithmic Error',
+            'mean_squared_logarithmic_error': 'Mean Squared Logarithmic Error',
             'pbias': "Percent Bias",
             "nse": "Nash-Sutcliff Efficiency",
             "kge": "Kling-Gupta Efficiency",
@@ -470,8 +470,13 @@ class ProcessPredictions(Plot):
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None,
-                        save=True):
+    def plot_quantiles2(
+            self, true_outputs,
+            predicted,
+            st=0,
+            en=None,
+            save=True
+    ):
         plt.close('all')
         plt.style.use('ggplot')
 
@@ -740,7 +745,7 @@ class ProcessPredictions(Plot):
 
 
 def choose_examples(x, examples_to_use, y=None):
-    """Chooses exampels from x and y"""
+    """Chooses examples from x and y"""
     if isinstance(examples_to_use, int):
         x = x[examples_to_use]
         x = np.expand_dims(x, 0)  # dimension must not decrease
