@@ -81,6 +81,10 @@ class MLClassificationExperiments(Experiments):
     def mode(self):
         return "classification"
 
+    @property
+    def category(self):
+        return "ML"
+
     def _compare_cls_curves(self, x, y, save, show, func, name):
 
         model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path,p))]
@@ -95,7 +99,7 @@ class MLClassificationExperiments(Experiments):
 
         # load all models from config
         for m_path in m_paths:
-
+            print(f'here: {m_path}')
             m_path = os.path.join(self.exp_path, m_path)
             assert len(os.listdir(m_path)) == 1
             m_path = os.path.join(m_path, os.listdir(m_path)[0])
@@ -110,8 +114,19 @@ class MLClassificationExperiments(Experiments):
                 # which will only throw error
                 kws['estimator'] = model._model
 
-            if 'NearestCentroid' in model.model_name:
+            if model.model_name in ['Perceptron', 'PassiveAggressiveClassifier',
+                                    'NearestCentroid', 'RidgeClassifier',
+                                    'RidgeClassifierCV']:
                 continue
+
+            if model.model_name in ['NuSVC' , 'SVC']:
+                if not model._model.get_params()['probability']:
+                    continue
+
+            if 'SGDClassifier' in model.model_name:
+                if model._model.get_params()['loss'] == 'hinge':
+                    continue
+
             func(**kws)
 
         if save:

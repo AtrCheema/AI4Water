@@ -1,5 +1,7 @@
 __all__ = ["DLRegressionExperiments"]
 
+from ai4water.backend import tf
+from ai4water.utils.utils import jsonize
 from ai4water.hyperopt import Integer, Real, Categorical
 from ai4water.utils.utils import dateandtime_now
 from ai4water.models import MLP, CNN, LSTM, CNNLSTM, LSTMAutoEncoder, TFT, TCN
@@ -10,7 +12,11 @@ from .utils import dl_space
 
 class DLRegressionExperiments(Experiments):
     """
-    a framework for comparing several basic DL architectures for a given data.
+    A framework for comparing several basic DL architectures for a given data.
+    This class can also be used for hyperparameter optimization of more than
+    one DL models/architectures. However, the parameters which determine
+    the dimensions of input data such as ``lookback`` should are
+    not allowed to optimize when using random or grid search.
 
     To check the available models
     >>> exp = DLRegressionExperiments(...)
@@ -72,6 +78,10 @@ class DLRegressionExperiments(Experiments):
         )
 
         self.spaces = dl_space(num_samples=num_samples)
+
+    @property
+    def category(self):
+        return "DL"
 
     @property
     def input_shape(self) -> tuple:
@@ -136,6 +146,16 @@ class DLRegressionExperiments(Experiments):
     @property
     def tpot_estimator(self):
         return None
+
+    def _pre_build_hook(self, **suggested_paras):
+        """suggested_paras contain model configuration which
+        may contain executable tf layers which should be
+        serialized properly."""
+
+        suggested_paras = jsonize(suggested_paras, {
+            tf.keras.layers.Layer: tf.keras.layers.serialize})
+
+        return suggested_paras
 
     def model_MLP(self, **kwargs):
         """multi-layer perceptron model"""

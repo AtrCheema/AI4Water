@@ -36,7 +36,10 @@ class TestExperiments(unittest.TestCase):
                         'features': input_features},
             verbosity=0
         )
-        exclude = []
+        exclude = [
+            'model_RadiusNeighborsRegressor'  # nan predictions
+                   ]
+
 
         comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2', show=False)
@@ -71,7 +74,7 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
                         'features': input_features},
-            exp_name="BestMLModels",
+            exp_name=f"BestMLModels_{dateandtime_now()}",
         verbosity=0)
         comparisons.num_samples = 2
         comparisons.fit(data=df, run_type="optimize", opt_method="random",
@@ -149,7 +152,7 @@ class TestExperiments(unittest.TestCase):
 
                 return {
                     'model': {'layers': _layers},
-                    'ts_args': {'lookback': int(kwargs['lookback'])},
+                    #'ts_args': {'lookback': int(kwargs['lookback'])},
                     'batch_size': int(kwargs['batch_size']),
                     'lr': float(kwargs['lr']),
                     'x_transformation': kwargs['transformation']
@@ -159,19 +162,21 @@ class TestExperiments(unittest.TestCase):
                  'model_zscore': {'transformation': 'zscore'}}
         search_space = [
             Integer(low=16, high=64, name='lstm_units', num_samples=2),
-            Integer(low=3, high=15, name="lookback", num_samples=2),
+            #Integer(low=3, high=15, name="lookback", num_samples=2),
             Categorical(categories=[4, 8, 12, 16, 24, 32], name='batch_size'),
             Real(low=1e-6, high=1.0e-3, name='lr', prior='log', num_samples=2),
             Categorical(categories=['relu', 'elu'], name='dense_actfn'),
         ]
 
-        x0 = [4, 5, 32, 0.00029613, 'relu']
+        x0 = [4, #5,
+              32, 0.00029613, 'relu']
         experiment = MyTransformationExperiments(cases=cases,
                                                  input_features=input_features,
                                                  output_features = outputs,
                                                  param_space=search_space,
                                                  x0=x0,
                                                  verbosity=0,
+                                                 ts_args={"lookback": 5},
                                                  exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
         experiment.fit(data = df, run_type='optimize', opt_method='random',

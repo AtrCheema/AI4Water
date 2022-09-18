@@ -60,7 +60,8 @@ class TestCls(unittest.TestCase):
             # giving nan predictions
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
             'LinearDiscriminantAnalysis',
-        ]
+        ],
+                #include=['model_XGBRFClassifier', 'model_XGBClassifier']
                 )
         exp.compare_errors('accuracy', show=False, save=False)
         exp.compare_errors('f1_score', show=False, save=False)
@@ -85,6 +86,7 @@ class TestCls(unittest.TestCase):
                     'QuadraticDiscriminantAnalysis',
                     'LinearDiscriminantAnalysis'
                 ],
+                include=['model_XGBRFClassifier', 'RandomForestClassifier'],
                 cross_validate=True,
                 )
 
@@ -103,8 +105,6 @@ class TestCls(unittest.TestCase):
         exp.fit(data=data,
                 include=[
                     # "model_AdaBoostClassifier", TODO
-                    "model_CatBoostClassifier",
-                    "model_LGBMClassifier",
                     "model_XGBClassifier",
                     "RandomForestClassifier"
                 ],
@@ -121,11 +121,10 @@ class TestCls(unittest.TestCase):
         )
 
         exp.fit(data=data_multiclass,
-                exclude=[
-            # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
-                    'NuSVC',
-        ]
+                            include=[
+                                "model_XGBClassifier",
+                                "RandomForestClassifier"
+                            ],
                 )
         return
 
@@ -138,11 +137,11 @@ class TestCls(unittest.TestCase):
             output_features=['target']
         )
 
-        exp.fit(data=data_multiclass, exclude=[
-            # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
-            'NuSVC',  # ValueError: specified nu is infeasible
-        ],
+        exp.fit(data=data_multiclass,
+                include=[
+                    "model_XGBClassifier",
+                    "RandomForestClassifier"
+                ],
                 cross_validate=True
                 )
 

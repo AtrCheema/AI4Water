@@ -14,7 +14,6 @@ data = busan_beach()
 
 class TestDLExeriments(unittest.TestCase):
 
-
     def test_rgr_dry_run(self):
 
         exp = DLRegressionExperiments(
@@ -50,6 +49,7 @@ class TestDLExeriments(unittest.TestCase):
                 include=["MLP", "CNN"],
                 run_type="optimize",
                 num_iterations=12)
+        return
 
 
 if __name__ == "__main__":

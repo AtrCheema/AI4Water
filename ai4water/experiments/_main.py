@@ -1,3 +1,4 @@
+import gc
 import json
 import math
 from typing import Union, Tuple, List, Callable, Optional
@@ -7,7 +8,10 @@ from SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.backend import tf, os, np, pd, plt, easy_mpl
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
+from ai4water.utils.utils import make_model
+from ai4water.utils.utils import TrainTestSplit
 from ai4water.utils.utils import jsonize, ERROR_LABELS
+from ai4water.utils.utils import AttribtueSetter
 from ai4water.postprocessing import ProcessPredictions
 from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
 
@@ -138,7 +142,7 @@ class Experiments(object):
         self.num_samples = num_samples
         self.verbosity = verbosity
 
-        self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
+        self.models = [method for method in dir(self) if method.startswith('model_')]
 
         if cases is None:
             cases = {}
@@ -164,6 +168,10 @@ class Experiments(object):
 
         # _run_type is actually set during call to .fit
         self._run_type = None
+
+    def _pre_build_hook(self, **suggested_paras):
+        """Anything that needs to be performed before building the model."""
+        return suggested_paras
 
     def update_and_save_config(self, **kwargs):
         self.update_config(**kwargs)
@@ -244,7 +252,8 @@ class Experiments(object):
             x=None,
             y=None,
             data=None,
-            validation_data: tuple = None,
+            validation_data: Optional[tuple] = None,
+            test_data: Optional[tuple] = None,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -259,7 +268,13 @@ class Experiments(object):
         however, specify the models by making use of ``include`` and ``exclud``
         keywords.
 
-        todo, post_optimize not working for 'eval_best' with ML methods.
+        The data should be defined according to following four rules
+        either
+            - only x,y should be given (val will be taken from it according to splitting schemes)
+            - or x,y and validation_data should be given  (means no test data)
+            - or x, y and validation_data and test_data are given
+            - or only data should be given (train, validation and test data will be
+                taken accoring to splitting schemes)
 
         Parameters
         ----------
@@ -273,8 +288,10 @@ class Experiments(object):
                 this will be passed to :py:meth:`ai4water.Model.fit`.
                 This is is only required if ``x`` and ``y`` are not given
             validation_data :
-                a tuple which consists of x,y pairs for validation data. This is only
-                required if ``x`` and ``y`` are given and ``data`` is not given.
+                a tuple which consists of x,y pairs for validation data. This can only
+                be given if ``x`` and ``y`` are given and ``data`` is not given.
+            test_data : tuple, optional
+                This data is optional and will only be used for comparison plots.
             run_type : str, optional (default="dry_run")
                 One of ``dry_run`` or ``optimize``. If ``dry_run``, then all
                 the `models` will be trained only once. if ``optimize``, then
@@ -335,19 +352,22 @@ class Experiments(object):
 
         """
 
-        verify_data(x, y, data, validation_data)
+        train_x, train_y, val_x, val_y, test_x, test_y = self.verify_data(
+            x, y, data, validation_data, test_data=test_data)
+
+        AttribtueSetter(self, train_y)
+
+        del x, y, data, validation_data, test_data
+        gc.collect()
 
         assert run_type in ['optimize', 'dry_run'], f"run_type mus"
         self._run_type = run_type
 
-        assert post_optimize in ['eval_best', 'train_best'], f"post_optimize must be either 'eval_best' or 'train_best' but it is {post_optimize}"
+        assert post_optimize in ['eval_best', 'train_best'], f"""
+        post_optimize must be either 'eval_best' or 'train_best' but it is {post_optimize}"""
 
         if exclude == '':
             exclude = []
-
-        predict = False
-        if run_type == 'dry_run':
-            predict = True
 
         if hpo_kws is None:
             hpo_kws = {}
@@ -388,10 +408,9 @@ class Experiments(object):
                         raise TypeError
 
                     return self._build_fit_eval(
-                        x=x,
-                        y=y,
-                        data=data,
-                        validation_data=validation_data,
+                        train_x=train_x,
+                        train_y=train_y,
+                        validation_data=(val_x, val_y),
                         cross_validate=cross_validate,
                         title=f"{self.exp_name}{SEP}{model_name}",
                         **config)
@@ -404,12 +423,15 @@ class Experiments(object):
                 if run_type == 'dry_run':
                     if self.verbosity >= 0: print(f"running  {model_type} model")
                     _ = objective_fn(**self._named_x0())
-                    train_results, test_results = self._predict(model=self.model_,
-                                                                x=x,
-                                                                y=y,
-                                                                data=data,
-                                                                validation_data=validation_data)
-                    self._populate_results(model_name, train_results, test_results)
+                    train_results = self._predict(model=self.model_, x=train_x, y=train_y)
+                    val_results = self._predict(model=self.model_, x=val_x, y=val_y)
+
+                    if test_x is None:
+                        test_results = None, None
+                    else:
+                        test_results = self._predict(model=self.model_, x=test_x, y=test_y)
+
+                    self._populate_results(model_name, train_results, val_results, test_results)
 
                     if cross_validate:
                         cv_scoring = self.model_.val_metric
@@ -445,9 +467,11 @@ class Experiments(object):
                         setattr(self, '_cv_scoring', cv_scoring)
 
                     if post_optimize == 'eval_best':
-                        self.eval_best(x, y, data, validation_data, model_name, opt_dir)
+                        self.eval_best(train_x, train_y, (val_x, val_y), model_name, opt_dir,
+                                       test_data=(test_x, test_y))
                     elif post_optimize == 'train_best':
-                        self.train_best(x, y, data, validation_data, model_name)
+                        self.train_best(train_x, train_y, (val_x, val_y), model_name,
+                                        test_data=(test_x, test_y))
 
                 if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
                     raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
@@ -466,17 +490,17 @@ class Experiments(object):
             self,
             x,
             y,
-            data,
-            validation_data,
-            model_type,
-            opt_dir
+            validation_data:tuple,
+            model_type:str,
+            opt_dir:str,
+            test_data: Optional[tuple] = None
     ):
         """Evaluate the best models."""
 
         folders = [path for path in os.listdir(opt_dir) if os.path.isdir(os.path.join(opt_dir, path)) and path.startswith('1_')]
 
         if len(folders) < 1:
-            return self.train_best(x, y, data, validation_data, model_type)
+            return self.train_best(x, y, validation_data, model_type, test_data)
 
         assert len(folders) == 1, f"{folders}"
 
@@ -487,71 +511,95 @@ class Experiments(object):
 
             self.update_model_weight(model, os.path.join(opt_dir, mod_path))
 
-            (train_true, train_pred), (test_true, test_pred) = self._predict(model,
-                                                                             x=x,
-                                                                             y=y,
-                                                                             validation_data=validation_data,
-                                                                             data=data)
+            train_results = self._predict(model, x=x, y=y)
+            val_results = self._predict(model, *validation_data)
 
-            self._populate_results(model_type, (train_true, train_pred), (test_true, test_pred))
+            test_results = None, None
+            if test_data[0] is not None:
+                test_results = self._predict(model, *test_data)
+
+            self._populate_results(model_type, train_results, val_results, test_results)
         return
 
     def train_best(
             self,
             x,
             y,
-            data,
             validation_data,
-            model_type
+            model_type,
+            test_data: Optional[tuple] = None
     ):
         """Finds the best model, builts it, fits it and makes predictions from it."""
+
         best_paras = self.optimizer.best_paras()
         if best_paras.get('lookback', 1) > 1:
             _model = 'layers'
         else:
             _model = model_type
-        train_results, test_results = self._build_fit_predict(
-            x=x,
-            y=y,
-            data=data,
-            validation_data=validation_data,
-            model={_model: self.optimizer.best_paras()},
-            title=f"{self.exp_name}{SEP}{model_type}{SEP}best",
-            refit=True,
-        )
 
-        self._populate_results(model_type, train_results, test_results)
+        refit = True
+        if test_data[0] is None:
+            # we don't have test data, so training on whole i.e. training + validation data
+            # will make the comparisons useless
+            refit = False
+
+        title = f"{self.exp_name}{SEP}{model_type}{SEP}best"
+        model = self._build_fit(x, y,
+                                validation_data=validation_data,
+                                view=False,
+                                title=title,
+                                cross_validate=False,
+                                refit=refit,
+                                model={_model: self.optimizer.best_paras()},
+                                )
+
+        train_results = self._predict(model, x=x, y=y)
+        val_results = self._predict(model, *validation_data)
+
+        test_results = None, None
+        if test_data[0] is not None:
+            test_results = self._predict(model, *test_data)
+
+        self._populate_results(model_type, train_results, val_results, test_results)
         return
 
-    def _populate_results(self,
-                          model_type: str,
-                          train_results: Tuple[np.ndarray, np.ndarray],
-                          test_results: Tuple[np.ndarray, np.ndarray]
-                          ):
-
+    def _populate_results(
+            self,
+            model_type: str,
+            train_results: Tuple[np.ndarray, np.ndarray],
+            val_results: Tuple[np.ndarray, np.ndarray] = None,
+            test_results: Tuple[np.ndarray, np.ndarray] = None,
+    ):
+        """populates self.metrics dictionary"""
         if not model_type.startswith('model_'):  # internally we always use model_ at the start.
             model_type = f'model_{model_type}'
 
-        # save standard deviation on true and predicted arrays of train and test
-        self.features[model_type] = {
-            'train': {
-                'true': {
-                    'std': np.std(train_results[0])},
-                'simulation': {
-                    'std': np.std(train_results[1])}},
-
-            'test': {
-                'true': {
-                    'std': np.std(test_results[0])},
-                'simulation': {
-                    'std': np.std(test_results[1])}}}
+        metrics = dict()
+        features = dict()
 
         # save performance metrics of train and test
-        train_metrics = self._get_metrics(train_results[0], train_results[1])
+        metrics['train'] = self._get_metrics(*train_results)
+        features['train'] = {
+            'true': {'std': np.std(train_results[0])},
+            'simulation': {'std': np.std(train_results[1])}
+        }
 
-        test_metrics = self._get_metrics(test_results[0], test_results[1])
+        if val_results is not None:
+            metrics['val'] = self._get_metrics(*val_results)
+            features['val'] = {
+                'true': {'std': np.std(val_results[0])},
+                'simulation': {'std': np.std(val_results[1])}
+            }
 
-        self.metrics[model_type] = {'train': train_metrics, 'test': test_metrics}
+        if test_results[0] is not None:
+            metrics['test'] = self._get_metrics(*test_results)
+            features['test'] = {
+                'true': {'std': np.std(test_results[0])},
+                'simulation': {'std': np.std(test_results[1])}
+            }
+
+        self.metrics[model_type] = metrics
+        self.features[model_type] = features
         return
 
     def _get_metrics(self, true:np.ndarray, predicted:np.ndarray)->dict:
@@ -559,7 +607,7 @@ class Experiments(object):
         metrics_inst = Metrics[self.mode](true, predicted,
                                      replace_nan=True,
                                      replace_inf=True,
-                                     multiclass=self.model_.is_multiclass_)
+                                     multiclass=self.is_multiclass_)
         metrics = {}
         for metric in self.monitor:
             if isinstance(metric, str):
@@ -627,15 +675,22 @@ class Experiments(object):
 
         train_std = [_model['train']['true']['std'] for _model in self.features.values()]
         train_std = list(set(train_std))[0]
-        test_std = [_model['test']['true']['std'] for _model in self.features.values()]
-        test_std = list(set(test_std))[0]
+
+        if 'test' in list(self.features.values())[0]:
+            test_std = [_model['test']['true']['std'] for _model in self.features.values()]
+            test_std = list(set(test_std))[0]
+            test_data_type = "test"
+        else:
+            test_std = [_model['val']['true']['std'] for _model in self.features.values()]
+            test_std = list(set(test_std))[0]
+            test_data_type = "val"
 
         observations = {'train': {'std': train_std},
-                        'test': {'std': test_std}}
+                        test_data_type: {'std': test_std}}
 
-        simulations = {'train': None, 'test': None}
+        simulations = {'train': None, test_data_type: None}
 
-        for scen in ['train', 'test']:
+        for scen in ['train', test_data_type]:
 
             scen_stats = {}
             for model, _metrics in metrics.items():
@@ -888,13 +943,13 @@ Available cases are {self.models} and you wanted to include
 
         bar_chart(ax=axis[1],
                   labels=models.index.tolist(),
-                  values=models['test'],
+                  values=models.iloc[:, 1],
                   color=kwargs.get('color', None),
-                  ax_kws={'title':"Test",
-                  'xlabel':ERROR_LABELS.get(matric_name, matric_name),
-                  'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
-                  'title_kws':{'fontsize': kwargs.get('title_fs', 20)},
-                  'show_yaxis':False},
+                  ax_kws={'title': models.columns.tolist()[1],
+                          'xlabel':ERROR_LABELS.get(matric_name, matric_name),
+                          'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
+                          'title_kws':{'fontsize': kwargs.get('title_fs', 20)},
+                          'show_yaxis':False},
                   show=False
                   )
 
@@ -1286,12 +1341,19 @@ Available cases are {self.models} and you wanted to include
         """returns the models sorted according to their performance"""
 
         idx = list(self.metrics.keys())
-        train_metrics = [v['train'][metric_name] for v in self.metrics.values()]
-        test_metrics = [v['test'][metric_name] for v in self.metrics.values()]
+        metrics = dict()
 
-        df = pd.DataFrame(np.vstack((train_metrics, test_metrics)).T,
-                          index=idx,
-                          columns=['train', 'test'])
+        metrics['train'] = np.array([v['train'][metric_name] for v in self.metrics.values()])
+
+        if 'test' in list(self.metrics.values())[0]:
+            metrics['test'] = np.array([v['test'][metric_name] for v in self.metrics.values()])
+        else:
+            metrics['val'] = np.array([v['val'][metric_name] for v in self.metrics.values()])
+
+        if 'test' not in metrics and sort_by == "test":
+            sort_by = "val"
+
+        df = pd.DataFrame(metrics,  index=idx)
         if ignore_nans:
             df = df.dropna()
 
@@ -1479,9 +1541,8 @@ Available cases are {self.models} and you wanted to include
 
     def _build_fit(
             self,
-            x=None,
-            y=None,
-            data=None,
+            train_x=None,
+            train_y=None,
             validation_data=None,
             view=False,
             title=None,
@@ -1493,9 +1554,8 @@ Available cases are {self.models} and you wanted to include
 
         self._fit(
             model,
-            x=x,
-            y=y,
-            data=data,
+            train_x=train_x,
+            train_y=train_y,
             validation_data=validation_data,
             cross_validate=cross_validate,
             refit = refit,
@@ -1506,44 +1566,10 @@ Available cases are {self.models} and you wanted to include
 
         return model
 
-    def _build_fit_predict(
-            self,
-            x=None,
-            y=None,
-            data=None,
-            validation_data=None,
-            view=False,
-            title=None,
-            cross_validate: bool=False,
-            refit: bool=False,
-            **kwargs
-    )->Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
-
-        """
-        Builds and run one 'model' of the experiment.
-
-        Since an experiment consists of many models, this method
-        is also run many times.
-        reft : bool
-            This means fit on training + validation data. This is true
-            when we have optimized the hyperparameters and now we would
-            like to fit on training + validation data as well.
-        """
-        model = self._build_fit(x, y, data, validation_data, view, title, cross_validate, refit, **kwargs)
-
-        return self._predict(
-            model,
-            x=x,
-            y=y,
-            data=data,
-            validation_data=validation_data
-        )
-
     def _build_fit_eval(
             self,
-            x=None,
-            y=None,
-            data=None,
+            train_x=None,
+            train_y=None,
             validation_data=None,
             view=False,
             title=None,
@@ -1562,13 +1588,17 @@ Available cases are {self.models} and you wanted to include
             when we have optimized the hyperparameters and now we would
             like to fit on training + validation data as well.
         """
-        model = self._build_fit(x, y, data, validation_data, view, title, cross_validate, refit, **kwargs)
+        model = self._build_fit(train_x, train_y,
+                                validation_data, view, title,
+                                cross_validate, refit, **kwargs)
 
         # return the validation score
-        return self._evaluate(model, data=data, validation_data=validation_data)
+        return self._evaluate(model, validation_data=validation_data)
 
     def _build(self, title=None, **suggested_paras):
         """Builds the ai4water Model class and makes it a class attribute."""
+
+        suggested_paras = self._pre_build_hook(**suggested_paras)
 
         suggested_paras = jsonize(suggested_paras)
 
@@ -1589,9 +1619,8 @@ Available cases are {self.models} and you wanted to include
     def _fit(
             self,
             model:Model,
-            x,
-            y,
-            data,
+            train_x,
+            train_y,
             validation_data,
             cross_validate: bool = False,
             refit: bool = False
@@ -1599,35 +1628,20 @@ Available cases are {self.models} and you wanted to include
         """Trains the model"""
 
         if cross_validate:
-            if validation_data is None:
-                assert x is None, NotImplementedError
-                return model.cross_val_score(
-                    data=data,
-                    scoring=model.config['val_metric']
-                )
-            else:
-                x, y, data = _combine_training_validation_data(
-                    x,
-                    y,
-                    data,
-                    validation_data,
-                    model.is_binary
-                )
-                return model.cross_val_score(
-                    x=x, y=y
-                )
+
+            return model.cross_val_score(*_combine_training_validation_data(
+                train_x,
+                train_y,
+                validation_data))
 
         if refit:
             # we need to combine training (x,y) + validation data.
-            x, y, data = _combine_training_validation_data(
-                x,
-                y,
-                data=data,
-                validation_data=validation_data,
-                is_binary=model.is_binary)
-            return model.fit_on_all_training_data(x=x, y=y, data=data)
+            return model.fit_on_all_training_data(*_combine_training_validation_data(
+                train_x,
+                train_y,
+                validation_data=validation_data))
 
-        return model.fit(x=x, y=y, data=data)
+        return model.fit(x=train_x, y=train_y)
 
     def _evaluate(
             self,
@@ -1655,7 +1669,7 @@ Available cases are {self.models} and you wanted to include
                                      remove_neg=True,
                                      replace_nan=True,
                                      replace_inf=True,
-                                     multiclass=model.is_multiclass_)
+                                     multiclass=self.is_multiclass_)
 
         self.model_iter_metric[self.iter_] = test_metrics
         self.iter_ += 1
@@ -1676,31 +1690,99 @@ Available cases are {self.models} and you wanted to include
     def _predict(
             self,
             model: Model,
-            x=None,
-            y=None,
-            data=None,
-            validation_data=None,
-    )->Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+            x,
+            y
+    )->Tuple[np.ndarray, np.ndarray]:
         """
         Makes predictions on training and test data from the model.
         It is supposed that the model has been trained before."""
 
-        if validation_data is None:
-            # only data is given
-            train_true, train_pred = model.predict_on_training_data(data=data, return_true=True)
-            test_true, test_pred = model.predict_on_validation_data(data=data, return_true=True)
+        return model.predict(x, y, return_true=True)
 
-            test_x, test_y = model.test_data(data=data)
-            # when we don't have any test_data, then consider val predictions for test
-            # todo, above supposition may confuse many
-            if len(test_x) >1:
-                test_true, test_pred = model.predict_on_test_data(data=data, return_true=True)
+    def verify_data(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data: tuple = None,
+            test_data: tuple = None,
+    ) -> tuple:
+        def num_examples(samples):
+            if isinstance(samples, list):
+                assert len(set(len(sample) for sample in samples)) == 1
+                return len(samples[0])
+            return len(samples)
+
+        """
+        verifies that either
+            - only x,y should be given (val will be taken from it according to splitting schemes)
+            - or x,y and validation_data should be given  (means no test data)
+            - or x, y and validation_data and test_data are given
+            - or only data should be given (train, validation and test data will be 
+                taken accoring to splitting schemes)
+
+        """
+
+        model_maker = make_model(**self.model_kws)
+        data_config = model_maker.data_config
+
+        if x is None:
+            # case 4, only data is given
+
+            assert y is None, f"y must only be given if x is given. x is {type(x)}"
+            assert data is not None, f"if x is given, data must not be given"
+            assert validation_data is None, f"validation data must only be given if x is given"
+            assert test_data is None, f"test data must only be given if x is given"
+
+            data_config.pop('category')
+
+            if 'lookback' in self._named_x0() and 'ts_args' not in self.model_kws:
+                # the value of lookback has been set by model_maker which can be wrong
+                # because the user expects it to be hyperparameter
+                data_config['ts_args']['lookback'] = self._named_x0()['lookback']
+
+            dataset = DataSet(data=data,
+                              save=data_config.pop('save') or True,
+                              category=self.category,
+                              **data_config)
+
+            train_x, train_y = dataset.training_data()
+            val_x, val_y = dataset.validation_data()
+            test_x, test_y = dataset.test_data()
+            if len(test_x) == 0:
+                test_x, test_y = None, None
+
+        elif test_data is None and validation_data is None:
+            # case 1, only x,y are given
+            assert num_examples(x) == num_examples(y)
+
+            splitter= TrainTestSplit(data_config['val_fraction'], seed=data_config['seed'] or 313)
+
+            if data_config['split_random']:
+                train_x, val_x, train_y, val_y = splitter.split_by_random(x, y)
+            else:
+                train_x, val_x, train_y, val_y = splitter.split_by_slicing(x, y)
+
+            test_x, test_y = None, None
+
+        elif test_data is None:
+            # case 2: x,y and validation_data should be given  (means no test data)
+
+            assert num_examples(x) == num_examples(y)
+
+            train_x, train_y = x, y
+            val_x, val_y = validation_data
+            test_x, test_y = None, None
+
         else:
-            # x,y and validation_data is given
-            test_true, test_pred = model.predict(*validation_data, return_true=True)
-            train_true, train_pred = model.predict(x=x, y=y, return_true=True)
+            # case 3
+            assert num_examples(x) == num_examples(y)
 
-        return (train_true, train_pred), (test_true, test_pred)
+            train_x, train_y = x, y
+            val_x, val_y = validation_data
+            test_x, test_y = test_data
+
+        return train_x, train_y, val_x, val_y, test_x, test_y
 
 
 class TransformationExperiments(Experiments):
@@ -1745,6 +1827,10 @@ class TransformationExperiments(Experiments):
     @property
     def mode(self):
         return "regression"
+
+    @property
+    def category(self):
+        return "ML"
 
     def __init__(self,
                  param_space=None,
@@ -1857,96 +1943,38 @@ def shred_model_name(model_name):
     return key
 
 
-def verify_data(
-        x=None,
-        y=None,
-        data=None,
-        validation_data=None,
-        label="validation"
-) -> Tuple[dict, dict]:
-    def num_examples(samples):
-        if isinstance(samples, list):
-            assert len(set(len(sample) for sample in samples)) == 1
-            return len(samples[0])
-        return len(samples)
-
-    """verifies that either x,y and validation_data is given or only data is given."""
-    train_data = {}
-    val_data = {}
-    if x is None:
-        assert y is None, f"y must only be given if x is given. x is {type(x)}"
-        assert data is not None, f"if x is given, data must not be given"
-        assert validation_data is None, f"{label} data must only be given if x is given"
-        train_data['data'] = data
-    else:
-        train_data['x'] = x
-        train_data['y'] = y
-
-        assert y is not None, f"if x is given, corresponding y must also be given"
-        assert isinstance(y, np.ndarray)
-        assert validation_data is not None, f"if x is given, {label}_data must also be given"
-        assert num_examples(x) == num_examples(y)
-
-    if data is None:
-        assert validation_data is not None, f"If data is not given, {label}_data must be given"
-    else:
-        assert validation_data is None, f"If data is given, {label} data must not be given"
-        assert isinstance(data, pd.DataFrame), f"data must be dataframe, but it is {type(data)}"
-
-    if validation_data is not None:
-        assert isinstance(validation_data,
-                          (tuple, list)), f"{label} data must be of type tuple but it is {type(validation_data)}"
-        assert len(validation_data) == 2, f"{label}_data tuple must have length 2 but it has {len(validation_data)}"
-        assert isinstance(validation_data[1], np.ndarray), f"second value in {label}_data must be ndarray"
-        assert num_examples(validation_data[0]) == num_examples(validation_data[1])
-        val_data['x'] = validation_data[0]
-        val_data['y'] = validation_data[1]
-
-    return train_data, val_data
-
-
 def _combine_training_validation_data(
         x_train,
         y_train,
-        data=None,
         validation_data=None,
-        is_binary:bool = False
 )->tuple:
     """
     combines x,y pairs of training and validation data.
-    If ``data`` is given, then it is returned as it is.
     """
-    if data is None:
-        x_val, y_val = validation_data
 
-        if isinstance(x_train, list):
-            x = []
-            for val in range(len(x_train)):
-                if x_val is not None:
-                    _val = np.concatenate([x_train[val], x_val[val]])
-                    x.append(_val)
-                else:
-                    _val = x_train[val]
+    x_val, y_val = validation_data
 
-            y = y_train
-            if hasattr(y_val, '__len__') and len(y_val) > 0:
-                y = np.concatenate([y_train, y_val])
-
-        elif isinstance(x_train, np.ndarray):
-            x, y = x_train, y_train
-            # if not validation data is available then use only training data
+    if isinstance(x_train, list):
+        x = []
+        for val in range(len(x_train)):
             if x_val is not None:
-                if hasattr(x_val, '__len__') and len(x_val)>0:
-                    x = np.concatenate([x_train, x_val])
-                    y = np.concatenate([y_train, y_val])
-        else:
-            raise NotImplementedError
+                _val = np.concatenate([x_train[val], x_val[val]])
+                x.append(_val)
+            else:
+                _val = x_train[val]
 
-        if is_binary:
-            if len(y) != y.size: # when sigmoid is used for binary
-                # convert the output to 1d
-                y = np.argmax(y, 1).reshape(-1, 1)
+        y = y_train
+        if hasattr(y_val, '__len__') and len(y_val) > 0:
+            y = np.concatenate([y_train, y_val])
+
+    elif isinstance(x_train, np.ndarray):
+        x, y = x_train, y_train
+        # if not validation data is available then use only training data
+        if x_val is not None:
+            if hasattr(x_val, '__len__') and len(x_val)>0:
+                x = np.concatenate([x_train, x_val])
+                y = np.concatenate([y_train, y_val])
     else:
-        x, y = None, None
+        raise NotImplementedError
 
-    return x, y, data
+    return x, y

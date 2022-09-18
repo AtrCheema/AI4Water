@@ -111,6 +111,10 @@ class MLRegressionExperiments(Experiments):
         return TPOTRegressor
 
     @property
+    def category(self)->str:
+        return "ML"
+
+    @property
     def mode(self):
         return "regression"
 
