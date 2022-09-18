@@ -645,7 +645,10 @@ def to_datetime_index(idx_array, fmt='%Y%m%d%H%M') -> pd.DatetimeIndex:
     return idx
 
 
-def jsonize(obj):
+def jsonize(
+        obj,
+        type_converters:dict=None
+):
     """
     Serializes an object to python's native types so that it can be saved
     in json file format. If the object is a sequence, then each member of th sequence
@@ -656,6 +659,10 @@ def jsonize(obj):
     ----------
     obj :
         any python object that needs to be serialized.
+    type_converters : dict
+        a dictionary definiting how to serialize any particular type
+        The keys of the dictionary should be ``type`` the the values
+        should be callable to serialize that type.
 
     Return
     ------
@@ -672,6 +679,12 @@ def jsonize(obj):
     ... # only third party types are converted into native types
     >>> print(jsonize({1: [1, None, True, np.array(3)], 'b': np.array([1, 3])}))
     ... {1: [1, None, True, 3], 'b': [1, 2, 3]}
+
+    The user can define the methods to serialize some types
+    e. g., we can serialize tensorflow's tensors using serialize method
+    >>> from tensorflow.keras.layers import Lambda, serialize
+    >>> tensor = Lambda(lambda _x: _x[Ellipsis, -1, :])
+    >>> jsonize({'my_tensor': tensor}, {Lambda: serialize})
     """
     # boolean type
     if isinstance(obj, bool):
@@ -684,10 +697,10 @@ def jsonize(obj):
         return float(obj)
 
     if isinstance(obj, dict):
-        return {jsonize(k): jsonize(v) for k, v in obj.items()}
+        return {jsonize(k, type_converters): jsonize(v, type_converters) for k, v in obj.items()}
 
     if isinstance(obj, tuple):
-        return tuple([jsonize(val) for val in obj])
+        return tuple([jsonize(val, type_converters) for val in obj])
 
     if obj.__class__.__name__ == 'NoneType':
         return obj
@@ -700,21 +713,20 @@ def jsonize(obj):
 
         if hasattr(obj, 'shape') and len(obj.shape) == 0:
             # for cases such as np.array(1)
-            return jsonize(obj.item())
+            return jsonize(obj.item(), type_converters)
 
         if obj.__class__.__name__ in ['Series', 'DataFrame']:
             # simple list comprehension will iterate over only column names
             # if we simply do jsonize(obj.values()), it will not save column names
-            return {jsonize(k): jsonize(v) for k,v in obj.items()}
+            return {jsonize(k, type_converters): jsonize(v, type_converters) for k,v in obj.items()}
 
-        return [jsonize(val) for val in obj]
+        return [jsonize(val, type_converters) for val in obj]
 
     if callable(obj):
         if isinstance(obj, FunctionType):
             return obj.__name__
-        if hasattr(obj, '__module__'):
-            return obj.__module__
-        return str(obj)
+        if hasattr(obj, '__package__'):
+            return obj.__package__
 
     if isinstance(obj, collections_abc.Mapping):
         return dict(obj)
@@ -724,6 +736,11 @@ def jsonize(obj):
 
     if wrapt and isinstance(obj, wrapt.ObjectProxy):
         return obj.__wrapped__
+
+    if type_converters:
+        for _type, converter in type_converters.items():
+            if isinstance(obj, _type):
+                return converter(obj)
 
     # last resort, call the __str__ method of object on it
     return str(obj)
