@@ -72,6 +72,22 @@ class TestPipeline(unittest.TestCase):
 
         return
 
+    def test_iterator(self):
+        ds1 = get_ds(100)
+        ds2 =  get_ds(100)
+
+        ds = DataSetPipeline(ds1, ds2)
+        for _ds in ds:
+            assert isinstance(_ds, DataSet)
+        return
+
+    def test_getitem(self):
+        ds1 = get_ds(100)
+        ds2 =  get_ds(100)
+
+        ds = DataSetPipeline(ds1, ds2)
+        assert isinstance(ds[0], DataSet)
+        return
 
 if __name__ == "__main__":
     unittest.main()

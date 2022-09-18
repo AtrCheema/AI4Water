@@ -80,6 +80,22 @@ class TestUnion(unittest.TestCase):
                       input_features=[f"Feat_{i}" for i in range(10)])
         ds = DataSetUnion(ds1, ds2, stack_y=True)
         call_methods(ds)
+        return
+
+    def test_iterator(self):
+        ds1 = get_ds(100)
+        ds2 = get_ds(100+2, ts_args={'lookback': 3})
+        ds = DataSetUnion(ds1, ds2)
+        for _ds in ds:
+            assert isinstance(_ds, DataSet)
+        return
+
+    def test_getitem(self):
+        ds1 = get_ds(100)
+        ds2 = get_ds(100+2, ts_args={'lookback': 3})
+        ds = DataSetUnion(ds1, ds2)
+        assert isinstance(ds[0], DataSet)
+        return
 
 if __name__ == "__main__":
     unittest.main()

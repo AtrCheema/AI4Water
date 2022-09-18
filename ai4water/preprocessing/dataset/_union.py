@@ -72,6 +72,23 @@ class DataSetUnion(_DataSet):
         self.examples = {}
 
         _DataSet.__init__(self, config={}, path=os.getcwd())
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            item = self._datasets[self.index]
+        except KeyError:
+            self.index = 0
+            raise StopIteration
+
+        self.index += 1
+        return item
+
+    def __getitem__(self, item: int):
+        return self._datasets[item]
 
     @property
     def mode(self):
