@@ -1271,11 +1271,13 @@ class BaseModel(NN):
                 The x data from training and validation is concatenated.
                 Similarly, y data from training and validation is concatenated
             **kwargs
-                any keyword arguemnts for ``fit`` method.
+                any keyword arguments for ``fit`` method.
 
         """
         if data is None:
-            assert x is not None, f"if data is not given, x,y pairs must be given"
+            assert x is not None, f"""
+            if data is not given, both x, y pairs must be given.
+            The provided x,y pairs are of type {type(x)}, {type(y)} respectively."""
             return self.fit(x=x, y=y, **kwargs)
 
         x_train, y_train = self.training_data(data=data)
@@ -1328,7 +1330,7 @@ class BaseModel(NN):
         return
 
     def score(self, x=None, y=None, data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn as backend must also be able to apply preprocessing on inputs
         before calculating score from sklearn. Currently it just calls the
         `score` function of sklearn by first transforming x and y."""
@@ -1340,7 +1342,7 @@ class BaseModel(NN):
         raise NotImplementedError(f"can not calculate score")
 
     def predict_proba(self, x=None,  data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn/xgboost/catboost/lgbm as backend must also be able to apply
         preprocessing on inputs before calling predict_proba from underlying library.
         Currently it just calls the `predict_proba` function of underlying library
@@ -1353,7 +1355,7 @@ class BaseModel(NN):
         raise NotImplementedError(f"can not calculate proba")
 
     def predict_log_proba(self, x=None,  data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn/xgboost/catboost/lgbm as backend must also be able to apply
         preprocessing on inputs before calling predict_log_proba from underlying library.
         Currently it just calls the `log_proba` function of underlying library
@@ -1374,7 +1376,7 @@ class BaseModel(NN):
             **kwargs
     ):
         """
-        Evalutes the performance of the model on a given data.
+        Evaluates the performance of the model on a given data.
         calls the ``evaluate`` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
 
@@ -2294,6 +2296,15 @@ class BaseModel(NN):
         if self.category == "ML" and self.is_custom_model:
             config['config']['model'] = self.model_name
 
+        # following parameters are not set during build and are not in "config" which
+        # builds the model because they are set during run time from data
+        # putting them in metaconfig is necessary because when we build model
+        # from config, and want to make some plots such as roc curve,
+        # it will need classes_ attribute.
+        for attr in ['classes_', 'num_classes_', 'is_binary_',
+                     'is_multiclass_', 'is_multilabel_']:
+            config[attr] = getattr(self, attr, None)
+
         dict_to_file(config=config, path=self.path)
         return config
 
@@ -2373,9 +2384,16 @@ class BaseModel(NN):
         config, path = cls._get_config_and_path(cls, config_path=config_path,
                                                 make_new_path=make_new_path)
 
-        return cls(**config,
-                   path=path,
-                   **kwargs)
+        model = cls(**config, path=path,  **kwargs)
+
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+            model.classes_ = config['classes_']
+            model.num_classes_ = config['num_classes_']
+            model.is_binary_ = config['is_binary_']
+            model.is_multiclass_ = config['is_multiclass_']
+            model.is_multilabel_ = config['is_multilabel_']
+        return model
 
     @staticmethod
     def _get_config_and_path(cls,
