@@ -682,6 +682,7 @@ def jsonize(
 
     The user can define the methods to serialize some types
     e. g., we can serialize tensorflow's tensors using serialize method
+
     >>> from tensorflow.keras.layers import Lambda, serialize
     >>> tensor = Lambda(lambda _x: _x[Ellipsis, -1, :])
     >>> jsonize({'my_tensor': tensor}, {Lambda: serialize})
@@ -1828,3 +1829,11 @@ class AttribtueSetter(object):
         if len(np.unique(y[~np.isnan(y)])) == 2:
             return True
         return False
+
+
+def get_values(outputs):
+
+    if isinstance(outputs, (dict, list)) and len(outputs) == 1:
+        outputs = list(outputs.values())[0]
+
+    return outputs

@@ -18,10 +18,12 @@ from .nn_tools import NN
 
 from .utils.utils import make_model
 from .utils.utils import AttribtueSetter
+from .utils.utils import get_values
 from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .utils.utils import maybe_three_outputs, get_version_info
 
+from .postprocessing.utils import LossCurve
 from .postprocessing import ProcessPredictions
 from .postprocessing import prediction_distribution_plot
 
@@ -983,7 +985,7 @@ class BaseModel(NN):
                  callbacks=None,
                  **kwargs):
 
-        visualizer = ProcessPredictions(mode=self.mode, path=self.path, show=bool(self.verbosity))
+        visualizer = LossCurve(path=self.path, show=bool(self.verbosity), save=bool(self.verbosity))
         self.is_training = True
 
         source = 'training'
@@ -1005,7 +1007,7 @@ class BaseModel(NN):
         inputs = self._fit_transform_x(inputs)
         outputs = self._fit_transform_y(outputs)
 
-        self._verify_output_shape(outputs)
+        outputs = self._verify_output_shape(outputs)
 
         self.info['training_start'] = dateandtime_now()
 
@@ -1055,6 +1057,7 @@ class BaseModel(NN):
                     assert model_output_shape == outputs.shape[1:], f"""
         ShapeMismatchError: Shape of model's output is {model_output_shape}
         while the prepared targets have shape {outputs.shape[1:]}."""
+        return outputs
 
 
     def load_best_weights(self) -> None:
@@ -1541,6 +1544,10 @@ class BaseModel(NN):
         """
 
         x, y = self.validation_data(data=data)
+
+        if not _find_num_examples(x):
+            raise DataNotFound("Validation")
+
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_test_data(self, data, metrics=None, **kwargs):
@@ -1588,6 +1595,8 @@ class BaseModel(NN):
             >>> model.evaluate_on_test_data(data=busan_beach(), metrics='pbias')
         """
         x, y = self.test_data(data=data)
+        if not _find_num_examples(x):
+            raise DataNotFound("Test")
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_all_data(self, data, metrics=None, **kwargs):
@@ -1837,7 +1846,7 @@ class BaseModel(NN):
 
         x, y = self.validation_data(data=data)
 
-        if _find_num_examples(x):
+        if not _find_num_examples(x):
             raise DataNotFound("Validation")
 
         return self.call_predict(
@@ -2050,45 +2059,17 @@ class BaseModel(NN):
         if true_outputs is None:
             process_results = False
 
-        # initialize post-processes
-        pp = ProcessPredictions(
-            mode = self.mode,
-            path=self.path,
-            forecast_len=self.forecast_len,
-            output_features=self.output_features,
-            plots=plots,
-            show=bool(self.verbosity),
-        )
-
-        if self.quantiles is None:
-
-            # it true_outputs and predicted are dictionary of len(1) then just get the values
-            true_outputs = get_values(true_outputs)
-            predicted = get_values(predicted)
-
-            if process_results:
-
-                pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs)
-                if self.mode == 'classification':
-
-                    if self.category == 'ML':  # todo, also plot for DL
-                        # if model does not have predict_proba method, we can't plot following
-                        if hasattr(self._model, 'predict_proba'):
-                            # todo if data is user defined, we don't know whether it is binary or not
-                            if pp.is_binary_:
-                                pp.precision_recall_curve(self, x=inputs, y=true_outputs, prefix=prefix)
-                                pp.roc_curve(self, x=inputs, y=true_outputs, prefix=prefix)
-        else:
-            assert self.num_outs == 1
-
-            if true_outputs.ndim == 2:  # todo, this should be avoided
-                true_outputs = np.expand_dims(true_outputs, axis=-1)
-
-            pp.quantiles = self.quantiles
-
-            pp.plot_quantiles1(true_outputs, predicted)
-            pp.plot_quantiles2(true_outputs, predicted)
-            pp.plot_all_qs(true_outputs, predicted)
+        if process_results:
+            # initialize post-processes
+            pp = ProcessPredictions(
+                mode=self.mode,
+                path=self.path,
+                forecast_len=self.forecast_len,
+                output_features=self.output_features,
+                plots=plots,
+                show=bool(self.verbosity),
+            )
+            pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs, model=self)
 
         if return_true:
             return true_outputs, predicted
@@ -2342,12 +2323,11 @@ class BaseModel(NN):
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config=config,
-                                                make_new_path=make_new_path)
-
-        return cls(**config,
-                   path=path,
-                   **kwargs)
+        return cls._get_config_and_path(
+            cls,
+            config=config,
+            make_new_path=make_new_path,
+            **kwargs)
 
     @classmethod
     def from_config_file(
@@ -2381,10 +2361,12 @@ class BaseModel(NN):
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config_path=config_path,
-                                                make_new_path=make_new_path)
-
-        model = cls(**config, path=path,  **kwargs)
+        model = cls._get_config_and_path(
+            cls,
+            config_path=config_path,
+            make_new_path=make_new_path,
+            **kwargs
+        )
 
         with open(config_path, 'r') as fp:
             config = json.load(fp)
@@ -2396,10 +2378,13 @@ class BaseModel(NN):
         return model
 
     @staticmethod
-    def _get_config_and_path(cls,
-                             config_path: str = None,
-                             config=None,
-                             make_new_path=False):
+    def _get_config_and_path(
+            cls,
+            config_path: str = None,
+            config=None,
+            make_new_path=False,
+            **kwargs
+    )->"BaseModel":
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
@@ -2423,15 +2408,18 @@ class BaseModel(NN):
         if 'path' in config:
             config.pop('path')
 
-        cls.from_check_point = True
-
         if make_new_path:
-            cls.allow_weight_loading = False
+            allow_weight_loading = False
             path = None
         else:
-            cls.allow_weight_loading = True
+            allow_weight_loading = True
 
-        return config, path
+        model = cls(**config, path=path, **kwargs)
+
+        model.allow_weight_loading = allow_weight_loading
+        model.from_check_point = True
+
+        return model
 
     def update_weights(self, weight_file: str = None):
         """
@@ -3791,14 +3779,6 @@ class DataNotFound(Exception):
         return f"""
         Unable to get {self.source} data.
         You must specify the data either using 'x' or 'data' keywords."""
-
-
-def get_values(outputs):
-
-    if isinstance(outputs, dict) and len(outputs) == 1:
-        outputs = list(outputs.values())[0]
-
-    return outputs
 
 
 def fill_val(metric_name, default="min", default_min=99999999):

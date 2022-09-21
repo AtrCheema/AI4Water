@@ -904,19 +904,12 @@ class Model(MODEL, BaseModel):
                 config = _config
             else:
                 config_path = _config
-            config, path = BaseModel._get_config_and_path(cls,
-                                                          config=config,
-                                                          config_path=config_path,
-                                                          make_new_path=kwargs.get('make_new_path', False))
-            if 'make_new_path' in kwargs:
-                kwargs.pop('make_new_path')
-
-            if 'verbosity' in kwargs:
-                config['verbosity'] = kwargs.pop('verbosity')
-
-            return cls(**config,
-                       path=path,
-                       **kwargs)
+            return BaseModel._get_config_and_path(
+                cls,
+                config=config,
+                config_path=config_path,
+                **kwargs
+            )
 
         # tf1.15 has from_config so call it
         return super().from_config(*args, **kwargs)
