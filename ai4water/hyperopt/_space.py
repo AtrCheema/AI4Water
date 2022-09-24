@@ -6,10 +6,6 @@ from ai4water.backend import np, skopt, optuna
 from ai4water.backend import hp
 
 
-_Real = skopt.space.Real
-_Integer = skopt.space.Integer
-_Categorical = skopt.space.Categorical
-
 if optuna is not None:
     CategoricalDistribution = optuna.distributions.CategoricalDistribution
     UniformDistribution = optuna.distributions.UniformDistribution
@@ -29,17 +25,80 @@ class _Ellipsis:
     def __repr__(self):
         return '...'
 
+if skopt is None:
+    class Dimension(object):
 
-class Dummy:
-    def __init__(self, low=None, high=None, *args, **kwargs):
-        self.low = low
-        self.high = high
+        @property
+        def name(self):
+            return self._name
+
+        @name.setter
+        def name(self, value):
+            if isinstance(value, str) or value is None:
+                self._name = value
+            else:
+                raise ValueError("Dimension's name must be either string or None.")
+else:
+    from skopt.space import Dimension
 
 
-if _Real is None:
-    class _Real(Dummy): pass
-    class _Integer(Dummy): pass
-    class _Categorical(Dummy): pass
+if skopt is None:
+
+    class _Real(Dimension):
+        def __init__(self, low, high, prior="uniform", base=10, transform=None,
+                     name=None, dtype=float):
+            if high <= low:
+                raise ValueError("the lower bound {} has to be less than the"
+                                 " upper bound {}".format(low, high))
+            if prior not in ["uniform", "log-uniform"]:
+                raise ValueError("prior should be 'uniform' or 'log-uniform'"
+                                 " got {}".format(prior))
+            self.low = low
+            self.high = high
+            self.prior = prior
+            self.base = base
+            self.log_base = np.log10(base)
+            self.name = name
+            self.dtype = dtype
+            self._rvs = None
+            self.transformer = None
+            self.transform_ = transform
+
+    class _Integer(Dimension):
+
+        def __init__(self, low, high, prior="uniform", base=10, transform=None,
+                     name=None, dtype=np.int64):
+            if high <= low:
+                raise ValueError("the lower bound {} has to be less than the"
+                                 " upper bound {}".format(low, high))
+            if prior not in ["uniform", "log-uniform"]:
+                raise ValueError("prior should be 'uniform' or 'log-uniform'"
+                                 " got {}".format(prior))
+            self.low = low
+            self.high = high
+            self.prior = prior
+            self.base = base
+            self.log_base = np.log10(base)
+            self.name = name
+            self.dtype = dtype
+
+
+    class _Categorical(Dimension):
+        def __init__(self, categories, prior=None, transform=None, name=None):
+            self.categories = tuple(categories)
+
+            self.name = name
+            self.prior = prior
+
+            if prior is None:
+                self.prior_ = np.tile(1. / len(self.categories),
+                                      len(self.categories))
+            else:
+                self.prior_ = prior
+else:
+    _Real = skopt.space.Real
+    _Integer = skopt.space.Integer
+    _Categorical = skopt.space.Categorical
 
 
 class Real(_Real):
@@ -65,7 +124,7 @@ class Real(_Real):
     Example
     -------
         >>> from ai4water.hyperopt import Real
-        >>> lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
+        >>> lr = Real(low=0.0005, high=0.01, prior='log-uniform', name='lr')
     """
     counter = 0
     def __init__(self,

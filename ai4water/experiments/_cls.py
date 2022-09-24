@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from ._main import Experiments
 from .utils import classification_space
 from ai4water.utils.utils import dateandtime_now
-from ai4water.backend import os, sklearn
+from ai4water.backend import os, sklearn, catboost, xgboost, lightgbm
 
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without
@@ -57,6 +57,14 @@ class MLClassificationExperiments(Experiments):
         self.x0 = x0
 
         self.spaces = classification_space(num_samples=num_samples,)
+
+        if catboost is None:
+            self.models.remove('model_CatBoostClassifier')
+        if lightgbm is None:
+            self.models.remove('model_LGBMClassifier')
+        if xgboost is None:
+            self.models.remove('model_XGBRFClassifier')
+            self.models.remove('model_XGBClassifier')
 
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"

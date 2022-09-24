@@ -16,9 +16,9 @@ min_requirements = [
     'scikit-learn',
     'pandas',
     'matplotlib',
-    'scikit-optimize',
-    'joblib',
-    'requests',
+    #'scikit-optimize',
+
+    #'requests',
     'easy_mpl>=0.20.5',
     'SeqMetrics>=1.3.3',
     'PDPbox1'
@@ -53,9 +53,14 @@ extra_requires = [
 
 # only in some plots
 'plotly',
+
+    'requests',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow==1.15', 'pandas',
+               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
+
+tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.5', 'tensorflow==2.7', 'pandas',
                'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
 
 tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
@@ -158,6 +163,7 @@ setup(
         'exp': exp_requirements,
         'eda': eda_requires,
         'tf': tf_requires,
+        'tf2': tf2_requires,
         'torch': torch_requires,
         'tf_hpo': tf_hpo_requires,
         'torch_hpo_requires': torch_hpo_requires,

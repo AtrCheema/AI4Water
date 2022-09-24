@@ -1552,7 +1552,7 @@ Available cases are {self.models} and you wanted to include
     )->Model:
         model: Model = self._build(title=title, **kwargs)
 
-        model = self._fit(
+        self._fit(
             model,
             train_x=train_x,
             train_y=train_y,
@@ -1562,9 +1562,9 @@ Available cases are {self.models} and you wanted to include
         )
 
         if view:
-            model.view()
+            self._model.view()
 
-        return model
+        return self.model_
 
     def _build_fit_eval(
             self,

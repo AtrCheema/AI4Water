@@ -95,6 +95,7 @@ class MLRegressionExperiments(Experiments):
             self.models.remove('model_LGBMRegressor')
         if xgboost is None:
             self.models.remove('model_XGBRFRegressor')
+            self.models.remove('model_XGBRegressor')
 
         sk_maj_ver = int(sklearn.__version__.split('.')[0])
         sk_min_ver = int(sklearn.__version__.split('.')[1])

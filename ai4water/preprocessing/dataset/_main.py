@@ -10,7 +10,7 @@ from ai4water.utils.utils import TrainTestSplit
 from ai4water.utils.plotting_tools import Plots
 from ai4water.preprocessing.imputation import Imputation
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index, print_something
-from ai4water.backend import np, pd, plt, os, mpl, sklearn
+from ai4water.backend import np, pd, plt, os, mpl, sklearn, h5py
 
 from .utils import check_for_classification
 from .utils import consider_intervals, decode
@@ -369,7 +369,7 @@ class DataSet(_DataSet):
 
         self._input_features = copy(input_features)
 
-        if save:
+        if save and h5py:
             self.to_disk()
 
         _DataSet.__init__(self, config=self.config, path=os.getcwd())

@@ -13,7 +13,7 @@ def regression_space(
         "AdaBoostRegressor":{
             "param_space": [
                 Integer(low=5, high=100, name='n_estimators', num_samples=num_samples),
-                Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=num_samples)],
+                Real(low=0.001, high=1.0, prior='log-uniform', name='learning_rate', num_samples=num_samples)],
             "x0":
                 [50, 1.0]},
         "ARDRegression":{
@@ -211,7 +211,7 @@ def regression_space(
                 Integer(low=5, high=200, name='n_estimators', num_samples=num_samples),
                 # Maximum tree depth for base learners
                 #Integer(low=3, high=50, name='max_depth', num_samples=num_samples),
-                Real(low=0.0001, high=0.5, name='learning_rate', prior='log', num_samples=num_samples),
+                Real(low=0.0001, high=0.5, name='learning_rate', prior='log-uniform', num_samples=num_samples),
                 Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
                 # Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),
@@ -245,7 +245,7 @@ def regression_space(
                 # number of boosting stages to perform
                 Integer(low=5, high=500, name='n_estimators', num_samples=num_samples),
                 #  shrinks the contribution of each tree
-                Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.001, high=1.0, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # fraction of samples to be used for fitting the individual base learners
                 Real(low=0.1, high=1.0, name='subsample', num_samples=num_samples),
                 Real(low=0.1, high=0.9, name='min_samples_split', num_samples=num_samples),
@@ -257,7 +257,7 @@ def regression_space(
                 # todo, during optimization not working with 'rf'
                 Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),
                 Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
-                Real(low=0.0001, high=0.1,  name='learning_rate', prior='log', num_samples=num_samples),
+                Real(low=0.0001, high=0.1,  name='learning_rate', prior='log-uniform', num_samples=num_samples),
                 Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
             "x0":
                 ['gbdt', 31, 0.1, 100]},
@@ -266,7 +266,7 @@ def regression_space(
                 # maximum number of trees that can be built
                 Integer(low=500, high=5000, name='iterations', num_samples=num_samples),
                 # Used for reducing the gradient step.
-                Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # Coefficient at the L2 regularization term of the cost function.
                 Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=num_samples),
                 # arger the value, the smaller the model size.
@@ -334,7 +334,7 @@ def regression_space(
         "HistGradientBoostingRegressor": {
             "param_space": [
                 # Used for reducing the gradient step.
-                Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.9, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 Integer(low=50, high=500, name='max_iter', num_samples=num_samples),  # maximum number of trees.
                 Integer(low=2, high=100, name='max_depth', num_samples=num_samples),  # maximum number of trees.
                 # maximum number of leaves for each tree
@@ -384,7 +384,7 @@ def regression_space(
                 Integer(low=5, high=100, name='n_estimators', num_samples=num_samples),
                 # Maximum tree depth for base learners
                 Integer(low=3, high=50, name='max_depth', num_samples=num_samples),
-                Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
                 Real(low=0.1, high=0.9, name='gamma', num_samples=num_samples),
@@ -490,7 +490,7 @@ def classification_space(num_samples:int, verbosity=0):
                 # number of boosting stages to perform
                 Integer(low=5, high=500, name='n_estimators', num_samples=num_samples),
                 #  shrinks the contribution of each tree
-                Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.001, high=1.0, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # fraction of samples to be used for fitting the individual base learners
                 Real(low=0.1, high=1.0, name='subsample', num_samples=num_samples),
                 Real(low=0.1, high=0.9, name='min_samples_split', num_samples=num_samples),
@@ -500,7 +500,7 @@ def classification_space(num_samples:int, verbosity=0):
         "HistGradientBoostingClassifier": {
             "param_space": [
                 # Used for reducing the gradient step.
-                Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.9, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 Integer(low=50, high=500, name='max_iter', num_samples=num_samples),  # maximum number of trees.
                 Integer(low=2, high=100, name='max_depth', num_samples=num_samples),  # maximum number of trees.
                 # maximum number of leaves for each tree
@@ -544,7 +544,7 @@ def classification_space(num_samples:int, verbosity=0):
             "param_space": [
                 Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
                 Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
-                Real(low=0.0001, high=0.1, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.1, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 Integer(low=10, high=100, name='min_child_samples', num_samples=num_samples),
                 Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
             "x0":
@@ -677,7 +677,7 @@ def classification_space(num_samples:int, verbosity=0):
                 Integer(low=5, high=50, name='n_estimators', num_samples=num_samples),
                 # Maximum tree depth for base learners
                 Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),  #
+                Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),  #
                 Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
                 Real(low=0.1, high=0.9, name='gamma', num_samples=num_samples),
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
@@ -700,7 +700,7 @@ def classification_space(num_samples:int, verbosity=0):
                 Integer(low=5, high=50, name='n_estimators', num_samples=num_samples),
                 # Maximum tree depth for base learners
                 Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),  #
+                Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),  #
                 Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
                 Real(low=0.1, high=0.9, name='gamma', num_samples=num_samples),
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
@@ -722,7 +722,7 @@ def classification_space(num_samples:int, verbosity=0):
                 # maximum number of trees that can be built
                 Integer(low=50, high=5000, name='iterations', num_samples=num_samples),
                 # Used for reducing the gradient step.
-                Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
+                Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # depth
                 # https://stackoverflow.com/q/67299869/5982232
                 Integer(1, 15, name="depth", num_samples=num_samples),

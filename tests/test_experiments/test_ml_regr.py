@@ -40,7 +40,6 @@ class TestExperiments(unittest.TestCase):
             'model_RadiusNeighborsRegressor'  # nan predictions
                    ]
 
-
         comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2', show=False)
         best_models = comparisons.compare_errors('r2', cutoff_type='greater',
@@ -62,13 +61,13 @@ class TestExperiments(unittest.TestCase):
         x,y = ds.training_data()
         comparisons.fit(x=x, y=y,
                         validation_data=ds.validation_data(),
-                        include=['GaussianProcessRegressor', 'XGBRFRegressor']
+                        include=['GaussianProcessRegressor', 'RandomForestRegressor']
                         )
 
         return
 
     def test_optimize(self):
-        best_models = ['GaussianProcessRegressor', 'XGBRFRegressor']
+        best_models = ['GaussianProcessRegressor', 'RandomForestRegressor']
 
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
@@ -101,14 +100,14 @@ class TestExperiments(unittest.TestCase):
                         cross_validate=True,
                         include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor',
-                       'XGBRFRegressor'])
+                       'RandomForestRegressor'])
         comparisons.compare_errors('r2', show=False)
         comparisons.taylor_plot(show=False)
         comparisons.plot_cv_scores(show=False)
         comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor',
-                                                     'XGBRFRegressor'])
+                                                     'RandomForestRegressor'])
         comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
-                                                        'XGBRFRegressor'])
+                                                        'RandomForestRegressor'])
 
         models = comparisons.sort_models_by_metric('r2')
         assert isinstance(models, pd.DataFrame)
@@ -136,6 +135,21 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(exp2.exp_path, exp.exp_path)
         self.assertEqual(len(exp.metrics), len(exp2.metrics))
         self.assertEqual(len(exp.features), len(exp2.features))
+
+        return
+
+
+class TestNonSKlearn(unittest.TestCase):
+
+    def test_basic(self):
+        comparisons = MLRegressionExperiments(
+            input_features=input_features, output_features=outputs,
+            verbosity=0
+        )
+
+        include = ["CatBoostRegressor", "XGBRegressor", "LGBMRegressor"]
+
+        comparisons.fit(data=df, run_type="dry_run", include=include)
 
         return
 
@@ -183,6 +197,7 @@ class TestExperiments(unittest.TestCase):
                        num_iterations=2)
         return
 
+
     def test_fit_with_tpot(self):
         exp = MLRegressionExperiments(
             exp_name=f"tpot_{dateandtime_now()}",
@@ -191,8 +206,6 @@ class TestExperiments(unittest.TestCase):
         exp.fit(
             data=busan_beach(),
             include=[
-            "XGBRegressor",
-            "LGBMRegressor",
             "RandomForestRegressor",
             "GradientBoostingRegressor"])
 

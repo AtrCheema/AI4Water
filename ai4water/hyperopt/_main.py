@@ -11,6 +11,8 @@ from .utils import to_skopt_as_dict
 from .utils import post_process_skopt_results
 from .utils import to_skopt_space
 from .utils import save_skopt_results
+from .utils import Dimension
+from .utils import plot_convergence
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
@@ -31,14 +33,16 @@ ParameterSampler = sklearn.model_selection.ParameterSampler
 bar_chart = easy_mpl.bar_chart
 parallel_coordinates = easy_mpl.parallel_coordinates
 
-Space = skopt.space.space.Space
-Dimension = skopt.space.space.Dimension
-forest_minimize = skopt.forest_minimize
-gp_minimize = skopt.gp_minimize
-BayesSearchCV = skopt.BayesSearchCV
-use_named_args = skopt.utils.use_named_args
-
-from skopt.plots import plot_convergence, plot_evaluations
+if skopt is None:
+    pass
+else:
+    Space = skopt.space.space.Space
+    #Dimension = skopt.space.space.Dimension
+    forest_minimize = skopt.forest_minimize
+    gp_minimize = skopt.gp_minimize
+    BayesSearchCV = skopt.BayesSearchCV
+    use_named_args = skopt.utils.use_named_args
+    from skopt.plots import plot_evaluations
 
 if _hyperopt is not None:
     space_eval = _hyperopt.space_eval
@@ -1053,18 +1057,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         bbox_inches='tight')
         return
 
-    def _plot_convergence(self, original=False, save=True, **kwargs):
+    def _plot_convergence(self, original=False,
+                          ax = None, save=True,
+                          show=False, **kwargs):
         plt.close('all')
         if original:
-            easy_mpl.plot(self.func_vals(), '--.',
+            ax = easy_mpl.plot(self.func_vals(), '--.',
                  xlabel="Number of calls $n$",
-                 ylabel=r"$\min f(x)$ after $n$ calls", **kwargs)
+                 ylabel=r"$\min f(x)$ after $n$ calls",
+                               show=show,
+                               **kwargs)
         else:
-            plot_convergence([self.skopt_results()], **kwargs)
+            ax = plot_convergence(self.func_vals(), ax=ax, show=show, **kwargs)
         if save:
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
-        return
+
+        return ax
 
     def process_results(self):
         """post processing of results"""
@@ -1082,14 +1091,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # distributions/historgrams of explored hyperparameters
         self._plot_distributions(show=False)
 
-        sr = self.skopt_results()
-
-        # convergence plot
-        if sr.x_iters is not None and self.backend != "skopt":
-            self._plot_convergence()
+        # convergence plot,
+        #if sr.x_iters is not None and self.backend != "skopt": # todo
+        self._plot_convergence()
 
         # plot of hyperparameter space as explored by the optimizer
-        if self.backend != 'skopt' and len(self.space()) < 20:  # and len(self.space())>1:
+        if self.backend != 'skopt' and len(self.space()) < 20 and skopt is not None:
             self._plot_evaluations()
 
         self.plot_importance(raise_error=False)

@@ -5,17 +5,20 @@ from collections import OrderedDict
 
 try:
     from skopt.plots import plot_evaluations, plot_objective
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     plot_evaluations, plot_objective = None, None
 
 from ai4water.utils.utils import jsonize, clear_weights
 from ai4water.backend import os, np, pd, mpl, plt, skopt, easy_mpl
 from ai4water.backend import hyperopt as _hyperopt
-from ._space import Categorical, Real, Integer
+from ._space import Categorical, Real, Integer, Dimension
 
-Space = skopt.space.space.Space
-Dimension = skopt.space.space.Dimension
-dump = skopt.utils.dump
+
+if skopt is None:
+    pass
+else:
+    Space = skopt.space.space.Space
+    dump = skopt.utils.dump
 
 if _hyperopt is not None:
     space_eval = _hyperopt.space_eval
@@ -26,6 +29,8 @@ else:
     miscs_to_idxs_vals = None
 
 plot = easy_mpl.plot
+
+
 
 
 def is_choice(space):
@@ -937,3 +942,31 @@ def space_from_list(v: list, k: str):
         else:
             raise NotImplementedError
     return s
+
+
+def plot_convergence(func_vals, show=False, ax=None, **kwargs):
+
+    func_vals = np.array(func_vals)
+    n_calls = len(func_vals)
+
+    mins = [np.min(func_vals[:i])
+            for i in range(1, n_calls + 1)]
+
+    if ax is None:
+        ax = plt.gca()
+
+    _kwargs = {
+        "marker":".",
+        "markersize": 12,
+        "lw": 2,
+        "show":show,
+        "title": 'Convergence plot',
+        "xlabel": 'Number of calls $n$',
+        "ylabel": '$\min f(x)$ after $n$ calls',
+        'ax': ax,
+    }
+
+    _kwargs.update(kwargs)
+
+    ax = plot(range(1, n_calls + 1), mins, **_kwargs)
+    return ax
