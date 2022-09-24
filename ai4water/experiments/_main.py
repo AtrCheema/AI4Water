@@ -265,7 +265,7 @@ class Experiments(object):
     ):
         """
         Runs the fit loop for all the ``models`` of experiment. The user can
-        however, specify the models by making use of ``include`` and ``exclud``
+        however, specify the models by making use of ``include`` and ``exclude``
         keywords.
 
         The data should be defined according to following four rules
@@ -274,7 +274,7 @@ class Experiments(object):
             - or x,y and validation_data should be given  (means no test data)
             - or x, y and validation_data and test_data are given
             - or only data should be given (train, validation and test data will be
-                taken accoring to splitting schemes)
+              taken accoring to splitting schemes)
 
         Parameters
         ----------
@@ -1552,7 +1552,7 @@ Available cases are {self.models} and you wanted to include
     )->Model:
         model: Model = self._build(title=title, **kwargs)
 
-        self._fit(
+        model = self._fit(
             model,
             train_x=train_x,
             train_y=train_y,
@@ -1641,7 +1641,10 @@ Available cases are {self.models} and you wanted to include
                 train_y,
                 validation_data=validation_data))
 
-        return model.fit(x=train_x, y=train_y)
+        model.fit(x=train_x, y=train_y)
+        # model_ is used in the class for prediction so it must be the updated/trained model
+        self.model_ = model
+        return
 
     def _evaluate(
             self,
@@ -1674,17 +1677,17 @@ Available cases are {self.models} and you wanted to include
         self.model_iter_metric[self.iter_] = test_metrics
         self.iter_ += 1
 
-        val_score = getattr(metrics, model.val_metric)()
-
-        if model.config['val_metric'] in [
+        val_score_ = getattr(metrics, model.val_metric)()
+        val_score = val_score_
+        if model.val_metric in [
             'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score'
         ] or self.mode == "classification":
-            val_score = 1.0 - val_score
+            val_score = 1.0 - val_score_
 
         if not math.isfinite(val_score):
             val_score = 9999  # TODO, find a better way to handle this
 
-        print(f"val_score: {val_score}")
+        print(f"val_score: {round(val_score, 5)} {model.val_metric}: {val_score_}")
         return val_score
 
     def _predict(
@@ -1747,7 +1750,7 @@ Available cases are {self.models} and you wanted to include
                               **data_config)
 
             train_x, train_y = dataset.training_data()
-            val_x, val_y = dataset.validation_data()
+            val_x, val_y = dataset.validation_data() # todo what if there is not validation data
             test_x, test_y = dataset.test_data()
             if len(test_x) == 0:
                 test_x, test_y = None, None
