@@ -197,7 +197,7 @@ import glob
 import warnings
 import zipfile
 import shutil
-from typing import Union, Tuple, Any, Optional
+from typing import Union, Tuple, Any, Optional, List
 
 try:
     from shapely.geometry import shape, mapping
@@ -288,9 +288,9 @@ class Datasets(object):
             os.makedirs(_dir)
         return _dir
 
-    def _download(self, overwrite=False):
+    def _download(self, overwrite=False, **kwargs):
         """Downloads the dataset. If already downloaded, then"""
-        _maybe_download(self.ds_dir, overwrite, self.url, self.name)
+        _maybe_download(self.ds_dir, overwrite, self.url, self.name, **kwargs)
         return
 
     def _download_and_unzip(self):
@@ -551,7 +551,7 @@ class WeatherJena(Datasets):
 
     @property
     def dynamic_features(self)->list:
-        """returns names of features availabel"""
+        """returns names of features available"""
         return self.fetch().columns.tolist()
 
     def fetch(
@@ -646,7 +646,7 @@ class SWECanada(Datasets):
 
     """
     url = "https://doi.org/10.5194/essd-2021-160"
-    feaures = ['snw', 'snd', 'den']
+    features = ['snw', 'snd', 'den']
     q_flags = ['data_flag_snw', 'data_flag_snd', 'qc_flag_snw', 'qc_flag_snd']
 
     def __init__(self, **kwargs):
@@ -729,7 +729,7 @@ class SWECanada(Datasets):
         stn_id_dict_inv = {v: k for k, v in stn_id_dict.items()}
         stn_ids = [stn_id_dict[i] for i in station_id]
 
-        features = check_attributes(features, self.feaures)
+        features = check_attributes(features, self.features)
         qflags = []
         if q_flags is not None:
             qflags = check_attributes(q_flags, self.q_flags)
@@ -901,16 +901,21 @@ class ETPTelesinaItaly(Datasets):
 
 
 class Quadica(Datasets):
-    """water quality dataset following Pia Ebeling et al. 2022 [1]_ .
+    """
+    This is dataset of water quality parameters of Germany from 828 stations
+    from 1950 to 2018 following the work of Ebeling_ et al., 2022. The time-step
+    is monthly and annual but the monthly timeseries data is not continuous.
 
-    .. [1] https://doi.org/10.5194/essd-2022-6
+    .. Ebeling https://doi.org/10.5194/essd-2022-6
 
     """
     url = {
         "quadica.zip":
             "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/QUADICA.zip",
         "metadata.pdf":
-            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/Metadata_QUADICA.pdf"
+            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/Metadata_QUADICA.pdf",
+        "catchment_attributes.csv":
+            "https://www.hydroshare.org/resource/88254bd930d1466c85992a7dea6947a4/data/contents/catchment_attributes.csv"
     }
 
     def __init__(self, **kwargs):
@@ -918,19 +923,38 @@ class Quadica(Datasets):
 
         self._download()
 
-    def fetch_wrtds_monthly(
+    @property
+    def features(self)->list:
+        return ['Q', 'NO3', 'NO3N', 'NMin', 'TN', 'PO4', 'PO4P', 'TP', 'DOC', 'TOC']
+
+    @property
+    def stattions(self)->list:
+        return self.metadata()['OBJECTID'].tolist()
+
+    @property
+    def station_names(self):
+        return self.metadata()[['OBJECTID', 'Station']]
+
+    def wrtds_monthly(
             self,
             features:Union[str, list] = None,
+            stations:Union[List[int], int] = None,
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """Monthly median concentrations, flow-normalized concentrations, and mean
+        """
+        Monthly median concentrations, flow-normalized concentrations, and mean
         fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
-        for stations with enough data availability.
+        for stations with enough data availability. This data is available for total
+        140 stations. The data from all stations does not start and end at the same period.
+        Therefore, some stations have more datapoints while others have less. The maximum
+        datapoints for a station are 576 while smallest datapoints are 244.
 
         Parameters
         ----------
-            features : optional
+            features : str/list, optional
+            stations : int/list optional (default=None)
+                name/names of satations whose data is to be retrieved.
             st : optional
                 starting point of data. By default, the data starts from 1992-09
             en : optional
@@ -945,7 +969,7 @@ class Quadica(Datasets):
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.fetch_wrtds_monthly()
+            >>> df = dataset.wrtds_monthly()
 
         """
         fname = os.path.join(self.ds_dir, "quadica", "wrtds_monthly.csv")
@@ -963,7 +987,7 @@ class Quadica(Datasets):
 
         return check_st_en(wrtds, st, en)
 
-    def fetch_wrtds_annual(
+    def wrtds_annual(
             self,
             features:Union[str, list] = None,
             st: Union[str, int, pd.DatetimeIndex] = None,
@@ -990,7 +1014,7 @@ class Quadica(Datasets):
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.fetch_wrtds_annual()
+            >>> df = dataset.wrtds_annual()
 
         """
         fname = os.path.join(self.ds_dir, "quadica", "wrtds_annual.csv")
@@ -1008,10 +1032,12 @@ class Quadica(Datasets):
 
         return check_st_en(wrtds, st, en)
 
-    def fetch_metadata(self)->pd.DataFrame:
-        """fetches the metadata about the stations as dataframe.
+    def metadata(self)->pd.DataFrame:
+        """
+        fetches the metadata about the stations as pandas' dataframe.
         Each row represents metadata about one station and each column
-        represents one feature.
+        represents one feature. The R2 and pbias are regression coefficients
+        and percent bias of WRTDS models for each parameter.
 
         Returns
         -------
@@ -1021,48 +1047,86 @@ class Quadica(Datasets):
         fname = os.path.join(self.ds_dir, "quadica", "metadata.csv")
         return pd.read_csv(fname,encoding='cp1252')
 
-    def fetch_pet(
+    def pet(
             self,
+            stations: Union[List[int], int] = None,
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
-
+        """
+        average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
 
         Examples
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.fetch_pet() # -> (828, 1388)
+            >>> df = dataset.pet() # -> (828, 1388)
         """
         fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
-        pet = pd.read_csv(fname)
+        pet = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
+
+        if stations is not None:
+            stations = [str(stn) for stn in stations]
+            pet = pet[stations]
         return check_st_en(pet, st, en)
 
-    def fetch_tavg(
+    def avg_temp(
             self,
+            stations: Union[List[int], int] = None,
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """monthly median average temperatures starting from 1950-01 to 2018-09
+        """
+        monthly median average temperatures starting from 1950-01 to 2018-09
+
+        parameters
+        -----------
+            stations :
+                name of stations for which data is to be retrieved. By default, data
+                for all stations is retrieved.
+            st : optional
+                starting point of data. By default, the data starts from 1950-01
+            en : optional
+                end point of data. By default, the data ends at 2018-09
+
+        Returns
+        -------
+        pd.DataFrame
+            a panras dataframw of shape (time_steps, stations). With default input
+            arguments, the shape is (828, 1388)
 
         Examples
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.fetch_tavg() # -> (828, 1388)
+            >>> df = dataset.avg_temp() # -> (828, 1388)
         """
 
         fname = os.path.join(self.ds_dir, "quadica", "tavg_monthly.csv")
-        pet = pd.read_csv(fname)
-        return check_st_en(pet, st, en)
+        temp = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
 
-    def fetch_precip(
+        if stations is not None:
+            stations = [str(stn) for stn in stations]
+            temp = temp[stations]
+        return check_st_en(temp, st, en)
+
+    def precipitation(
             self,
+            stations: Union[List[int], int] = None,
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
         """ sums of precipitation starting from 1950-01 to 2018-09
+
+        parameters
+        -----------
+            stations :
+                name of stations for which data is to be retrieved. By default, data
+                for all stations is retrieved.
+            st : optional
+                starting point of data. By default, the data starts from 1950-01
+            en : optional
+                end point of data. By default, the data ends at 2018-09
 
         Returns
         -------
@@ -1073,18 +1137,34 @@ class Quadica(Datasets):
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.fetch_precip() # -> (828, 1388)
+            >>> df = dataset.precipitation() # -> (828, 1388)
         """
 
         fname = os.path.join(self.ds_dir, "quadica", "pre_monthly.csv")
-        pet = pd.read_csv(fname)
-        return check_st_en(pet, st, en)
+        pcp = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
+
+        if stations is not None:
+            stations = [str(stn) for stn in stations]
+            pcp = pcp[stations]
+
+        return check_st_en(pcp, st, en)
 
     def monthly_medians(
             self,
+            features:Union[List[str], str] = None,
+            stations: Union[List[int], int] = None,
     )->pd.DataFrame:
-        """Monthly medians over the whole time series of water quality variables
+        """
+        Monthly medians over the whole time series of water quality variables
         and discharge
+
+        median_COMPOUND : Median concentration from grab sampling data
+        parameters
+        ----------
+        features : list/str, optional, (default=None)
+            name/names of features
+        stations : list/int, optional (default=None)
+            stations for which
 
         Returns
         -------
@@ -1092,7 +1172,15 @@ class Quadica(Datasets):
             a dataframe of shape (16629, 18)
         """
         fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
-        return pd.read_csv(fname)
+        df = pd.read_csv(fname)
+
+        if features is not None:
+            df = df[features]
+
+        if stations is not None:
+            df = df.loc[df['OBJECTID'].isin(stations)]
+
+        return df
 
     def annual_medians(
             self,
@@ -1109,7 +1197,252 @@ class Quadica(Datasets):
         return pd.read_csv(fname)
 
     def fetch_annual(self):
-        return
+        raise NotImplementedError
+
+    def catchment_attributes(
+            self,
+            features:Union[List[str], str] = None,
+            stations: Union[List[int], int] = None,
+    )->pd.DataFrame:
+        """
+        Returns static physical catchment attributes in the form of dataframe.
+        parameters
+        ----------
+            features : list/str, optional, (default=None)
+                name/names of static attributes to fetch
+            stations : list/int, optional (default=None)
+                name/names of stations whose static/physical features are to be read
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas dataframe of shape (stations, features). With default input arguments,
+            shape is (1386, 113)
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import Quadica
+        >>> dataset = Quadica()
+        >>> cat_features = dataset.catchment_attributes()
+        ... # get attributes of only selected stations
+        >>> dataset.catchment_attributes(stations=[1,2,3])
+
+        """
+        fname = os.path.join(self.ds_dir, "catchment_attributes.csv")
+        df = pd.read_csv(fname, encoding='unicode_escape')
+
+        if features:
+            assert isinstance(features, list)
+            df = df[features]
+
+        if stations is not None:
+            assert isinstance(stations, (list, np.ndarray))
+            df = df.loc[df['OBJECTID'].isin(stations)]
+
+        return df
+
+    def fetch_monthly(
+            self,
+            features:Union[List[str], str] = None,
+            stations:Union[List[int], int] = None,
+            median:bool = True,
+            fnc:bool = True,
+            fluxes:bool = True,
+            precipitation:bool = True,
+            avg_temp:bool = True,
+            pet:bool = True,
+            only_continuous:bool = True,
+            cat_features:bool = True,
+            max_nan_tol:Union[int, None] = 0,
+    )->Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Fetches monthly concentrations of water quality parameters.
+
+        median_Q : Median discharge
+        median_COMPOUND : Median concentration from grab sampling data
+        median_C : Median concentration from WRTDS
+        median_FNC : Median flow-normalized concentration from WRTDS
+        mean_Flux : Mean flux from WRTDS
+        mean_FNFlux : Mean flow-normalized flux from WRTDS
+
+        parameters
+        ----------
+        features : str/list, optional (default=None)
+            name or names of water quality parameters to fetch. By default
+            following parameters are considered
+                - `NO3`
+                - `NO3N`
+                - `TN`
+                - `Nmin`
+                - `PO4`
+                - `PO4P`
+                - `TP`
+                - `DOC`
+                - `TOC`
+
+        stations : int/list, optional (default=None)
+            name or names of stations whose data is to be fetched
+        median : bool, optional (default=True)
+            whether to fetch median concentration values or not
+        fnc : bool, optional (default=True)
+            whether to fetch flow normalized concentrations or not
+        fluxes : bool, optional (default=True)
+            Setting this to true will add two features i.e. mean_Flux_FEATURE
+            and mean_FNFlux_FEATURE
+        precipitation : bool, optional (default=True)
+            whether to fetch average monthly precipitation or not
+        avg_temp : bool, optional (default=True)
+            whether to fetch average monthly temperature or not
+        pet : bool, optional (default=True)
+            whether to fether potential evapotranspiration data or not
+        only_continuous : bool, optional (default=True)
+            If true, will return data for only those stations who have continuos
+            monthly timeseries data from 1993-01-01 to 2013-01-01.
+        cat_features : bool, optional (default=True)
+            whether to fetch catchment features or not.
+        max_nan_tol : int, optional (default=0)
+            setting this value to 0 will remove the whole time-series with any
+            missing values.
+
+        Returns
+        --------
+        tuple
+            two dataframes whose length is same but the columns are different
+                a pandas dataframe of timeseries of parameters (stations*timesteps, dynamic_features)
+                a pandas dataframe of static features (stations*timesteps, catchment_features)
+
+        Examples
+        --------
+        >>> from ai4water.datasets import Quadica
+        >>> dataset = Quadica()
+        >>> mon_dyn, mon_cat = dataset.fetch_monthly(max_nan_tol=None)
+        ... # However, mon_dyn contains data for all parameters and many of which have
+        ... # large number of nans. If we want to fetch data only related to TN without any
+        ... # missing value, we can do as below
+        >>> mon_dyn_tn, mon_cat_tn = dataset.fetch_monthly(features="TN", max_nan_tol=0)
+        ... # if we want to find out how many catchments are included in mon_dyn_tn
+        >>> len(mon_dyn_tn['OBJECTID'].unique())
+        ... # 25
+        """
+
+        if features is None:
+            features = self.features
+
+        if isinstance(features, str):
+            features = [features]
+
+        assert isinstance(features, list)
+
+        _wrtd_features = ['median_Q']
+        for feat in features:
+            if fluxes:
+                _wrtd_features += self._consider_fluxes(feat)
+            if median:
+                _wrtd_features += self._consider_median(feat)
+            if fnc:
+                _wrtd_features += self._consider_fnc(feat)
+
+        _wrtd_features = list(set(_wrtd_features))
+        _features = _wrtd_features.copy()
+
+        df = self.wrtds_monthly(features=_wrtd_features + ['OBJECTID'], stations=stations)
+
+        if only_continuous:
+            groups = []
+            for idx, grp in df.groupby('OBJECTID'):
+                # there are 252 months from 1993 to 2013
+                if len(grp.loc["19930101": "20131201"]) == 252:
+                    groups.append(grp.loc["19930101": "20131201"])
+            df = pd.concat(groups)
+
+        #df[_med_features] = self.monthly_medians(features=_features, stations=stations)
+
+        if max_nan_tol is not None:
+            groups = []
+            for idx, grp in df.groupby('OBJECTID'):
+                if grp.isna().sum().sum() <= max_nan_tol:
+                    groups.append(grp)
+            if len(groups) == 0:
+                raise ValueError(f"""
+                No data with nans less or equal to {max_nan_tol} is found.
+                Please increase the value of "max_nan_tol" or choose a different parameter.
+                """)
+            df = pd.concat(groups)
+
+        if avg_temp:
+            temp = self.avg_temp(df['OBJECTID'].unique(), "19930101", "20131201")
+            stns = np.array([np.repeat(int(val), len(temp)) for val in temp.columns]).reshape(-1, )
+            temp = np.concatenate([temp[col] for col in temp.columns])
+            assert np.allclose(stns, df['OBJECTID'].values)
+            df['avg_temp'] = temp
+
+        if precipitation:
+            pcp = self.precipitation(df['OBJECTID'].unique(), "19930101", "20131201")
+            stns = np.array([np.repeat(int(val), len(pcp)) for val in pcp.columns]).reshape(-1, )
+            pcp = np.concatenate([pcp[col] for col in pcp.columns])
+            assert np.allclose(stns, df['OBJECTID'].values)
+            df['precip'] = pcp
+
+        if pet:
+            pet = self.pet(df['OBJECTID'].unique(), "19930101", "20131201")
+            stns = np.array([np.repeat(int(val), len(pet)) for val in pet.columns]).reshape(-1, )
+            pet = np.concatenate([pet[col] for col in pet.columns])
+            assert np.allclose(stns, df['OBJECTID'].values)
+            df['pet'] = pet
+
+        if cat_features:
+            cat_features = self.catchment_attributes(stations=df['OBJECTID'].unique())
+            n = len(df) / len(df['OBJECTID'].unique())
+            # repeat each row of cat_features n times
+            cat_features = cat_features.loc[cat_features.index.repeat(n)]
+            assert np.allclose(cat_features['OBJECTID'].values, df['OBJECTID'].values)
+
+        return df, cat_features
+
+    def _consider_median(self, feature):
+        d = {
+            'Q': ['median_Q'],
+            'DOC': ['median_C_DOC'],
+            'TOC': ['median_C_TOC'],
+            'TN': ['median_C_TN'],
+            'TP': ['median_C_TP'],
+            'PO4': ['median_C_PO4'],
+            'PO4P': [],
+            'NMin': ['median_C_NMin'],
+            'NO3': ['median_C_NO3'],
+            'NO3N': [],
+        }
+        return d[feature]
+
+    def _consider_fnc(self, feature):
+        d = {
+            'Q': ['median_Q'],
+            'DOC': ['median_FNC_DOC'],
+            'TOC': ['median_FNC_TOC'],
+            'TN': ['median_FNC_TN'],
+            'TP': ['median_FNC_TP'],
+            'PO4': ['median_FNC_PO4'],
+            'PO4P': [],
+            'NMin': ['median_FNC_NMin'],
+            'NO3': ['median_FNC_NO3'],
+            'NO3N': [],
+        }
+        return d[feature]
+
+    def _consider_fluxes(self, feature):
+        d = {
+            'Q': ['median_Q'],
+            'DOC': ['mean_Flux_DOC', 'mean_FNFlux_DOC'],
+            'TOC': ['mean_Flux_TOC', 'mean_FNFlux_TOC'],
+            'TN': ['mean_Flux_TN', 'mean_FNFlux_TN'],
+            'TP': ['mean_Flux_TP', 'mean_FNFlux_TP'],
+            'PO4': ['mean_Flux_PO4', 'mean_FNFlux_PO4'],
+            'PO4P': [],
+            'NMin': ['mean_Flux_NMin', 'mean_FNFlux_NMin'],
+            'NO3': ['mean_Flux_NO3', 'mean_FNFlux_NO3'],
+            'NO3N': [],
+        }
+        return d[feature]
 
 
 def mg_photodegradation(
@@ -1166,7 +1499,7 @@ def mg_photodegradation(
     --------
     >>> from ai4water.datasets import mg_photodegradation
     >>> mg_data, catalyst_encoder, anion_encoder = mg_photodegradation()
-    ... # the decault encoding is None, but if we want to use one hot encoder
+    ... # the default encoding is None, but if we want to use one hot encoder
     >>> mg_data_le, _, _ = mg_photodegradation(encoding="ohe")
     ... # if we want to use label encoder
     >>> mg_data_none, _, _ = mg_photodegradation(encoding="le")
@@ -1222,6 +1555,56 @@ def mg_photodegradation(
     return df, cat_encoder, an_encoder
 
 
+class GRQA(Datasets):
+    url = 'https://zenodo.org/record/7056647#.YzBzDHZByUk'
+
+    """
+    Global River Water Quality Archive following the work of Virro et al., 2021 [21]_.
+    
+    .. [21] https://essd.copernicus.org/articles/13/5483/2021/
+    """
+
+    def __init__(self, download_source=False, **kwargs):
+        super().__init__(**kwargs)
+
+        files = ['GRQA_data_v1.3.zip', 'GRQA_meta.zip']
+        if download_source:
+            files += ['GRQA_source_data.zip']
+        self._download(include=files)
+
+    def fetch(
+            self,
+            parameter:Union[List[str], str],
+            location:Union[List[str], str],
+            st = None,
+            en = None,
+    ):
+        """
+        parameters
+        ----------
+        parameter : str/list, optional
+            name of parameter
+        location : str/list, optional
+            location for which data is to be fetched.
+        st : str
+            starting date
+        en : str
+            end date
+
+        Returns
+        -------
+        pd.DataFrame
+            a multiindex dataframe of shape
+
+        Example
+        --------
+        >>> from ai4water.datasets import GRQA
+        >>> dataset = GRQA()
+        >>> df = dataset.fetch()
+        """
+        raise NotImplementedError
+
+
 def _ohe_encoder(df:pd.DataFrame, col_name:str)->tuple:
     assert isinstance(col_name, str)
 
@@ -1240,12 +1623,12 @@ def _le_encoder(df:pd.DataFrame, col_name):
     return df, encoder
 
 
-def _maybe_download(ds_dir, overwrite, url, _name):
+def _maybe_download(ds_dir, overwrite, url, _name, include=None):
     if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
         if overwrite:
             print(f"removing previous data directory {ds_dir} and downloading new")
             shutil.rmtree(ds_dir)
-            _download_and_unzip(ds_dir, url)
+            _download_and_unzip(ds_dir, url, include=include)
         else:
             sanity_check(_name, ds_dir)
             print(f"""
@@ -1253,16 +1636,16 @@ def _maybe_download(ds_dir, overwrite, url, _name):
     {ds_dir} already exists.
     Use overwrite=True to remove previously saved files and download again""")
     else:
-        _download_and_unzip(ds_dir, url)
+        _download_and_unzip(ds_dir, url, include=include)
     return
 
 
-def _download_and_unzip(ds_dir, url):
+def _download_and_unzip(ds_dir, url, include=None):
     if not os.path.exists(ds_dir):
         os.makedirs(ds_dir)
     if isinstance(url, str):
         if 'zenodo' in url:
-            download_from_zenodo(ds_dir, url)
+            download_from_zenodo(ds_dir, url, include=include)
         else:
             download(url, ds_dir)
         _unzip(ds_dir)
@@ -1297,7 +1680,7 @@ def _unzip(ds_dir, dirname=None):
         src = os.path.join(dirname, f)
         trgt = os.path.join(dirname, f.split('.zip')[0])
         if not os.path.exists(trgt):
-            print(f"unziping {src} to {trgt}")
+            print(f"unzipping {src} to {trgt}")
             with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
                 try:
                     zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))

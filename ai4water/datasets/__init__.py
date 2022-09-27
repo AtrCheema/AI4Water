@@ -49,6 +49,7 @@ from .datasets import Quadica
 from .datasets import RRAlpileCatchments
 from .datasets import RRLuleaSweden
 from .datasets import mg_photodegradation
+from .datasets import GRQA
 
 
 def busan_beach(

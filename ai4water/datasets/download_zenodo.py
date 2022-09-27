@@ -64,17 +64,22 @@ def check_hash(filename, checksum):
     return value, digest
 
 
-def download_from_zenodo(outdir,
-                         doi,
-                         cont=False,
-                         error=False,
-                         **kwargs):
+def download_from_zenodo(
+        outdir,
+        doi,
+        cont=False,
+        error=False,
+        include:list = None,
+        **kwargs
+):
     """
     to suit the requirements of this package.
     :param outdir: Output directory, created if necessary. Default: current directory.
     :param doi: str, Zenodo DOI
     :param cont: True, Do not continue previous download attempt. (Default: continue.)
     :param error: False, Continue with next file if error happens.
+    :param include : files to download. Files which are not in include will not be
+        downloaded.
     :param kwargs:
         sandbox: bool, Use Zenodo Sandbox URL.
         timeout: int, Connection time-out. Default: 15 [sec].
@@ -120,6 +125,10 @@ def download_from_zenodo(outdir,
         if r.ok:
             js = json.loads(r.text)
             files = js['files']
+            if include:
+                assert isinstance(include, list)
+                assert all([file in files for file in include])
+                files = include
             total_size = sum(f['size'] for f in files)
 
             if md5 is not None:
