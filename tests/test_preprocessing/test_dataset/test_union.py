@@ -22,6 +22,7 @@ def get_ds(num_exs, **kwargs):
     df = get_df(num_exs)
     return DataSet(df, verbosity=0, **kwargs)
 
+
 class TestUnion(unittest.TestCase):
 
     def test_basic(self):

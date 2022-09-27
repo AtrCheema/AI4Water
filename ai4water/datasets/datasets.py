@@ -260,8 +260,10 @@ class Datasets(object):
     def __init__(self, name=None, units=None):
         """
         Arguments:
-            name :
-            units :
+            name : str (default=None)
+                name of dataset
+            units : str, (default=None)
+                the unit system being used
         """
         if name is None:
             name = self.__class__.__name__
@@ -623,7 +625,7 @@ class WeatherJena(Datasets):
 class SWECanada(Datasets):
     """
     Daily Canadian historical Snow Water Equivalent dataset from 1928 to 2020
-    from brown et al., 2019 [1]_
+    from Brown_ et al., 2019 .
 
     Examples
     --------
@@ -642,7 +644,8 @@ class SWECanada(Datasets):
         ...
         >>> df4 = swe.fetch(stns[0:10], st='20110101')
 
-    .. [1] https://doi.org/10.1080/07055900.2019.1598843
+    .. _Brown:
+        https://doi.org/10.1080/07055900.2019.1598843
 
     """
     url = "https://doi.org/10.5194/essd-2021-160"
@@ -906,7 +909,8 @@ class Quadica(Datasets):
     from 1950 to 2018 following the work of Ebeling_ et al., 2022. The time-step
     is monthly and annual but the monthly timeseries data is not continuous.
 
-    .. Ebeling https://doi.org/10.5194/essd-2022-6
+    .. _Ebeling:
+        https://doi.org/10.5194/essd-2022-6
 
     """
     url = {
@@ -925,14 +929,17 @@ class Quadica(Datasets):
 
     @property
     def features(self)->list:
+        """names of water quality parameters available in this dataset"""
         return ['Q', 'NO3', 'NO3N', 'NMin', 'TN', 'PO4', 'PO4P', 'TP', 'DOC', 'TOC']
 
     @property
     def stattions(self)->list:
+        """IDs of stations for which data is available"""
         return self.metadata()['OBJECTID'].tolist()
 
     @property
     def station_names(self):
+        """names of stations"""
         return self.metadata()[['OBJECTID', 'Station']]
 
     def wrtds_monthly(
@@ -1258,27 +1265,34 @@ class Quadica(Datasets):
         """
         Fetches monthly concentrations of water quality parameters.
 
-        median_Q : Median discharge
-        median_COMPOUND : Median concentration from grab sampling data
-        median_C : Median concentration from WRTDS
-        median_FNC : Median flow-normalized concentration from WRTDS
-        mean_Flux : Mean flux from WRTDS
-        mean_FNFlux : Mean flow-normalized flux from WRTDS
+        +----------+----------------------------------------------------+
+        | median_Q | Median discharge |
+        +----------+----------------------------------------------------+
+        | median_COMPOUND | Median concentration from grab sampling data |
+        +----------+----------------------------------------------------+
+        | median_C | Median concentration from WRTDS |
+        +----------+----------------------------------------------------+
+        | median_FNC | Median flow-normalized concentration from WRTDS |
+        +----------+----------------------------------------------------+
+        | mean_Flux | Mean flux from WRTDS |
+        +----------+----------------------------------------------------+
+        | mean_FNFlux | Mean flow-normalized flux from WRTDS |
+        +----------+----------------------------------------------------+
 
         parameters
         ----------
         features : str/list, optional (default=None)
             name or names of water quality parameters to fetch. By default
             following parameters are considered
-                - `NO3`
-                - `NO3N`
-                - `TN`
-                - `Nmin`
-                - `PO4`
-                - `PO4P`
-                - `TP`
-                - `DOC`
-                - `TOC`
+                - ``NO3``
+                - ``NO3N``
+                - ``TN``
+                - ``Nmin``
+                - ``PO4``
+                - ``PO4P``
+                - ``TP``
+                - ``DOC``
+                - ``TOC``
 
         stations : int/list, optional (default=None)
             name or names of stations whose data is to be fetched
@@ -1308,8 +1322,8 @@ class Quadica(Datasets):
         --------
         tuple
             two dataframes whose length is same but the columns are different
-                a pandas dataframe of timeseries of parameters (stations*timesteps, dynamic_features)
-                a pandas dataframe of static features (stations*timesteps, catchment_features)
+                - a pandas dataframe of timeseries of parameters (stations*timesteps, dynamic_features)
+                - a pandas dataframe of static features (stations*timesteps, catchment_features)
 
         Examples
         --------
@@ -1444,6 +1458,71 @@ class Quadica(Datasets):
         }
         return d[feature]
 
+    def to_DataSet(
+            self,
+            target:str = "TP",
+            input_features:list = None,
+            split:str = "temporal",
+            lookback:int = 24,
+            **ds_args
+    ):
+        """
+        This function prepares data for machine learning prediction problem. It
+        returns an instance of ai4water.preprocessing.DataSetPipeline which can be
+        given to model.fit or model.predict
+
+        parameters
+        ----------
+        target : str, optional (default="TN")
+            parameter to consider as target
+        input_features : list, optional
+            names of input features
+        split : str, optional (default="temporal")
+            if ``temporal``, validation and test sets are taken from the data of
+            each station and then concatenated. If ``spatial``, training
+            validation and test is decided based upon stations.
+        lookback : int
+        **ds_args :
+            key word arguments
+
+        Returns
+        -------
+        ai4water.preprocessing.DataSet
+            an instance of DataSetPipeline
+
+        Example
+        --------
+        >>> from ai4water.datasets import Quadica
+        ... # initialize the Quadica class
+        >>> dataset = Quadica()
+        ... # define the input features
+        >>> inputs = ['median_Q', 'OBJECTID', 'avg_temp', 'precip', 'pet']
+        ... # prepare data for TN as target
+        >>> dsp = dataset.to_DataSet("TN", inputs, lookback=24)
+
+        """
+
+        assert split in ("temporal", "spatial")
+
+        from ai4water.preprocessing import DataSet, DataSetPipeline
+
+        dyn, cat = self.fetch_monthly(features=target, max_nan_tol=0)
+
+        if input_features is None:
+            input_features = ['median_Q', 'OBJECTID', 'avg_temp', 'precip', 'pet']
+
+        output_features = [f'median_C_{target}']
+
+        dsets = []
+        for idx, grp in dyn.groupby("OBJECTID"):
+            ds = DataSet(data=grp, ts_args={'lookback': lookback},
+                         input_features=input_features,
+                         output_features=output_features,
+                         **ds_args)
+            dsets.append(ds)
+
+        return DataSetPipeline(*dsets)
+
 
 def mg_photodegradation(
         inputs: list = None,
@@ -1508,6 +1587,9 @@ def mg_photodegradation(
     >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")
     ... # if we want to use 2nd order k as target
     >>> mg_data_k2, _, _ = mg_photodegradation(target="k_2nd")
+
+    .. _[1]: https://doi.org/10.1016/j.jhazmat.2022.130031
+    .. _[2]: https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction
     """
 
     df = pd.read_csv(
@@ -1696,6 +1778,7 @@ def _unzip(ds_dir, dirname=None):
         shutil.unpack_archive(f, ds_dir)
 
     return
+
 
 def unzip_all_in_dir(dir_name, ext=".gz"):
     gz_files = glob.glob(f"{dir_name}/*{ext}")

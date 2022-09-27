@@ -172,14 +172,14 @@ class MtropicsLaos(Datasets):
                 The physio-chemical features to fetch. Following features
                 are available
 
-                - 'T',
-                - 'EC',
-                - 'DOpercent',
-                - 'DO',
-                - 'pH',
-                - 'ORP',
-                - 'Turbidity',
-                - 'TSS'
+                - ``T``
+                - ``EC``
+                - ``DOpercent``
+                - ``DO``
+                - ``pH``
+                - ``ORP``
+                - ``Turbidity``
+                - ``TSS``
 
         Returns
         -------
@@ -562,7 +562,7 @@ class MtropicsLaos(Datasets):
             lookback_steps: int = None,
     ) -> pd.DataFrame:
         """
-        Makes a classification problem.
+        Returns data for a classification problem.
 
         Parameters
         ----------
@@ -631,7 +631,7 @@ class MtropicsLaos(Datasets):
             lookback_steps: int = None
     ) -> pd.DataFrame:
         """
-        Makes a regression problem using hydrological, environmental,
+        Returns data for a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.
 
         Parameters

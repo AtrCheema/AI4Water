@@ -442,7 +442,7 @@ class Experiments(object):
                     opt_dir = os.path.join(os.getcwd(),
                                            f"results{SEP}{self.exp_name}{SEP}{model_name}")
 
-                    if self.verbosity > 1:
+                    if self.verbosity > 0:
                         print(f"optimizing  {model_type} using {opt_method} method")
 
                     self.optimizer = HyperOpt(

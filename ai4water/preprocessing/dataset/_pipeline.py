@@ -26,7 +26,7 @@ class DataSetPipeline(_DataSet):
     """
     def __init__(
             self,
-            *datasets,
+            *datasets: _DataSet,
             verbosity=1
     ) -> None:
         """
@@ -42,6 +42,7 @@ class DataSetPipeline(_DataSet):
 
         self._datasets = []
         for ds in datasets:
+            ds.verbosity = 0
             assert isinstance(ds, _DataSet), f"""
                             {ds} is not a valid dataset"""
             self._datasets.append(ds)
@@ -99,7 +100,7 @@ class DataSetPipeline(_DataSet):
             return x, prev_y, y
         else:
             x, y = self._get_xy('training_data')
-            return self.return_xy(np.row_stack(x), np.row_stack(y), "Training")
+            return self.return_xy(x, y, "Training")
 
     def validation_data(self, key="val", **kwargs):
         if self.teacher_forcing:

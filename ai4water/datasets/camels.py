@@ -459,8 +459,13 @@ class Camels(Datasets):
 class LamaH(Camels):
     """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
-    from     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
-    paper: https://essd.copernicus.org/preprints/essd-2021-72/
+    from  Zenodo_ following the work of Klingler_ et al., 2021 .
+
+    .. _Zenodo:
+           https://zenodo.org/record/4609826#.YFNp59zt02w
+
+    .. _Klingler:
+        https://essd.copernicus.org/preprints/essd-2021-72/
     """
     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
     _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
@@ -1713,8 +1718,10 @@ class CAMELS_AUS(Camels):
 
 class CAMELS_CL(Camels):
     """
-    Downloads and processes CAMELS dataset of Chile
-    https://doi.org/10.5194/hess-22-5817-2018
+    Downloads and processes CAMELS dataset of Chile following the work of
+    Alvarez-Garreton_ et al., 2018 .
+
+    .. _Alvarez-Garreton: https://doi.org/10.5194/hess-22-5817-2018
     """
 
     urls = {
@@ -1856,6 +1863,7 @@ class CAMELS_CL(Camels):
             features=None
     ):
         """
+        Returns static features of a station.
 
         Examples
         --------
@@ -1877,7 +1885,7 @@ class CAMELS_CL(Camels):
 
 class HYPE(Camels):
     """
-    Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_.
+    Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_ .
     This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily,
     monthly and yearly time steps.
 
@@ -1904,7 +1912,9 @@ class HYPE(Camels):
         >>> df = dataset.fetch(stations='500', as_dataframe=True)
 
     .. [1] https://zenodo.org/record/4029572
+
     .. [2] https://doi.org/10.2166/nh.2010.007
+
     """
     url = [
         "https://zenodo.org/record/581435",

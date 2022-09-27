@@ -274,7 +274,7 @@ class HyperOpt(object):
         >>> opt_results = opt.fit()
 
     .. _hpo_tutorial:
-        https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb
+        https://ai4water-examples.readthedocs.io/en/latest/auto_examples/index.html#hyperparameter-optimization
 
     .. _GridSearchCV:
         https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html

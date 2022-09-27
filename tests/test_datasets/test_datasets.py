@@ -166,28 +166,36 @@ class TestPangaea(unittest.TestCase):
         ds = GRQA()
         return
 
+
 class TestQuadica(unittest.TestCase):
+
     dataset = Quadica()
 
     def test_avg_temp(self):
         assert self.dataset.avg_temp().shape == (828, 1386)
+        return
 
     def test_pet(self):
         assert self.dataset.pet().shape == (828, 1386)
+        return
 
     def test_precipitation(self):
         assert self.dataset.precipitation().shape == (828, 1386)
+        return
 
     def test_monthly_medians(self):
 
         assert self.dataset.monthly_medians().shape == (16629, 18)
+        return
 
     def test_wrtds_monthly(self):
         assert self.dataset.wrtds_monthly().shape == (50186, 47)
+        return
 
     def test_catchment_attrs(self):
         assert self.dataset.catchment_attributes().shape == (1386, 113)
         assert self.dataset.catchment_attributes(stations=[1,2,3]).shape == (3, 113)
+        return
 
     def test_fetch_monthly(self):
         dyn, cat = self.dataset.fetch_monthly(max_nan_tol=None)
