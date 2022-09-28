@@ -2361,6 +2361,16 @@ class BaseModel(NN):
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
+
+        # when an instance of Model is created, config is written, which
+        # will overwrite these attributes so we need to keep track of them
+        # so that after building the model, we can set these attributes to Model
+        attrs = {}
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+        for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
+            attrs[attr] = config[attr]
+
         model = cls._get_config_and_path(
             cls,
             config_path=config_path,
@@ -2368,13 +2378,11 @@ class BaseModel(NN):
             **kwargs
         )
 
-        with open(config_path, 'r') as fp:
-            config = json.load(fp)
-            model.classes_ = config['classes_']
-            model.num_classes_ = config['num_classes_']
-            model.is_binary_ = config['is_binary_']
-            model.is_multiclass_ = config['is_multiclass_']
-            model.is_multilabel_ = config['is_multilabel_']
+        for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
+            setattr(model, attr, attrs[attr])
+         # now we need to save the config again
+        model.save_config()
+
         return model
 
     @staticmethod
@@ -2394,8 +2402,8 @@ class BaseModel(NN):
         if config is None:
             assert config_path is not None
             with open(config_path, 'r') as fp:
-                config = json.load(fp)
-                config = config['config']
+                meta_config = json.load(fp)
+                config = meta_config['config']
                 path = os.path.dirname(config_path)
         else:
             assert isinstance(config, dict), f"""
