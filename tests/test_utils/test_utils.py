@@ -742,6 +742,16 @@ class TestUtils(unittest.TestCase):
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
 
+    def test_negative_verbosity(self):
+        # when verbosity is -ve, no directory should be created
+        before = os.listdir(os.path.join(os.getcwd(), 'results'))
+        model = Model(model="RandomForestRegressor", verbosity=-1)
+        model.fit(data=busan_beach)
+        _ = model.predict(data=busan_beach, process_results=False)
+        model.evaluate(data=busan_beach, metrics='r2')
+        assert len(os.listdir(os.path.join(os.getcwd(), 'results'))) == len(before)
+        return
+
 
 class TestTSFeatures(unittest.TestCase):
 

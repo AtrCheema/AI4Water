@@ -300,7 +300,10 @@ class BaseModel(NN):
 
             NN.__init__(self, config=maker.config)
 
-            self.path = maybe_create_path(path=path, prefix=prefix)
+            self.path = None
+            if verbosity >= 0:
+                self.path = maybe_create_path(path=path, prefix=prefix)
+
             self.config['path'] = self.path
             self.verbosity = verbosity
             self.category = self.config['category']
@@ -1023,9 +1026,10 @@ class BaseModel(NN):
             history = self.fit_ml_models(inputs, outputs, **kwargs)
 
         self.info['training_end'] = dateandtime_now()
-        self.save_config()
 
         if self.verbosity >= 0:
+
+            self.save_config()
             dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
@@ -1089,7 +1093,8 @@ class BaseModel(NN):
             # by default feature_names of booster as set to f0, f1,...
             self._model.get_booster().feature_names = self.input_features
 
-        self._save_ml_model()
+        if self.verbosity >= 0:
+            self._save_ml_model()
 
         return history
 

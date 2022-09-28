@@ -641,7 +641,7 @@ class Experiments(object):
         >>> outputs = list(data.columns)[-1]
         >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
         >>> experiment.fit(data=data)
-        >>> experiment.taylor_plot()
+        >>> experiment.taylor_plot(data=data)
 
         .. _taylor_plot:
             https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.taylor_plot
@@ -935,8 +935,8 @@ Available cases are {self.models} and you wanted to include
             >>> outputs = list(data.columns)[-1]
             >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
             >>> experiment.fit(data=data)
-            >>> experiment.compare_errors('mse')
-            >>> experiment.compare_errors('r2', 0.2, 'greater')
+            >>> experiment.compare_errors('mse', data=data)
+            >>> experiment.compare_errors('r2', data=data, cutoff_val=0.2, cutoff_type='greater')
         """
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))

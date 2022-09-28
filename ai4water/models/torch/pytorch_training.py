@@ -40,7 +40,8 @@ F = {
 
 class AttributeContainer(object):
 
-    def __init__(self, num_epochs, to_monitor=None, use_cuda=None, path=None):
+    def __init__(self, num_epochs, to_monitor=None, use_cuda=None,
+                 path=None, verbosity=1):
         self.to_monitor = get_metrics_to_monitor(to_monitor)
         self.num_epochs = num_epochs
 
@@ -55,9 +56,10 @@ class AttributeContainer(object):
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.best_epoch = 0  # todo,
         self.use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
+        self.verbosity = verbosity
 
         def_path = path if path is not None else os.path.join(os.getcwd(), 'results', dateandtime_now())
-        if not os.path.exists(def_path):
+        if not os.path.exists(def_path) and verbosity >= 0:
             if not os.path.isdir(def_path):
                 os.makedirs(def_path)
             else:
@@ -180,7 +182,9 @@ class Learner(AttributeContainer):
             >>> metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
             >>> t = learner.predict(X, y=Y, name='training')
         """
-        super().__init__(num_epochs, to_monitor, path=path, use_cuda=use_cuda)
+        super().__init__(num_epochs, to_monitor, path=path,
+                         use_cuda=use_cuda,
+                         verbosity=verbosity)
 
         if self.use_cuda:
             model = model.to(self._device())
@@ -190,7 +194,6 @@ class Learner(AttributeContainer):
         self.shuffle = shuffle
         self.patience = patience
         self.wandb_config = wandb_config
-        self.verbosity = verbosity
 
     def fit(
             self,
