@@ -29,7 +29,7 @@ class TestDLExeriments(unittest.TestCase):
                                     "LSTMAutoEncoder"])
 
         exp.loss_comparison(save=False, show=False)
-        exp.compare_errors('r2', save=False, show=False)
+        exp.compare_errors('r2', data=data, save=False, show=False)
 
         return
 

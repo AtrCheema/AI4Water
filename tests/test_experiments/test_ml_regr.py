@@ -34,6 +34,7 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
                         'features': input_features},
+            exp_name=f"dryrun_{dateandtime_now()}",
             verbosity=0
         )
         exclude = [
@@ -41,10 +42,12 @@ class TestExperiments(unittest.TestCase):
                    ]
 
         comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
-        comparisons.compare_errors('r2', show=False)
-        best_models = comparisons.compare_errors('r2', cutoff_type='greater',
+
+        comparisons.compare_errors('r2', data=df, show=False)
+        best_models = comparisons.compare_errors('r2', data=df, cutoff_type='greater',
                                                  cutoff_val=0.01, show=False)
-        comparisons.taylor_plot(show=False)
+        comparisons.taylor_plot(show=False, data=df)
+        comparisons.compare_regression_plots(data=df, save=False, show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
@@ -79,8 +82,8 @@ class TestExperiments(unittest.TestCase):
         comparisons.fit(data=df, run_type="optimize", opt_method="random",
                         num_iterations=4,
                         include=best_models, post_optimize='eval_best')
-        comparisons.compare_errors('r2', show=False)
-        comparisons.taylor_plot(show=False)
+        comparisons.compare_errors('r2', data=df, show=False)
+        comparisons.taylor_plot(show=False, data=df)
         comparisons.plot_improvement('r2', save=False)
         comparisons.plot_improvement('mse', save=False)
         comparisons.compare_convergence()
@@ -94,17 +97,17 @@ class TestExperiments(unittest.TestCase):
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
                         'features': input_features},
             cross_validator = {"KFold": {"n_splits": 5}},
-            exp_name="MLRegrCrossVal",
+            exp_name=f"MLRegrCrossVal_{dateandtime_now()}",
         verbosity=0)
         comparisons.fit(data=df,
                         cross_validate=True,
-                        include=['GaussianProcessRegressor',
+                        include=[
                        'HistGradientBoostingRegressor',
                        'RandomForestRegressor'])
-        comparisons.compare_errors('r2', show=False)
-        comparisons.taylor_plot(show=False)
+        comparisons.compare_errors('r2', data=df, show=False)
+        comparisons.taylor_plot(data=df, show=False)
         comparisons.plot_cv_scores(show=False)
-        comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor',
+        comparisons.taylor_plot(data=df, show=False, include=['GaussianProcessRegressor',
                                                      'RandomForestRegressor'])
         comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
                                                         'RandomForestRegressor'])
@@ -135,6 +138,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(exp2.exp_path, exp.exp_path)
         self.assertEqual(len(exp.metrics), len(exp2.metrics))
         self.assertEqual(len(exp.features), len(exp2.features))
+        exp.compare_errors('r2', data=df, show=False)
 
         return
 

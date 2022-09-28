@@ -106,11 +106,10 @@ class MLClassificationExperiments(Experiments):
                 m_paths.append(m)
 
         # load all models from config
-        for m_path in m_paths:
-            print(f'here: {m_path}')
-            m_path = os.path.join(self.exp_path, m_path)
-            assert len(os.listdir(m_path)) == 1
-            m_path = os.path.join(m_path, os.listdir(m_path)[0])
+        for model_name in m_paths:
+
+            m_path = self._get_best_model_path(model_name)
+
             c_path = os.path.join(m_path, 'config.json')
             model = self.build_from_config(c_path)
             # calculate pr curve for each model

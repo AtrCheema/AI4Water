@@ -5,6 +5,7 @@ from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
+from ai4water.backend import create_subplots
 from ai4water.backend import tf, os, np, pd, plt, easy_mpl
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
@@ -13,12 +14,14 @@ from ai4water.utils.utils import TrainTestSplit
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.utils import AttribtueSetter
 from ai4water.postprocessing import ProcessPredictions
+from ai4water.utils.visualizations import edf_plot
 from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
 
 plot = easy_mpl.plot
 bar_chart = easy_mpl.bar_chart
 taylor_plot = easy_mpl.taylor_plot
 dumbbell_plot = easy_mpl.dumbbell_plot
+reg_plot = easy_mpl.regplot
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -154,7 +157,8 @@ class Experiments(object):
             os.makedirs(self.exp_path)
 
         self.update_config(models=self.models, exp_path=self.exp_path,
-                           exp_name=self.exp_name, cases=self.cases)
+                           exp_name=self.exp_name, cases=self.cases,
+                           model_kws=jsonize(model_kws))
 
         if monitor is None:
             self.monitor = Monitor[self.mode]
@@ -253,7 +257,6 @@ class Experiments(object):
             y=None,
             data=None,
             validation_data: Optional[tuple] = None,
-            test_data: Optional[tuple] = None,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -271,9 +274,8 @@ class Experiments(object):
         The data should be defined according to following four rules
         either
             - only x,y should be given (val will be taken from it according to splitting schemes)
-            - or x,y and validation_data should be given  (means no test data)
-            - or x, y and validation_data and test_data are given
-            - or only data should be given (train, validation and test data will be
+            - or x,y and validation_data should be given
+            - or only data should be given (train and validation data will be
               taken accoring to splitting schemes)
 
         Parameters
@@ -290,8 +292,6 @@ class Experiments(object):
             validation_data :
                 a tuple which consists of x,y pairs for validation data. This can only
                 be given if ``x`` and ``y`` are given and ``data`` is not given.
-            test_data : tuple, optional
-                This data is optional and will only be used for comparison plots.
             run_type : str, optional (default="dry_run")
                 One of ``dry_run`` or ``optimize``. If ``dry_run``, then all
                 the `models` will be trained only once. if ``optimize``, then
@@ -352,12 +352,12 @@ class Experiments(object):
 
         """
 
-        train_x, train_y, val_x, val_y, test_x, test_y = self.verify_data(
-            x, y, data, validation_data, test_data=test_data)
+        train_x, train_y, val_x, val_y, _, _ = self.verify_data(
+            x, y, data, validation_data)
 
         AttribtueSetter(self, train_y)
 
-        del x, y, data, validation_data, test_data
+        del x, y, data, validation_data
         gc.collect()
 
         assert run_type in ['optimize', 'dry_run'], f"run_type mus"
@@ -426,12 +426,7 @@ class Experiments(object):
                     train_results = self._predict(model=self.model_, x=train_x, y=train_y)
                     val_results = self._predict(model=self.model_, x=val_x, y=val_y)
 
-                    if test_x is None:
-                        test_results = None, None
-                    else:
-                        test_results = self._predict(model=self.model_, x=test_x, y=test_y)
-
-                    self._populate_results(model_name, train_results, val_results, test_results)
+                    self._populate_results(model_name, train_results, val_results)
 
                     if cross_validate:
                         cv_scoring = self.model_.val_metric
@@ -466,12 +461,13 @@ class Experiments(object):
                         self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
                         setattr(self, '_cv_scoring', cv_scoring)
 
+                    x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
                     if post_optimize == 'eval_best':
-                        self.eval_best(train_x, train_y, (val_x, val_y), model_name, opt_dir,
-                                       test_data=(test_x, test_y))
+                        train_results = self.eval_best(x, y, model_name, opt_dir)
                     elif post_optimize == 'train_best':
-                        self.train_best(train_x, train_y, (val_x, val_y), model_name,
-                                        test_data=(test_x, test_y))
+                        train_results = self.train_best(x, y, model_name)
+
+                    self._populate_results(model_type, train_results)
 
                 if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
                     raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
@@ -490,17 +486,15 @@ class Experiments(object):
             self,
             x,
             y,
-            validation_data:tuple,
             model_type:str,
             opt_dir:str,
-            test_data: Optional[tuple] = None
     ):
         """Evaluate the best models."""
 
         folders = [path for path in os.listdir(opt_dir) if os.path.isdir(os.path.join(opt_dir, path)) and path.startswith('1_')]
 
         if len(folders) < 1:
-            return self.train_best(x, y, validation_data, model_type, test_data)
+            return self.train_best(x, y, model_type)
 
         assert len(folders) == 1, f"{folders}"
 
@@ -511,23 +505,15 @@ class Experiments(object):
 
             self.update_model_weight(model, os.path.join(opt_dir, mod_path))
 
-            train_results = self._predict(model, x=x, y=y)
-            val_results = self._predict(model, *validation_data)
+            results = self._predict(model, x=x, y=y)
 
-            test_results = None, None
-            if test_data[0] is not None:
-                test_results = self._predict(model, *test_data)
-
-            self._populate_results(model_type, train_results, val_results, test_results)
-        return
+        return results
 
     def train_best(
             self,
             x,
             y,
-            validation_data,
             model_type,
-            test_data: Optional[tuple] = None
     ):
         """Finds the best model, builts it, fits it and makes predictions from it."""
 
@@ -537,31 +523,17 @@ class Experiments(object):
         else:
             _model = model_type
 
-        refit = True
-        if test_data[0] is None:
-            # we don't have test data, so training on whole i.e. training + validation data
-            # will make the comparisons useless
-            refit = False
-
         title = f"{self.exp_name}{SEP}{model_type}{SEP}best"
         model = self._build_fit(x, y,
-                                validation_data=validation_data,
                                 view=False,
                                 title=title,
                                 cross_validate=False,
-                                refit=refit,
                                 model={_model: self.optimizer.best_paras()},
                                 )
 
-        train_results = self._predict(model, x=x, y=y)
-        val_results = self._predict(model, *validation_data)
+        results = self._predict(model, x=x, y=y)
 
-        test_results = None, None
-        if test_data[0] is not None:
-            test_results = self._predict(model, *test_data)
-
-        self._populate_results(model_type, train_results, val_results, test_results)
-        return
+        return results
 
     def _populate_results(
             self,
@@ -578,11 +550,13 @@ class Experiments(object):
         features = dict()
 
         # save performance metrics of train and test
-        metrics['train'] = self._get_metrics(*train_results)
-        features['train'] = {
-            'true': {'std': np.std(train_results[0])},
-            'simulation': {'std': np.std(train_results[1])}
-        }
+
+        if train_results is not None:
+            metrics['train'] = self._get_metrics(*train_results)
+            features['train'] = {
+                'true': {'std': np.std(train_results[0])},
+                'simulation': {'std': np.std(train_results[1])}
+            }
 
         if val_results is not None:
             metrics['val'] = self._get_metrics(*val_results)
@@ -591,15 +565,16 @@ class Experiments(object):
                 'simulation': {'std': np.std(val_results[1])}
             }
 
-        if test_results[0] is not None:
-            metrics['test'] = self._get_metrics(*test_results)
-            features['test'] = {
+        if test_results is not None:
+            self.metrics[model_type]['test'] = self._get_metrics(*test_results)
+            self.features[model_type]['test'] = {
                 'true': {'std': np.std(test_results[0])},
                 'simulation': {'std': np.std(test_results[1])}
             }
 
-        self.metrics[model_type] = metrics
-        self.features[model_type] = features
+        if metrics:
+            self.metrics[model_type] = metrics
+            self.features[model_type] = features
         return
 
     def _get_metrics(self, true:np.ndarray, predicted:np.ndarray)->dict:
@@ -622,6 +597,9 @@ class Experiments(object):
 
     def taylor_plot(
             self,
+            x=None,
+            y=None,
+            data=None,
             include: Union[None, list] = None,
             exclude: Union[None, list] = None,
             figsize: tuple = (9, 7),
@@ -632,6 +610,14 @@ class Experiments(object):
 
         Parameters
         ----------
+            x :
+                input data, if not given, then ``data`` must be given.
+            y :
+                target data
+            data :
+                raw unprocessed data from which x,y pairs can be drawn. This data
+                will be passed to DataSet class and DataSet.test_data() method
+                will be used to draw x,y pairs.
             include : str, list, optional
                 if not None, must be a list of models which will be included.
                 None will result in plotting all the models.
@@ -660,6 +646,12 @@ class Experiments(object):
         .. _taylor_plot:
             https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.taylor_plot
         """
+
+
+        _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
+
+        self._build_predict_from_configs(x, y)
+
         metrics = self.metrics.copy()
 
         include = self._check_include_arg(include)
@@ -747,6 +739,8 @@ Available cases are {self.models} and you wanted to include
             self,
             metric_name: str,
             plot_type: str = 'dumbbell',
+            lower_limit: Union[int, float] = -1.0,
+            upper_limit: Union[int, float] = None,
             save: bool = True,
             name: str = '',
             dpi: int = 200,
@@ -763,6 +757,10 @@ Available cases are {self.models} and you wanted to include
                 the peformance metric for comparison
             plot_type : str, optional
                 the kind of plot to draw. Either ``dumbbell`` or ``bar``
+            lower_limit : float/int, optional (default=-1.0)
+                clip the values below this value. Set this value to None to avoid clipping.
+            upper_limit : float/int, optional (default=None)
+                clip the values above this value
             save : bool
                 whether to save the plot or not
             name : str, optional
@@ -808,9 +806,20 @@ Available cases are {self.models} and you wanted to include
 
             improvement.loc[key] = [initial, final]
 
+        baseline = improvement['start']
+
+        if lower_limit:
+            baseline = np.where(baseline < lower_limit, lower_limit, baseline)
+
+        if upper_limit:
+            baseline = np.where(baseline > upper_limit, upper_limit, baseline)
+
+        improvement['start'] = baseline
+
         if plot_type == "dumbbell":
             ax = dumbbell_plot(
-                improvement['start'], improvement['end'],
+                improvement['start'],
+                improvement['end'],
                 improvement.index.tolist(),
                 xlabel=ERROR_LABELS.get(metric_name, metric_name),
                 show=False,
@@ -852,6 +861,9 @@ Available cases are {self.models} and you wanted to include
     def compare_errors(
             self,
             matric_name: str,
+            x=None,
+            y=None,
+            data = None,
             cutoff_val: float = None,
             cutoff_type: str = None,
             save: bool = True,
@@ -869,6 +881,14 @@ Available cases are {self.models} and you wanted to include
         ----------
             matric_name : str
                  performance matric whose value to plot for all the models
+            x :
+                input data, if not given, then ``data`` must be given.
+            y :
+                target data
+            data :
+                raw unprocessed data from which x,y pairs can be drawn. This data
+                will be passed to DataSet class and DataSet.test_data() method
+                will be used to draw x,y pairs.
             cutoff_val : float
                  if provided, only those models will be plotted for whome the
                  matric is greater/smaller than this value. This works in conjuction
@@ -918,6 +938,10 @@ Available cases are {self.models} and you wanted to include
             >>> experiment.compare_errors('mse')
             >>> experiment.compare_errors('r2', 0.2, 'greater')
         """
+
+        _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
+
+        self._build_predict_from_configs(x, y)
 
         models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
                                             ignore_nans, sort_by)
@@ -1126,13 +1150,86 @@ Available cases are {self.models} and you wanted to include
             plt.show()
         return axis
 
-    def compare_regression_plots(
+    def compare_edf_plots(
             self,
-            x,
-            y,
+            x=None,
+            y=None,
+            data=None,
+            figsize=None,
             save: Optional[bool] = True,
             show: Optional[bool] = True,
-            fname: Optional[str] = ""
+            fname: Optional[str] = "regression"
+    ):
+        """compare EDF plots of all the models which have been fitted.
+        This plot is only available for regression problems.
+
+        parameters
+        ----------
+        x :
+            input data
+        y :
+            target data
+        data :
+            raw data
+        figsize :
+            figure size
+        save : bool, optional (default=True)
+            whether to save the plot or not?
+        show : bool, optional (default=True)
+            whether to show the plot or not?
+        fname : str, optional
+
+        Returns
+        -------
+        plt.Figure
+            matplotlib
+
+        Example
+        -------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        """
+        assert self.mode == "regression"
+
+        _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
+
+        model_folders = self._get_model_folders()
+
+        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+
+        # load all models from config
+        for model_name, ax in zip(model_folders, axes.flat):
+
+            m_path = self._get_best_model_path(model_name)
+
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            true, prediction = model.predict(x, y, return_true=True)
+
+            error = np.abs(true - prediction)
+
+            edf_plot(error, xlabel="Absolute Error", ax=ax, show=False)
+
+        if save:
+            fname = os.path.join(self.exp_path, f'{fname}.png')
+            plt.savefig(fname, dpi=600, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+        return
+
+    def compare_regression_plots(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            figsize=None,
+            save: Optional[bool] = True,
+            show: Optional[bool] = True,
+            fname: Optional[str] = "regression"
     ):
         """compare regression plots of all the models which have been fitted.
         This plot is only available for regression problems.
@@ -1143,6 +1240,10 @@ Available cases are {self.models} and you wanted to include
             input data
         y :
             target data
+        data :
+            raw data
+        figsize :
+            figure size
         save : bool, optional (default=True)
             whether to save the plot or not?
         show : bool, optional (default=True)
@@ -1156,17 +1257,48 @@ Available cases are {self.models} and you wanted to include
 
         Example
         -------
+        >>> from ai4water.experiments import MLRegressionExperiments
         """
         assert self.mode == "regression"
-        raise NotImplementedError
+
+        _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
+
+        model_folders = self._get_model_folders()
+
+        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+
+        # load all models from config
+        for model_name, ax in zip(model_folders, axes.flat):
+
+            m_path = self._get_best_model_path(model_name)
+
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            true, prediction = model.predict(x, y, return_true=True)
+
+            reg_plot(true, prediction, ax=ax, show=False)
+
+        if save:
+            fname = os.path.join(self.exp_path, f'{fname}.png')
+            plt.savefig(fname, dpi=600, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+        return
 
     def compare_residual_plots(
             self,
-            x,
-            y,
+            x=None,
+            y=None,
+            data = None,
+            figsize = None,
             save: Optional[bool] = True,
             show: Optional[bool] = True,
-            fname: Optional[str] = ""
+            fname: Optional[str] = "residual"
     ):
         """compare residual plots of all the models which have been fitted.
         This plot is only available for regression problems.
@@ -1177,6 +1309,8 @@ Available cases are {self.models} and you wanted to include
             input data
         y :
             target data
+        data :
+        figsize :
         save : bool, optional (default=True)
             whether to save the plot or not?
         show : bool, optional (default=True)
@@ -1192,7 +1326,51 @@ Available cases are {self.models} and you wanted to include
         -------
         """
         assert self.mode == "regression"
-        raise NotImplementedError
+
+        _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
+
+        model_folders = self._get_model_folders()
+
+        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+
+        # load all models from config
+        for model_name, ax in zip(model_folders, axes.flat):
+
+            m_path = self._get_best_model_path(model_name)
+
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            true, prediction = model.predict(x, y, return_true=True)
+
+            x = prediction
+            y = true - prediction
+
+            plot(x, y, 'o', show=False,
+                    ax=ax,
+                    color="darksalmon",
+                    xlabel="Predicted",
+                    ylabel="Residual",
+                    markerfacecolor=np.array([225, 121, 144]) / 256.0,
+                    markeredgecolor="black", markeredgewidth=0.5,
+                    xlabel_kws={"fontsize": 14},
+                    ylabel_kws={"fontsize": 14},
+                    )
+
+            # draw horizontal line on y=0
+            ax.axhline(0.0)
+            plt.suptitle(model_name)
+
+        if save:
+            fname = os.path.join(self.exp_path, f'{fname}.png')
+            plt.savefig(fname, dpi=600, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+        return
 
     @classmethod
     def from_config(
@@ -1735,7 +1913,7 @@ Available cases are {self.models} and you wanted to include
             assert y is None, f"y must only be given if x is given. x is {type(x)}"
             assert data is not None, f"if x is given, data must not be given"
             assert validation_data is None, f"validation data must only be given if x is given"
-            assert test_data is None, f"test data must only be given if x is given"
+            #assert test_data is None, f"test data must only be given if x is given"
 
             data_config.pop('category')
 
@@ -1786,6 +1964,57 @@ Available cases are {self.models} and you wanted to include
             test_x, test_y = test_data
 
         return train_x, train_y, val_x, val_y, test_x, test_y
+
+    def _get_model_folders(self):
+        model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path, p))]
+
+        # find all the model folders
+        m_folders = []
+        for m in model_folders:
+            if any(m in m_ for m_ in self.considered_models):
+                m_folders.append(m)
+        return m_folders
+
+    def _build_predict_from_configs(self, x, y):
+
+        model_folders = self._get_model_folders()
+
+        # load all models from config
+        for model_name in model_folders:
+
+            m_path = self._get_best_model_path(model_name)
+
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            out = model.predict(x, y, return_true=True)
+
+            self._populate_results(f"model_{model_name}", train_results=None, test_results=out)
+
+        return
+
+    def _get_best_model_path(self, model_name):
+        m_path = os.path.join(self.exp_path, model_name)
+        if len(os.listdir(m_path)) == 1:
+            m_path = os.path.join(m_path, os.listdir(m_path)[0])
+
+        elif 'best' in os.listdir(m_path):
+            # within best folder thre is another folder
+            m_path = os.path.join(m_path, 'best')
+            assert len(os.listdir(m_path)) == 1
+            m_path = os.path.join(m_path, os.listdir(m_path)[0])
+
+        else:
+            folders = [path for path in os.listdir(m_path) if
+                       os.path.isdir(os.path.join(m_path, path)) and path.startswith('1_')]
+            if len(folders) == 1:
+                m_path = os.path.join(m_path, folders[0])
+            else:
+                raise ValueError(f"Cant find best model in {m_path}")
+        return m_path
+
 
 
 class TransformationExperiments(Experiments):

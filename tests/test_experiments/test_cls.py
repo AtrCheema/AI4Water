@@ -61,10 +61,10 @@ class TestCls(unittest.TestCase):
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
             'LinearDiscriminantAnalysis',
         ],
-                #include=['model_XGBRFClassifier', 'model_XGBClassifier']
+                include=['model_XGBRFClassifier', 'model_XGBClassifier']
                 )
-        exp.compare_errors('accuracy', show=False, save=False)
-        exp.compare_errors('f1_score', show=False, save=False)
+        exp.compare_errors('accuracy', data=data, show=False, save=False)
+        exp.compare_errors('f1_score', data=data, show=False, save=False)
         exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values, show=False, save=False)
         exp.compare_roc_curves(data[inputs].values, data[outputs].values, show=False, save=False)
 
@@ -110,6 +110,7 @@ class TestCls(unittest.TestCase):
                 ],
                 run_type="optimize",
                 )
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values, show=False, save=False)
         return
 
     def test_multiclass(self):
