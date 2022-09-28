@@ -22,6 +22,7 @@ from ai4water.utils.utils import clear_weights
 from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
+from ai4water.backend import create_subplots
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
 
@@ -1158,10 +1159,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""
-        try:
-            from pandas.plotting._matplotlib.tools import create_subplots
-        except ImportError: # for older pandas versions
-            from pandas.plotting._matplotlib.tools import _subplots as create_subplots
 
         # name of hyperparameters
         h_paras = list(self.best_xy()['x'].keys())

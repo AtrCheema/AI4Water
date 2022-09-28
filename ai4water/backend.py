@@ -14,7 +14,8 @@ __all__ = ["np", "os", "plt", "mpl", "pd", "random", "scipy", "stats",
            "requests", "plotly", "h5py", "lime",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
            "get_attributes",
-           "wandb", "WandbCallback"]
+           "wandb", "WandbCallback",
+           "create_subplots"]
 
 from types import FunctionType
 
@@ -31,7 +32,10 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-
+try:
+    from pandas.plotting._matplotlib.tools import create_subplots
+except ImportError:  # for older pandas versions
+    from pandas.plotting._matplotlib.tools import _subplots as create_subplots
 
 def get_attributes(
         aus,
