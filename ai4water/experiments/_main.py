@@ -238,7 +238,7 @@ class Experiments(object):
         self.features = {}
         self.iter_metrics = {}
 
-        self.considered_models = []
+        self.considered_models_ = []
 
         return
 
@@ -250,6 +250,111 @@ class Experiments(object):
             if x0:
                 return {k: v for k, v in zip(names, x0)}
         return {}
+
+    def _get_config(self, model_type, model_name, **suggested_paras):
+        # the config must contain the suggested parameters by the hpo algorithm
+        if model_type in self.cases:
+            config = self.cases[model_type]
+            config.update(suggested_paras)
+        elif model_name in self.cases:
+            config = self.cases[model_name]
+            config.update(suggested_paras)
+        elif hasattr(self, model_type):
+            config = getattr(self, model_type)(**suggested_paras)
+        else:
+            raise TypeError
+        return config
+
+    def _dry_run_a_model(
+            self,
+            model_type,
+            model_name,
+            cross_validate,
+            train_x, train_y, val_x, val_y):
+
+        if self.verbosity >= 0: print(f"running  {model_type} model")
+
+        x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
+        model = self._build_fit(
+            x, y,
+            title=f"{self.exp_name}{SEP}{model_name}",
+            cross_validate=cross_validate,
+            **self._get_config(model_type, model_name))
+
+        train_results = self._predict(model=model, x=train_x, y=train_y)
+
+        self._populate_results(model_name, train_results)
+
+        if cross_validate:
+            cv_scoring = model.val_metric
+            self.cv_scores_[model_type] = getattr(model, f'cross_val_scores')
+            setattr(self, '_cv_scoring', cv_scoring)
+        return
+
+    def _optimize_a_model(
+            self,
+            model_type,
+            model_name,opt_method,
+            num_iterations,
+            cross_validate,
+            post_optimize,
+            train_x, train_y,
+            val_x, val_y,
+            **hpo_kws,
+    ):
+
+        def objective_fn(**suggested_paras) -> float:
+            config = self._get_config(model_type, model_name, **suggested_paras)
+
+            return self._build_fit_eval(
+                train_x=train_x,
+                train_y=train_y,
+                validation_data=(val_x, val_y),
+                cross_validate=cross_validate,
+                title=f"{self.exp_name}{SEP}{model_name}",
+                **config)
+
+        opt_dir = os.path.join(os.getcwd(),
+                               f"results{SEP}{self.exp_name}{SEP}{model_name}")
+
+        if self.verbosity > 0:
+            print(f"optimizing  {model_type} using {opt_method} method")
+
+        self.optimizer = HyperOpt(
+            opt_method,
+            objective_fn=objective_fn,
+            param_space=self.param_space,
+            opt_path=opt_dir,
+            num_iterations=num_iterations,  # number of iterations
+            x0=self.x0,
+            verbosity=self.verbosity,
+            **hpo_kws
+        )
+
+        self.opt_results = self.optimizer.fit()
+
+        self.config['optimized_models'][model_type] = self.optimizer.opt_path
+
+        if cross_validate:
+            # if we do train_best, self.model_ will change and this
+            cv_scoring = self.model_.val_metric
+            self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
+            setattr(self, '_cv_scoring', cv_scoring)
+
+        x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
+        if post_optimize == 'eval_best':
+            train_results = self.eval_best(x, y, model_name, opt_dir)
+        else:
+            train_results = self.train_best(x, y, model_name)
+
+        self._populate_results(model_type, train_results)
+
+        if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
+            raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
+        self.config['eval_models'][model_type] = self.model_.path
+
+        self.iter_metrics[model_type] = self.model_iter_metric
+        return
 
     def fit(
             self,
@@ -383,99 +488,44 @@ class Experiments(object):
 
         self._reset()
 
-        setattr(self, 'considered_models', models_to_consider)
+        setattr(self, 'considered_models_', models_to_consider)
 
         for model_type in models_to_consider:
 
             model_name = model_type.split('model_')[1]
 
-            if model_type not in exclude:
+            self.model_iter_metric = {}
+            self.iter_ = 0
 
-                self.model_iter_metric = {}
-                self.iter_ = 0
+            # there may be attributes int the model, which needs to be loaded so run the method first.
+            # such as param_space etc.
+            if hasattr(self, model_type):
+                getattr(self, model_type)()
 
-                def objective_fn(**suggested_paras)->float:
-                    # the config must contain the suggested parameters by the hpo algorithm
-                    if model_type in self.cases:
-                        config = self.cases[model_type]
-                        config.update(suggested_paras)
-                    elif model_name in self.cases:
-                        config = self.cases[model_name]
-                        config.update(suggested_paras)
-                    elif hasattr(self, model_type):
-                        config = getattr(self, model_type)(**suggested_paras)
-                    else:
-                        raise TypeError
+            if run_type == 'dry_run':
+                self._dry_run_a_model(
+                    model_type,
+                    model_name,
+                    cross_validate,
+                    train_x, train_y, val_x, val_y)
 
-                    return self._build_fit_eval(
-                        train_x=train_x,
-                        train_y=train_y,
-                        validation_data=(val_x, val_y),
-                        cross_validate=cross_validate,
-                        title=f"{self.exp_name}{SEP}{model_name}",
-                        **config)
+            else:
+                self._optimize_a_model(
+                    model_type,
+                    model_name,
+                    opt_method,
+                    num_iterations,
+                    cross_validate,
+                    post_optimize,
+                    train_x, train_y,
+                    val_x, val_y,
+                    **hpo_kws
+                )
 
-                # there may be attributes int the model, which needs to be loaded so run the method first.
-                # such as param_space etc.
-                if hasattr(self, model_type):
-                    getattr(self, model_type)()
-
-                if run_type == 'dry_run':
-                    if self.verbosity >= 0: print(f"running  {model_type} model")
-                    _ = objective_fn(**self._named_x0())
-                    train_results = self._predict(model=self.model_, x=train_x, y=train_y)
-                    val_results = self._predict(model=self.model_, x=val_x, y=val_y)
-
-                    self._populate_results(model_name, train_results, val_results)
-
-                    if cross_validate:
-                        cv_scoring = self.model_.val_metric
-                        self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
-                        setattr(self, '_cv_scoring', cv_scoring)
-
-                else:
-                    opt_dir = os.path.join(os.getcwd(),
-                                           f"results{SEP}{self.exp_name}{SEP}{model_name}")
-
-                    if self.verbosity > 0:
-                        print(f"optimizing  {model_type} using {opt_method} method")
-
-                    self.optimizer = HyperOpt(
-                        opt_method,
-                        objective_fn=objective_fn,
-                        param_space=self.param_space,
-                        opt_path=opt_dir,
-                        num_iterations=num_iterations,  # number of iterations
-                        x0=self.x0,
-                        verbosity=self.verbosity,
-                        **hpo_kws
-                    )
-
-                    self.opt_results = self.optimizer.fit()
-
-                    self.config['optimized_models'][model_type] = self.optimizer.opt_path
-
-                    if cross_validate:
-                        # if we do train_best, self.model_ will change and this
-                        cv_scoring = self.model_.val_metric
-                        self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
-                        setattr(self, '_cv_scoring', cv_scoring)
-
-                    x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
-                    if post_optimize == 'eval_best':
-                        train_results = self.eval_best(x, y, model_name, opt_dir)
-                    elif post_optimize == 'train_best':
-                        train_results = self.train_best(x, y, model_name)
-
-                    self._populate_results(model_type, train_results)
-
-                if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
-                    raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
-                self.config['eval_models'][model_type] = self.model_.path
-
-                self.iter_metrics[model_type] = self.model_iter_metric
-
-        self.save_config()
+        self.update_and_save_config(considered_models_ = self.considered_models_,
+                                    is_multiclass_ = self.is_multiclass_,
+                                    is_binary_ = self.is_binary_,
+                                    is_multilabel_ = self.is_multilabel_)
 
         save_json_file(os.path.join(self.exp_path, 'features.json'), self.features)
         save_json_file(os.path.join(self.exp_path, 'metrics.json'), self.metrics)
@@ -1056,6 +1106,7 @@ Available cases are {self.models} and you wanted to include
             if _model in include:
                 df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=[loss_name])
                 loss_curves[_model] = df.values
+                end = end or len(df)
 
         _kwargs = {'linestyle': '-',
                    'xlabel': "Epochs",
@@ -1063,8 +1114,6 @@ Available cases are {self.models} and you wanted to include
 
         if len(loss_curves) > 5:
             _kwargs['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
-
-        end = end or len(df)
 
         _, axis = plt.subplots(figsize=figsize)
 
@@ -1187,6 +1236,13 @@ Available cases are {self.models} and you wanted to include
         Example
         -------
         >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> dataset = busan_beach()
+        >>> inputs = list(dataset.columns)[0:-1]
+        >>> outputs = list(dataset.columns)[-1]
+        >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+        >>> experiment.fit(data=dataset)
+        >>> experiment.compare_edf_plots(data=dataset)
         """
         assert self.mode == "regression"
 
@@ -1208,7 +1264,9 @@ Available cases are {self.models} and you wanted to include
 
             true, prediction = model.predict(x, y, return_true=True)
 
-            error = np.abs(true - prediction)
+            assert len(true) == true.size
+            assert len(prediction) == prediction.size
+            error = np.abs(true.reshape(-1,) - prediction.reshape(-1,))
 
             edf_plot(error, xlabel="Absolute Error", ax=ax, show=False)
 
@@ -1258,6 +1316,13 @@ Available cases are {self.models} and you wanted to include
         Example
         -------
         >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> dataset = busan_beach()
+        >>> inputs = list(dataset.columns)[0:-1]
+        >>> outputs = list(dataset.columns)[-1]
+        >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+        >>> experiment.fit(data=dataset)
+        >>> experiment.compare_regression_plots(data=dataset)
         """
         assert self.mode == "regression"
 
@@ -1310,6 +1375,8 @@ Available cases are {self.models} and you wanted to include
         y :
             target data
         data :
+            raw unprocessed data frmm which test x,y pairs are drawn using
+            ai4water.preprocessing.DataSet class. Only valid if x and y are not given.
         figsize :
         save : bool, optional (default=True)
             whether to save the plot or not?
@@ -1324,6 +1391,14 @@ Available cases are {self.models} and you wanted to include
 
         Example
         -------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> dataset = busan_beach()
+        >>> inputs = list(dataset.columns)[0:-1]
+        >>> outputs = list(dataset.columns)[-1]
+        >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+        >>> experiment.fit(data=dataset)
+        >>> experiment.compare_residual_plots(data=dataset)
         """
         assert self.mode == "regression"
 
@@ -1345,10 +1420,9 @@ Available cases are {self.models} and you wanted to include
 
             true, prediction = model.predict(x, y, return_true=True)
 
-            x = prediction
-            y = true - prediction
-
-            plot(x, y, 'o', show=False,
+            plot(prediction,
+                 true - prediction,
+                 'o', show=False,
                     ax=ax,
                     color="darksalmon",
                     xlabel="Predicted",
@@ -1394,9 +1468,6 @@ Available cases are {self.models} and you wanted to include
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
-        cls.config = config
-        cls._from_config = True
-
         cv_scores = {}
         scoring = "mse"
 
@@ -1415,14 +1486,25 @@ Available cases are {self.models} and you wanted to include
                     with open(cv_fname, 'r') as fp:
                         cv_scores[model_name] = json.load(fp)
 
-        cls.metrics = load_json_file(
-            os.path.join(os.path.dirname(config_path), "metrics.json"))
-        cls.features = load_json_file(
-            os.path.join(os.path.dirname(config_path), "features.json"))
-        cls.cv_scores_ = cv_scores
-        cls._cv_scoring = scoring
+        exp = cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
 
-        return cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
+        exp.config = config
+        exp._from_config = True
+
+        # following four attributes are only available if .fit was run
+        exp.considered_models_ = config.get('considered_models_', [])
+        exp.is_binary_ = config.get('is_binary_', None)
+        exp.is_multiclass_ = config.get('is_multiclass_', None)
+        exp.is_multilabel_ = config.get('is_multilabel_', None)
+
+        exp.metrics = load_json_file(
+            os.path.join(os.path.dirname(config_path), "metrics.json"))
+        exp.features = load_json_file(
+            os.path.join(os.path.dirname(config_path), "features.json"))
+        exp.cv_scores_ = cv_scores
+        exp._cv_scoring = scoring
+
+        return exp
 
     def plot_cv_scores(
             self,
@@ -1748,7 +1830,7 @@ Available cases are {self.models} and you wanted to include
             self,
             train_x=None,
             train_y=None,
-            validation_data=None,
+            validation_data:tuple=None,
             view=False,
             title=None,
             cross_validate: bool=False,
@@ -1771,7 +1853,7 @@ Available cases are {self.models} and you wanted to include
                                 cross_validate, refit, **kwargs)
 
         # return the validation score
-        return self._evaluate(model, validation_data=validation_data)
+        return self._evaluate(model, *validation_data)
 
     def _build(self, title=None, **suggested_paras):
         """Builds the ai4water Model class and makes it a class attribute."""
@@ -1827,22 +1909,16 @@ Available cases are {self.models} and you wanted to include
     def _evaluate(
             self,
             model:Model,
-            validation_data=None,
-            data="validation"
+            x,
+            y,
     ) -> float:
         """Evaluates the model"""
 
-        if validation_data is None:
-            t, p = model.predict_on_validation_data(
-                data=data,
-                return_true=True,
-                process_results=False)
-        else:
-            t, p = model.predict(
-                return_true=True,
-                process_results=False,
-                *validation_data
-            )
+        #if validation_data is None:
+        t, p = model.predict(
+            x=x, y=y,
+            return_true=True,
+            process_results=False)
 
         test_metrics = self._get_metrics(t, p)
         metrics = Metrics[self.mode](t, p,
@@ -1908,30 +1984,43 @@ Available cases are {self.models} and you wanted to include
         data_config = model_maker.data_config
 
         if x is None:
-            # case 4, only data is given
-
             assert y is None, f"y must only be given if x is given. x is {type(x)}"
-            assert data is not None, f"if x is given, data must not be given"
-            assert validation_data is None, f"validation data must only be given if x is given"
-            #assert test_data is None, f"test data must only be given if x is given"
 
-            data_config.pop('category')
+            if data is None:
+                # x,y and data are not given, we may be given test/validation data
+                train_x, train_y = None, None
+                if validation_data is None:
+                    val_x, val_y = None, None
+                else:
+                    val_x, val_y = validation_data
 
-            if 'lookback' in self._named_x0() and 'ts_args' not in self.model_kws:
-                # the value of lookback has been set by model_maker which can be wrong
-                # because the user expects it to be hyperparameter
-                data_config['ts_args']['lookback'] = self._named_x0()['lookback']
+                if test_data is None:
+                    test_x, test_y = None, None
+                else:
+                    test_x, test_y = test_data
+            else:
+                # case 4, only data is given
+                assert data is not None, f"if x is given, data must not be given"
+                assert validation_data is None, f"validation data must only be given if x is given"
+                #assert test_data is None, f"test data must only be given if x is given"
 
-            dataset = DataSet(data=data,
-                              save=data_config.pop('save') or True,
-                              category=self.category,
-                              **data_config)
+                data_config.pop('category')
 
-            train_x, train_y = dataset.training_data()
-            val_x, val_y = dataset.validation_data() # todo what if there is not validation data
-            test_x, test_y = dataset.test_data()
-            if len(test_x) == 0:
-                test_x, test_y = None, None
+                if 'lookback' in self._named_x0() and 'ts_args' not in self.model_kws:
+                    # the value of lookback has been set by model_maker which can be wrong
+                    # because the user expects it to be hyperparameter
+                    data_config['ts_args']['lookback'] = self._named_x0()['lookback']
+
+                dataset = DataSet(data=data,
+                                  save=data_config.pop('save') or True,
+                                  category=self.category,
+                                  **data_config)
+
+                train_x, train_y = dataset.training_data()
+                val_x, val_y = dataset.validation_data() # todo what if there is not validation data
+                test_x, test_y = dataset.test_data()
+                if len(test_x) == 0:
+                    test_x, test_y = None, None
 
         elif test_data is None and validation_data is None:
             # case 1, only x,y are given
@@ -1971,7 +2060,7 @@ Available cases are {self.models} and you wanted to include
         # find all the model folders
         m_folders = []
         for m in model_folders:
-            if any(m in m_ for m_ in self.considered_models):
+            if any(m in m_ for m_ in self.considered_models_):
                 m_folders.append(m)
         return m_folders
 
@@ -2184,6 +2273,8 @@ def _combine_training_validation_data(
     combines x,y pairs of training and validation data.
     """
 
+    if validation_data is None:
+        return x_train, y_train
     x_val, y_val = validation_data
 
     if isinstance(x_train, list):

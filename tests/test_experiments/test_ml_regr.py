@@ -66,6 +66,9 @@ class TestExperiments(unittest.TestCase):
                         validation_data=ds.validation_data(),
                         include=['GaussianProcessRegressor', 'RandomForestRegressor']
                         )
+        comparisons.compare_regression_plots(x=x, y=y, save=False, show=False)
+        comparisons.compare_residual_plots(x=x, y=y, save=False, show=False)
+        comparisons.compare_edf_plots(x=x, y=y, save=False, show=False)
 
         return
 
@@ -87,6 +90,10 @@ class TestExperiments(unittest.TestCase):
         comparisons.plot_improvement('r2', save=False)
         comparisons.plot_improvement('mse', save=False)
         comparisons.compare_convergence()
+
+        comparisons.compare_regression_plots(data=df, save=False, show=False)
+        comparisons.compare_residual_plots(data=df, save=False, show=False)
+        comparisons.compare_edf_plots(data=df, save=False, show=False)
         return
 
     def test_cross_val(self):
@@ -115,6 +122,10 @@ class TestExperiments(unittest.TestCase):
         models = comparisons.sort_models_by_metric('r2')
         assert isinstance(models, pd.DataFrame)
 
+        comparisons.compare_regression_plots(data=df, save=False, show=False)
+        comparisons.compare_residual_plots(data=df, save=False, show=False)
+        comparisons.compare_edf_plots(data=df, save=False, show=False)
+
         return
 
     def test_from_config(self):
@@ -127,7 +138,9 @@ class TestExperiments(unittest.TestCase):
             exp_name=f"BestMLModels_{dateandtime_now()}",
         verbosity=0)
         exp.fit(data=df,
-                run_type="dry_run",
+                run_type="optimize",
+                opt_method="random",
+                num_iterations=4,
                 include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor'],
                 post_optimize='train_best')
@@ -138,7 +151,13 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(exp2.exp_path, exp.exp_path)
         self.assertEqual(len(exp.metrics), len(exp2.metrics))
         self.assertEqual(len(exp.features), len(exp2.features))
-        exp.compare_errors('r2', data=df, show=False)
+        exp2.compare_errors('r2', data=df, show=False)
+
+        exp2.taylor_plot(data=df, show=False)
+
+        exp2.compare_regression_plots(data=df, save=False, show=False)
+        exp2.compare_residual_plots(data=df, save=False, show=False)
+        exp2.compare_edf_plots(data=df, save=False, show=False)
 
         return
 
@@ -197,10 +216,14 @@ class TestNonSKlearn(unittest.TestCase):
                                                  ts_args={"lookback": 5},
                                                  exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
-        experiment.fit(data = df, run_type='optimize', opt_method='random',
+        experiment.fit(data = df, run_type='optimize',
+                       opt_method='random',
                        num_iterations=2)
-        return
 
+        experiment.compare_regression_plots(data=df, save=False, show=False)
+        experiment.compare_residual_plots(data=df, save=False, show=False)
+        experiment.compare_edf_plots(data=df, save=False, show=False)
+        return
 
     def test_fit_with_tpot(self):
         exp = MLRegressionExperiments(

@@ -194,6 +194,7 @@ def murphy_diagram(
         ax.set_ylabel("Difference in scores", fontsize=16)
 
     ax.set_xlabel(xaxis, fontsize=16)
+    ax.set_title("Murphy Diagram", fontsize=16)
 
     if show:
         plt.show()

@@ -24,9 +24,6 @@ except AttributeError:
     plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
 
 
-# TODO add Murphy's plot as shown in MLAir
-# prediction_distribution aka actual_plot of PDPbox
-# average_target_value aka target_plot of PDPbox
 # competitive skill score plot/ bootstrap skill score plot as in MLAir
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
@@ -291,7 +288,7 @@ class ProcessPredictions(Plot):
 
     def residual_plot(self, true, predicted, prefix, where, **kwargs):
 
-        fig, axis = plt.subplots(2)
+        fig, axis = plt.subplots(2, sharex="all")
 
         x = predicted.values
         y = true.values - predicted.values
@@ -322,10 +319,9 @@ class ProcessPredictions(Plot):
 
         return plot_metrics(
             errors.calculate_all(),
-            show=False,
+            show=self.show,
             save_path=os.path.join(self.path, where),
             save=self.save,
-            #statistics=False
         )
 
     def regression_plot(
@@ -383,7 +379,8 @@ class ProcessPredictions(Plot):
 
         axis.plot(predicted, style, color='r', label='Prediction')
 
-        axis.plot(true, style, color='b', marker='o', fillstyle='none', markersize=ms, label='True')
+        axis.plot(true, style, color='b', marker='o', fillstyle='none',
+                  markersize=ms, label='True')
 
         axis.legend(loc="best", fontsize=22, markerscale=4)
 
