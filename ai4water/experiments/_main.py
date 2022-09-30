@@ -7,6 +7,7 @@ from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ai4water.backend import create_subplots
 from ai4water.backend import tf, os, np, pd, plt, easy_mpl
+from ai4water.backend import xgboost, catboost, lightgbm
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import make_model
@@ -56,6 +57,43 @@ Monitor = {
                    'mase'],
 
     'classification': ['accuracy', 'precision', 'recall', 'mse']
+}
+
+reg_dts = ["ExtraTreeRegressor","DecisionTreeRegressor",
+           "ExtraTreesRegressor", "RandomForestRegressor",
+            "AdaBoostRegressor",  "BaggingRegressor",
+            "HistGradientBoostingRegressor", "GradientBoostingRegressor"]
+
+cls_dts = ["DecisionTreeClassifier", "ExtraTreeClassifier",
+           "ExtraTreesClassifier", "AdaBoostClassifier","RandomForestClassifier", "BaggingClassifier"
+           "GradientBoostingClassifier", "HistGradientBoostingClassifier"]
+
+if xgboost is not None:
+    reg_dts += ["XGBRegressor"]
+    cls_dts += ["XGBClassifier"]
+
+if catboost is not None:
+    reg_dts += ["CatBoostRegressor"]
+    cls_dts += ["CatBoostClassifier"]
+
+if lightgbm is not None:
+    reg_dts += ["LGBMRegressor"]
+    cls_dts += ["LGBMClassifier"]
+
+DTs = {"regression":
+           reg_dts,
+       "classification":
+           cls_dts
+       }
+
+LMs = {
+    "regression":
+        ["LinearRegression", "Ridge", "RidgeCV", "SGDRegressor",
+         "ElasticNetCV", "ElasticNet",
+         "Lasso", "LassoCV", "Lars", "LarsCV", "LassoLars", "LassoLarsCV", "LassoLarsIC"],
+    "classification":
+        ["LogisticRegression", "LogisticRegressionCV", "PassiveAggressiveClassifier", "Perceptron",
+         "RidgeClassifier", "RidgeClassifierCV", "SGDClassifier", "SGDClassifierCV"]
 }
 
 
@@ -108,7 +146,8 @@ class Experiments(object):
         Arguments
         ---------
             cases :
-                python dictionary defining different cases/scenarios
+                python dictionary defining different cases/scenarios. See TransformationExperiments
+                for use case.
             exp_name :
                 name of experiment, used to define path in which results are saved
             num_samples :
@@ -272,7 +311,7 @@ class Experiments(object):
             cross_validate,
             train_x, train_y, val_x, val_y):
 
-        if self.verbosity >= 0: print(f"running  {model_type} model")
+        if self.verbosity >= 0: print(f"running  {model_name} model")
 
         x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
         model = self._build_fit(
@@ -318,7 +357,7 @@ class Experiments(object):
                                f"results{SEP}{self.exp_name}{SEP}{model_name}")
 
         if self.verbosity > 0:
-            print(f"optimizing  {model_type} using {opt_method} method")
+            print(f"optimizing  {model_name} using {opt_method} method")
 
         self.optimizer = HyperOpt(
             opt_method,
@@ -365,7 +404,7 @@ class Experiments(object):
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
-            include: Union[None, list] = None,
+            include: Union[None, list, str] = None,
             exclude: Union[None, list, str] = '',
             cross_validate: bool = False,
             post_optimize: str = 'eval_best',
@@ -386,7 +425,10 @@ class Experiments(object):
         Parameters
         ----------
             x :
-                input data
+                input data. When ``run_type`` is ``dry_run``, then the each model is trained
+                on this data. If ``run_type`` is ``optimize``, validation_data is not given,
+                then x,y pairs of validation data are extracted from this data based
+                upon splitting scheme i.e. ``val_fraction`` argument.
             y :
                 label/true/observed data
             data :
@@ -407,9 +449,10 @@ class Experiments(object):
             num_iterations : int, optional
                 number of iterations for optimization. Only valid
                 if ``run_type`` is ``optimize``.
-            include :
+            include : list/str optional (default="DTs")
                 name of models to included. If None, all the models found
-                will be trained and or optimized.
+                will be trained and or optimized. Default is "DTs", which
+                means all decision tree based models will be used.
             exclude :
                 name of ``models`` to be excluded
             cross_validate : bool, optional (default=False)
@@ -770,7 +813,12 @@ class Experiments(object):
     def _check_include_arg(self, include):
 
         if isinstance(include, str):
-            include = [include]
+            if include == "DTs":
+                include = DTs[self.mode]
+            elif include == "LMs":
+                include = LMs[self.mode]
+            else:
+                include = [include]
 
         if include is None:
             include = self.models
@@ -1204,6 +1252,7 @@ Available cases are {self.models} and you wanted to include
             x=None,
             y=None,
             data=None,
+            exclude:Union[list, str] = None,
             figsize=None,
             save: Optional[bool] = True,
             show: Optional[bool] = True,
@@ -1219,7 +1268,9 @@ Available cases are {self.models} and you wanted to include
         y :
             target data
         data :
-            raw data
+            raw unprocessed data from which x,y pairs of the test data are drawn
+        exclude : list
+            name of models to exclude from plotting
         figsize :
             figure size
         save : bool, optional (default=True)
@@ -1241,34 +1292,50 @@ Available cases are {self.models} and you wanted to include
         >>> inputs = list(dataset.columns)[0:-1]
         >>> outputs = list(dataset.columns)[-1]
         >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
-        >>> experiment.fit(data=dataset)
-        >>> experiment.compare_edf_plots(data=dataset)
+        >>> experiment.fit(data=dataset, include="LMs")
+        >>> experiment.compare_edf_plots(data=dataset, exclude="SGDRegressor")
         """
-        assert self.mode == "regression"
+        assert self.mode == "regression", f"This plot is not available for {self.mode} mode"
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
         model_folders = self._get_model_folders()
 
-        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+        if exclude is None:
+            exclude = []
+        elif isinstance(exclude, str):
+            exclude = [exclude]
+
+        fig, axes = plt.subplots(figsize=figsize)
 
         # load all models from config
-        for model_name, ax in zip(model_folders, axes.flat):
+        for model_name in model_folders:
 
-            m_path = self._get_best_model_path(model_name)
+            if model_name not in exclude:
 
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
+                m_path = self._get_best_model_path(model_name)
 
-            true, prediction = model.predict(x, y, return_true=True)
+                c_path = os.path.join(m_path, 'config.json')
+                model = self.build_from_config(c_path)
+                # calculate pr curve for each model
+                self.update_model_weight(model, m_path)
 
-            assert len(true) == true.size
-            assert len(prediction) == prediction.size
-            error = np.abs(true.reshape(-1,) - prediction.reshape(-1,))
+                true, prediction = model.predict(x, y, return_true=True,
+                                                 process_results=False)
 
-            edf_plot(error, xlabel="Absolute Error", ax=ax, show=False)
+                assert len(true) == true.size
+                assert len(prediction) == prediction.size
+                error = np.abs(true.reshape(-1,) - prediction.reshape(-1,))
+
+                if model_name.endswith("Regressor"):
+                    label = model_name.split("Regressor")[0]
+                elif model_name.endswith("Classifier"):
+                    label = model_name.split("Classifier")[0]
+                else:
+                    label = model_name
+
+                edf_plot(error, xlabel="Absolute Error", ax=axes, label=label,
+                         show=False)
 
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
@@ -1299,7 +1366,7 @@ Available cases are {self.models} and you wanted to include
         y :
             target data
         data :
-            raw data
+            raw unprocessed data from which x,y pairs of the test data are drawn
         figsize :
             figure size
         save : bool, optional (default=True)
@@ -1307,7 +1374,7 @@ Available cases are {self.models} and you wanted to include
         show : bool, optional (default=True)
             whether to show the plot or not?
         fname : str, optional
-
+            name of the file to save the plot
         Returns
         -------
         plt.Figure
@@ -1324,7 +1391,7 @@ Available cases are {self.models} and you wanted to include
         >>> experiment.fit(data=dataset)
         >>> experiment.compare_regression_plots(data=dataset)
         """
-        assert self.mode == "regression"
+        assert self.mode == "regression", f"This plot is not available for {self.mode} mode"
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
@@ -1342,9 +1409,22 @@ Available cases are {self.models} and you wanted to include
             # calculate pr curve for each model
             self.update_model_weight(model, m_path)
 
-            true, prediction = model.predict(x, y, return_true=True)
+            true, prediction = model.predict(x, y, return_true=True, process_results=False)
 
-            reg_plot(true, prediction, ax=ax, show=False)
+            reg_plot(true, prediction, marker_size=5, ax=ax, show=False)
+
+            if model_name.endswith("Regressor"):
+               label = model_name.split("Regressor")[0]
+            elif model_name.endswith("Classifier"):
+                label = model_name.split("Classifier")[0]
+            else:
+                label = model_name
+            ax.legend(labels=[label], fontsize=9,
+                      numpoints=2,
+                      fancybox=False, framealpha=0.0)
+
+        fig.supxlabel("Observed")
+        fig.supylabel("Predicted")
 
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
@@ -1364,7 +1444,7 @@ Available cases are {self.models} and you wanted to include
             save: Optional[bool] = True,
             show: Optional[bool] = True,
             fname: Optional[str] = "residual"
-    ):
+    )->plt.Figure:
         """compare residual plots of all the models which have been fitted.
         This plot is only available for regression problems.
 
@@ -1376,7 +1456,7 @@ Available cases are {self.models} and you wanted to include
             target data
         data :
             raw unprocessed data frmm which test x,y pairs are drawn using
-            ai4water.preprocessing.DataSet class. Only valid if x and y are not given.
+            :py:meth:`ai4water.preprocessing.DataSet`. class. Only valid if x and y are not given.
         figsize :
         save : bool, optional (default=True)
             whether to save the plot or not?
@@ -1400,7 +1480,7 @@ Available cases are {self.models} and you wanted to include
         >>> experiment.fit(data=dataset)
         >>> experiment.compare_residual_plots(data=dataset)
         """
-        assert self.mode == "regression"
+        assert self.mode == "regression", f"This plot is not available for {self.mode} mode"
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
@@ -1418,25 +1498,36 @@ Available cases are {self.models} and you wanted to include
             # calculate pr curve for each model
             self.update_model_weight(model, m_path)
 
-            true, prediction = model.predict(x, y, return_true=True)
+            true, prediction = model.predict(x, y, return_true=True, process_results=False)
 
-            plot(prediction,
-                 true - prediction,
-                 'o', show=False,
-                    ax=ax,
-                    color="darksalmon",
-                    xlabel="Predicted",
-                    ylabel="Residual",
-                    markerfacecolor=np.array([225, 121, 144]) / 256.0,
-                    markeredgecolor="black", markeredgewidth=0.5,
-                    xlabel_kws={"fontsize": 14},
-                    ylabel_kws={"fontsize": 14},
-                    )
+            plot(
+                prediction,
+                true - prediction,
+                'o',
+                show=False,
+                ax=ax,
+                color="darksalmon",
+                markerfacecolor=np.array([225, 121, 144]) / 256.0,
+                markeredgecolor="black",
+                markeredgewidth=0.15,
+                markersize=1.5,
+            )
 
             # draw horizontal line on y=0
             ax.axhline(0.0)
-            plt.suptitle(model_name)
 
+            if model_name.endswith("Regressor"):
+               label = model_name.split("Regressor")[0]
+            elif model_name.endswith("Classifier"):
+                label = model_name.split("Classifier")[0]
+            else:
+                label = model_name
+            ax.legend(labels=[label], fontsize=9,
+                      numpoints=2,
+                      fancybox=False, framealpha=0.0)
+
+        fig.supxlabel("Prediction")
+        fig.supylabel("Residual")
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
@@ -1444,7 +1535,7 @@ Available cases are {self.models} and you wanted to include
         if show:
             plt.show()
 
-        return
+        return fig
 
     @classmethod
     def from_config(

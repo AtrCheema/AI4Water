@@ -322,6 +322,9 @@ class ProcessPredictions(Plot):
             show=self.show,
             save_path=os.path.join(self.path, where),
             save=self.save,
+            text_kws = {"fontsize": 16},
+            max_metrics_per_fig=20,
+
         )
 
     def regression_plot(
