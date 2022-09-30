@@ -569,7 +569,7 @@ class BaseModel(NN):
         _monitor = 'val_loss' if val_data is not None else 'loss'
         fname = "{val_loss:.5f}.hdf5" if val_data is not None else "{loss:.5f}.hdf5"
 
-        if self.config['save_model']:
+        if self.config['save_model'] and self.verbosity>=0:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
                 filepath=self.w_path + f"{os.sep}weights_" + "{epoch:03d}_" + fname,
                 save_weights_only=True,
@@ -802,9 +802,9 @@ class BaseModel(NN):
         else:
             history = self._model.history
 
-        self.save_config(history.history)
-
         if self.verbosity >= 0:
+            self.save_config(history.history)
+
             # save all the losses or performance metrics
             df = pd.DataFrame.from_dict(history.history)
             df.to_csv(os.path.join(self.path, "losses.csv"))
@@ -1021,7 +1021,8 @@ class BaseModel(NN):
             if self.verbosity >= 0:
                 visualizer.plot_loss(history.history)
 
-            self.load_best_weights()
+                # for -ve verbosity, weights are not saved! # todo should raise warning
+                self.load_best_weights()
         else:
             history = self.fit_ml_models(inputs, outputs, **kwargs)
 
@@ -1219,11 +1220,12 @@ class BaseModel(NN):
             if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_scores}')
 
-        # save all the scores as json in model path`
-        cv_name = str(cross_validator)
-        fname = os.path.join(self.path, f'{cv_name}_scores.json')
-        with open(fname, 'w') as fp:
-            json.dump(scores, fp)
+        if self.verbosity >= 0:
+            # save all the scores as json in model path`
+            cv_name = str(cross_validator)
+            fname = os.path.join(self.path, f'{cv_name}_scores.json')
+            with open(fname, 'w') as fp:
+                json.dump(scores, fp)
 
         ## set it as class attribute so that it can be used
         setattr(self, f'cross_val_scores', scores)
@@ -1231,9 +1233,10 @@ class BaseModel(NN):
         if refit:
             self.fit_on_all_training_data(data=data)
 
-        # Even if we do not run .fit(), then we should still have model saved in
-        # the disk so that it can be used.
-        self._save_ml_model()
+        if self.verbosity >= 0:
+            # Even if we do not run .fit(), then we should still have model saved in
+            # the disk so that it can be used.
+            self._save_ml_model()
 
         scores = np.array(scores)
         cv_scores_ = np.nanmean(scores, axis=0)
@@ -2563,7 +2566,7 @@ class BaseModel(NN):
             algorithm: str = "bayes",
             num_iterations: int = 14,
             process_results: bool = True,
-            update_config: bool = True,
+            refit: bool = True,
             **kwargs
     ):
         """
@@ -2583,14 +2586,15 @@ class BaseModel(NN):
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
-            algorithm:
+            algorithm: str, optional (default="bayes")
                 the algorithm to use for optimization
-            num_iterations:
+            num_iterations: int, optional (default=14)
                 number of iterations for optimization.
-            process_results:
+            process_results: bool, optional (default=True)
                 whether to perform postprocessing of optimization results or not
-            update_config:
-                whether to update the config of model or not.
+            refit: bool, optional (default=True)
+                whether to retrain the model using both training and validation data
+
         Returns:
             an instance of :py:class:`ai4water.hyperopt.HyperOpt` which is used for optimization
 
@@ -2632,24 +2636,31 @@ class BaseModel(NN):
 
         algo_type = list(self.config['model'].keys())[0]
 
-        if update_config:
-            new_model_config = update_model_config(self._original_model_config['model'],
-                                                   _optimizer.best_paras())
-            self.config['model'][algo_type] = new_model_config
+        new_model_config = update_model_config(self._original_model_config['model'],
+                                               _optimizer.best_paras())
+        self.config['model'][algo_type] = new_model_config
 
-            new_other_config = update_model_config(self._original_model_config['other'],
-                                                   _optimizer.best_paras())
-            self.config.update(new_other_config)
+        new_other_config = update_model_config(self._original_model_config['other'],
+                                               _optimizer.best_paras())
+        self.config.update(new_other_config)
 
-            # if ts_args are optimized, update them as well
-            for k,v in _optimizer.best_paras().items():
-                if k in self.config['ts_args']:
-                    self.config['ts_args'][k] = v
+        # if ts_args are optimized, update them as well
+        for k, v in _optimizer.best_paras().items():
+            if k in self.config['ts_args']:
+                self.config['ts_args'][k] = v
 
+        if refit:
             # for ml models, we must build them again
             # TODO, why not for DL models
             if self.category == "ML":
                 self.build_ml_model()
+                if isinstance(data, (list, tuple)):
+                    x, y = data
+                    self.fit_on_all_training_data(x=x, y=y)
+                else:
+                    self.fit_on_all_training_data(data=data)
+            else:
+                raise NotImplementedError
 
         return _optimizer
 

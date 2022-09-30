@@ -378,7 +378,8 @@ class TestOptimizeHyperparas(unittest.TestCase):
             data=data,
             algorithm="random",
             num_iterations=5,
-            process_results=False
+            process_results=False,
+            refit=False
         )
         s = set([xy['x']['units'] for xy in optimizer.xy_of_iterations().values()])
         assert len(s) >= 3  # assert that all suggestions are not same
@@ -407,7 +408,9 @@ class TestOptimizeHyperparas(unittest.TestCase):
             data=data,
             algorithm="random",
             num_iterations=5,
-            process_results=False)
+            process_results=False,
+            refit=False
+        )
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
         assert model.config['ts_args']['lookback'] == optimizer.best_paras()['lookback']
         return

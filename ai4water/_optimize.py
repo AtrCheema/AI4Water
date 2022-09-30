@@ -48,6 +48,16 @@ class ModelOptimizerMixIn(object):
         val_metric = self.model.val_metric
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
+
+        cross_validate = True
+        if cross_validator is None:
+            cross_validate = False
+
+        if self.process_results:
+            verbosity = 0
+        else:
+            verbosity = -1
+
         config = jsonize(self.model.config)
         SEED = config['seed']
 
@@ -61,7 +71,7 @@ class ModelOptimizerMixIn(object):
         ):
             # we must not set the seed here to None
             # this will cause random splitting unpreproducible (if random splitting is applied)
-            config['verbosity'] = 0
+            config['verbosity'] = verbosity
             config['prefix'] = PREFIX
 
             suggestions = jsonize(suggestions)
@@ -73,7 +83,12 @@ class ModelOptimizerMixIn(object):
                 make_new_path=True,
             )
 
-            if cross_validator is None:
+            if cross_validate:
+                if xy:
+                    val_score = _model.cross_val_score(*data)[0]
+                else:
+                    val_score = _model.cross_val_score(data=data)[0]
+            else:
 
                 if xy:  # todo, it is better to split data outside objective_fn
                     splitter = TrainTestSplit(seed=SEED,
@@ -97,11 +112,6 @@ class ModelOptimizerMixIn(object):
 
                 metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
-            else:
-                if xy:
-                    val_score = _model.cross_val_score(*data)[0]
-                else:
-                    val_score = _model.cross_val_score(data=data)[0]
 
             orig_val_score = val_score
 

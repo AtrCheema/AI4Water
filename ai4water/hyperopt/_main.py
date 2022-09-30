@@ -1066,13 +1066,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             ax = easy_mpl.plot(self.func_vals(), '--.',
                  xlabel="Number of calls $n$",
                  ylabel=r"$\min f(x)$ after $n$ calls",
-                               show=show,
+                               show=False,
                                **kwargs)
         else:
-            ax = plot_convergence(self.func_vals(), ax=ax, show=show, **kwargs)
+            ax = plot_convergence(self.func_vals(), ax=ax, show=False, **kwargs)
         if save:
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+        if show:
+            plt.show()
 
         return ax
 
@@ -1182,6 +1185,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         for ax, col in zip(axes.flat, h_paras):
 
             labels, bins = np.unique(np.array(h_para_lists[col]), return_counts=True)
+
+            if isinstance(self.space()[col], Real):
+                labels = [round(label, 3) for label in labels]
+
             bar_chart(bins, labels, orient="v", ax=ax, rotation=90, label=col,
                       show=False)
             ax.set_ylabel("Number of iterations")
