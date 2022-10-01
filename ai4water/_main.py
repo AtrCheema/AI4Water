@@ -3318,7 +3318,7 @@ class BaseModel(NN):
             assert data is not None, f"either 'x' or 'data' must be given"
             x, _ = getattr(self, f"{data_type}_data")(data=data)
 
-        from pdpbox.info_plots import actual_plot_interact
+        from pdpbox1.info_plots import actual_plot_interact
 
         if not isinstance(x, pd.DataFrame):
             assert isinstance(x, np.ndarray)

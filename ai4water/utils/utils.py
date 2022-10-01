@@ -1702,7 +1702,7 @@ def maybe_three_outputs(data, teacher_forcing=False):
 def get_version_info(
         **kwargs
 ) -> dict:
-    # todo, chekc which attributes are not available in different versions
+
     import sys
     from ai4water.backend import lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics
     from ai4water.backend import tf, keras, torch
