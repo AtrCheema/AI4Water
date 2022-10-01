@@ -314,11 +314,14 @@ class Experiments(object):
         if self.verbosity >= 0: print(f"running  {model_name} model")
 
         x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
+
+        config = self._get_config(model_type, model_name)
+        config.update(self._named_x0())
         model = self._build_fit(
             x, y,
             title=f"{self.exp_name}{SEP}{model_name}",
             cross_validate=cross_validate,
-            **self._get_config(model_type, model_name))
+            **config)
 
         train_results = self._predict(model=model, x=train_x, y=train_y)
 

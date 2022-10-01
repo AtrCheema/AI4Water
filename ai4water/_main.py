@@ -2514,24 +2514,8 @@ class BaseModel(NN):
         return eda
 
     def update_info(self):
-        from .backend import lightgbm, tcn, catboost, xgboost
-        from . import __version__
-        self.info['version_info'] = get_version_info(
-            tf=tf,
-            keras=keras,
-            torch=torch,
-            np=np,
-            pd=pd,
-            matplotlib=mpl,
-            h5py=h5py,
-            joblib=joblib,
-            lightgbm=lightgbm,
-            tcn=tcn,
-            catboost=catboost,
-            xgboost=xgboost
-        )
 
-        self.info["version_info"]['ai4water_version'] = __version__
+        self.info["version_info"] =get_version_info()
         return
 
     def print_info(self):
@@ -3487,7 +3471,7 @@ class BaseModel(NN):
             prediction=y,
             feature=feature,
             feature_name=feature_name,
-            n_classes=self.num_classes,
+            n_classes=self.num_classes_,
             num_grid_points=num_grid_points,
             grid_type=grid_type,
             percentile_range=percentile_range,

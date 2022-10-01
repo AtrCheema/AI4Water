@@ -1704,7 +1704,14 @@ def get_version_info(
 ) -> dict:
     # todo, chekc which attributes are not available in different versions
     import sys
-    info = {'python': sys.version, 'os': os.name}
+    from ai4water.backend import lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics
+    from ai4water.backend import tf, keras, torch
+    from ai4water.backend import np, pd, mpl
+    from ai4water.backend import h5py
+    import joblib
+    from ai4water import __version__
+
+    info = {'python': sys.version, 'os': os.name, 'ai4water': __version__}
     if kwargs.get('tf', None):
         tf = kwargs['tf']
         info['tf_is_built_with_cuda'] = tf.test.is_built_with_cuda()
@@ -1712,9 +1719,10 @@ def get_version_info(
         info['tf_is_gpu_available'] = tf.test.is_gpu_available()
         info['eager_execution'] = tf.executing_eagerly()
 
-    for k, v in kwargs.items():
-        if v is not None:
-            info[k] = getattr(v, '__version__', 'NotDefined')
+    for lib in [lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
+                tf, keras, torch, np, pd, mpl, h5py, joblib]:
+        if lib is not None:
+            info[getattr(lib, '__name__')] =  getattr(lib, '__version__', 'NotDefined')
 
     return info
 

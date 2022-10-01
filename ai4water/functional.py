@@ -373,7 +373,9 @@ class Model(BaseModel):
         if self.verbosity > 0:
             k_model.summary()
 
-        self.plot_model(k_model)
+        if self.verbosity >= 0:
+            self.plot_model(k_model)
+
         return k_model
 
     def build(self, input_shape=None):
@@ -401,7 +403,7 @@ class Model(BaseModel):
         else:
             self.build_ml_model()
 
-        if not getattr(self, 'from_check_point', False):
+        if not getattr(self, 'from_check_point', False) and self.verbosity>=0:
             # fit may fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
