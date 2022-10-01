@@ -782,11 +782,11 @@ class VastTransformer(ParetoTransformer):
         X = X - self.mean_
         X = X / self.scale_
         # coefficient of variation
-        cv = self.mean_ / self.scale_
+        cv = np.divide(self.mean_ , self.scale_)
         return X * cv
 
     def inverse_transform(self, X, y=None):
-        cv = self.mean_ / self.scale_
+        cv = np.divide(self.mean_ , self.scale_)
         X = X / cv
         X = X * self.scale_
         X = X + self.mean_

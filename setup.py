@@ -38,7 +38,7 @@ extra_requires = [
 # shapely manually download the wheel file and install
 'pyshp',
 
-'optuna',
+'optuna<=2.10.1',
 'hyperopt',
 
 # for reading data
@@ -64,30 +64,30 @@ tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.5', 'tensorflow==2.7', 'pandas'
                'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
 
 tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
-                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
+                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                    'SeqMetrics>=1.3.3']
 
 torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
 
 torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
+                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                       'SeqMetrics>=1.3.3']
 
 ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
                'lightgbm', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.2']
 
 ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.4', 'hyperopt', 'scikit-optimize', 'optuna',
+               'lightgbm', 'easy_mpl>=0.20.4', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                    'SeqMetrics>=1.3.3']
 
-hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
+hpo_requirements = ['optuna<=2.10.1', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
 
 post_process_requirements = ['lime', 'shap', 'SeqMetrics>=1.3.3']
 
 exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     'tpot',
-                    'optuna', 'hyperopt', 'scikit-optimize',
+                    'optuna<=2.10.1', 'hyperopt', 'scikit-optimize',
                     'h5py<2.11.0', 'SeqMetrics>=1.3.3'
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', 'SeqMetrics>=1.3.3']

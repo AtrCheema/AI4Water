@@ -21,7 +21,7 @@ imageio
 # shapely manually download the wheel file and install
 pyshp
 
-optuna
+optuna<=2.10.1
 hyperopt
 
 dill

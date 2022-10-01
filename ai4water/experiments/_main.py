@@ -315,8 +315,8 @@ class Experiments(object):
 
         x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
 
-        config = self._get_config(model_type, model_name)
-        config.update(self._named_x0())
+        config = self._get_config(model_type, model_name, **self._named_x0())
+
         model = self._build_fit(
             x, y,
             title=f"{self.exp_name}{SEP}{model_name}",
@@ -1259,7 +1259,7 @@ Available cases are {self.models} and you wanted to include
             figsize=None,
             save: Optional[bool] = True,
             show: Optional[bool] = True,
-            fname: Optional[str] = "regression"
+            fname: Optional[str] = "edf"
     ):
         """compare EDF plots of all the models which have been fitted.
         This plot is only available for regression problems.
@@ -1340,6 +1340,9 @@ Available cases are {self.models} and you wanted to include
                 edf_plot(error, xlabel="Absolute Error", ax=axes, label=label,
                          show=False)
 
+        if len(model_folders)>7:
+            axes.legend(loc=(1.05, 0.0))
+
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
@@ -1402,6 +1405,9 @@ Available cases are {self.models} and you wanted to include
 
         fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
 
+        if not isinstance(axes, np.ndarray):
+            axes = np.array(axes)
+
         # load all models from config
         for model_name, ax in zip(model_folders, axes.flat):
 
@@ -1413,6 +1419,11 @@ Available cases are {self.models} and you wanted to include
             self.update_model_weight(model, m_path)
 
             true, prediction = model.predict(x, y, return_true=True, process_results=False)
+
+            if np.isnan(prediction).sum() == prediction.size:
+                if self.verbosity>=0:
+                    print(f"Model {model_name} only predicted nans")
+                continue
 
             reg_plot(true, prediction, marker_size=5, ax=ax, show=False)
 
@@ -1490,6 +1501,9 @@ Available cases are {self.models} and you wanted to include
         model_folders = self._get_model_folders()
 
         fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+
+        if not isinstance(axes, np.ndarray):
+            axes = np.array(axes)
 
         # load all models from config
         for model_name, ax in zip(model_folders, axes.flat):
@@ -2172,7 +2186,7 @@ Available cases are {self.models} and you wanted to include
             # calculate pr curve for each model
             self.update_model_weight(model, m_path)
 
-            out = model.predict(x, y, return_true=True)
+            out = model.predict(x, y, return_true=True, process_results=False)
 
             self._populate_results(f"model_{model_name}", train_results=None, test_results=out)
 
