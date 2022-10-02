@@ -1,6 +1,7 @@
 import gc
 import json
 import math
+import warnings
 from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
@@ -2065,7 +2066,18 @@ Available cases are {self.models} and you wanted to include
         Makes predictions on training and test data from the model.
         It is supposed that the model has been trained before."""
 
-        return model.predict(x, y, return_true=True)
+        true, predicted = model.predict(x, y, return_true=True, process_results=False)
+
+        if np.isnan(predicted).sum() == predicted.size:
+            warnings.warn(f"model {model.model_name} predicted only nans")
+        else:
+            ProcessPredictions(self.mode,
+                               forecast_len=model.forecast_len,
+                               path=model.path,
+                               output_features=model.output_features,
+                               show=bool(model.verbosity),
+                               )(true, predicted)
+        return true, predicted
 
     def verify_data(
             self,
