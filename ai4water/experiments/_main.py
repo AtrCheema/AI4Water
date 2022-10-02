@@ -744,7 +744,6 @@ class Experiments(object):
             https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.taylor_plot
         """
 
-
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
         self._build_predict_from_configs(x, y)
@@ -766,13 +765,19 @@ class Experiments(object):
         train_std = list(set(train_std))[0]
 
         if 'test' in list(self.features.values())[0]:
-            test_std = [_model['test']['true']['std'] for _model in self.features.values()]
-            test_std = list(set(test_std))[0]
+            test_stds = [_model['test']['true']['std'] for _model in self.features.values()]
             test_data_type = "test"
         else:
-            test_std = [_model['val']['true']['std'] for _model in self.features.values()]
-            test_std = list(set(test_std))[0]
+            test_stds = [_model['val']['true']['std'] for _model in self.features.values()]
             test_data_type = "val"
+
+        # if any value in test_stds is nan, set(test_stds)[0] will be nan
+        if np.isnan(list(set(test_stds)))[0]:
+            test_std = list(set(test_stds))[1]
+        else:
+            test_std = list(set(test_stds))[0]
+
+        assert not np.isnan(test_std)
 
         observations = {'train': {'std': train_std},
                         test_data_type: {'std': test_std}}
@@ -787,6 +792,7 @@ class Experiments(object):
                                'corr_coeff': _metrics[scen]['corr_coeff'],
                                'pbias': _metrics[scen]['pbias']
                                }
+
 
                 if model in include:
                     key = shred_model_name(model)
