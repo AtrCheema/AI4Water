@@ -596,11 +596,17 @@ class MakeHRUs(object):
         if title:
             title = 'Areas of HRUs for year {}'.format(year)
 
-        if name is None: name = self.hru_definition
-        name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
-
-        return easy_mpl.pie(fractions=vals,
+        easy_mpl.pie(fractions=vals,
                    labels=labels_n,
                    explode=tuple(explode),
                    autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
-                   title=title, name=name, save=self.save, show=show)
+                   title=title, show=show)
+
+        if name is None: name = self.hru_definition
+        name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
+
+        plt.savefig(name, dpi=300)
+
+        if show:
+            plt.show()
+        return

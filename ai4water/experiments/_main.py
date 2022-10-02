@@ -793,13 +793,16 @@ class Experiments(object):
 
             simulations[scen] = scen_stats
 
-        return taylor_plot(
+        ax = taylor_plot(
             observations=observations,
             simulations=simulations,
             figsize=figsize,
-            name=fname,
+            show=False,
             **kwargs
         )
+
+        plt.savefig(fname, dpi=600, bbox_inches="tight")
+        return ax
 
     def _consider_include(self, include: Union[str, list], to_filter):
 
