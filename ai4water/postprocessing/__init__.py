@@ -8,3 +8,4 @@ from .explain import LimeExplainer
 from .explain import PermutationImportance
 from .explain import PartialDependencePlot
 from ._info_plots import prediction_distribution_plot
+from ._info_plots import feature_interaction

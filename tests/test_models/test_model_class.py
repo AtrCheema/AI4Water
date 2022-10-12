@@ -3,6 +3,9 @@ import os
 import time
 import unittest
 import site
+
+import matplotlib.pyplot as plt
+
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import tensorflow as tf
@@ -401,6 +404,35 @@ class TestChangeNQuantiles(unittest.TestCase):
         assert model.config['x_transformation'][0]['n_quantiles'] < 1000
         assert model.config['x_transformation'][1]['n_quantiles'] < 1000
 
+        return
+
+
+class TestPredictionAnalysis(unittest.TestCase):
+
+    def test_prediction_dist(self):
+
+        model = Model(model="XGBRegressor")
+        model.fit(data=busan_beach())
+        ax = model.prediction_analysis(features="tide_cm",
+        data=busan_beach(), show=False, save_metadata=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_interaction(self):
+
+        model = Model(model="XGBRegressor")
+        model.fit(data=busan_beach())
+        ax = model.prediction_analysis(
+            ['tide_cm', 'sal_psu'],
+            data=busan_beach(),
+            custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+                         [33.45, 33.7, 33.9, 34.05, 34.4]],
+            annotate_kws={"annotate_counts": True,
+                          "annotate_colors": ("black", "black"),
+                          "annotate_fontsize": 10},
+            show=False, save_metadata=False
+        )
+        assert isinstance(ax, plt.Axes)
         return
 
 

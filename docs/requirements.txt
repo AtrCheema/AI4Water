@@ -20,4 +20,3 @@ SeqMetrics
 sphinx-gallery
 
 #
-git+https://github.com/AtrCheema/PDPbox1.git

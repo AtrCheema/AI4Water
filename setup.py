@@ -16,12 +16,9 @@ min_requirements = [
     'scikit-learn',
     'pandas',
     'matplotlib',
-    #'scikit-optimize',
 
-    #'requests',
     'easy_mpl>=0.20.5',
     'SeqMetrics>=1.3.3',
-    'PDPbox1'
     ]
 
 extra_requires = [
