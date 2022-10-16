@@ -37,7 +37,7 @@ def feature_interaction(
 
     num_grid_points = _expand_default(num_grid_points, 10)
 
-    assert grid_types in ['percentile', 'equal']
+    #assert grid_types in ['percentile', 'equal']
     grid_types = _expand_default(grid_types, 'percentile')
 
     percentile_ranges = _expand_default(percentile_ranges, None)

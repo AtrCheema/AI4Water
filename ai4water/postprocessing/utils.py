@@ -1,6 +1,7 @@
 
 from ai4water.backend import np, mpl, plt
 from ai4water.utils.visualizations import Plot
+from ai4water.utils.utils import create_subplots
 
 
 class LossCurve(Plot):
@@ -11,15 +12,16 @@ class LossCurve(Plot):
 
         super().__init__(path, save=save)
 
-    def plot_loss(self, history: dict, name="loss_curve"):
+    def plot_loss(self,
+                  history: dict,
+                  name="loss_curve",
+                  figsize:tuple=None)->plt.Axes:
         """Considering history is a dictionary of different arrays, possible
         training and validation loss arrays, this method plots those arrays."""
 
         plt.clf()
         plt.close('all')
-        fig = plt.figure()
         plt.style.use('ggplot')
-        i = 1
 
         legends = {
             'mean_absolute_error': 'Mean Absolute Error',
@@ -32,49 +34,30 @@ class LossCurve(Plot):
             "r2": "$R^{2}$"
         }
 
-        sub_plots = {1: {'axis': (1, 1), 'width': 9, 'height': 6},
-                     2: {'axis': (1, 2), 'width': 9, 'height': 6},
-                     3: {'axis': (1, 3), 'width': 9, 'height': 6},
-                     4: {'axis': (2, 2), 'width': 9, 'height': 6},
-                     5: {'axis': (5, 1), 'width': 8, 'height': 12},
-                     6: {'axis': (3, 2), 'width': 8, 'height': 12},
-                     7: {'axis': (3, 2), 'width': 20, 'height': 20},
-                     8: {'axis': (4, 2), 'width': 20, 'height': 20},
-                     9: {'axis': (5, 2), 'width': 20, 'height': 20},
-                     10: {'axis': (5, 2), 'width': 20, 'height': 20},
-                     12: {'axis': (4, 3), 'width': 20, 'height': 20},
-                     }
-
         epochs = range(1, len(history['loss']) + 1)
-        axis_cache = {}
 
-        for key, val in history.items():
+        fig, axis = create_subplots(len(history), figsize=figsize)
 
-            m_name = key.split('_')[1:] if 'val' in key and '_' in key else key
+        if not isinstance(axis, np.ndarray):
+            axis = np.array([axis])
 
-            if isinstance(m_name, list):
-                m_name = '_'.join(m_name)
-            if m_name in list(axis_cache.keys()):
-                axis = axis_cache[m_name]
-                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886],
-                          label='Validation ')
-                axis.legend()
-            else:
-                axis = fig.add_subplot(*sub_plots[len(history)]['axis'], i)
-                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859],
-                          label='Training ')
-                axis.legend()
-                axis.set_xlabel("Epochs")
-                axis.set_ylabel(legends.get(key, key))
-                axis_cache[key] = axis
-                i += 1
-            axis.set(frame_on=True)
+        for (key, val), ax in zip(history.items(), axis.flat):
 
-        fig.set_figheight(sub_plots[len(history)]['height'])
-        fig.set_figwidth(sub_plots[len(history)]['width'])
+            ax.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886],
+                      label='Validation ')
+            ax.legend()
+
+            ax.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859],
+                      label='Training ')
+            ax.legend()
+            ax.set_xlabel("Epochs")
+            ax.set_ylabel(legends.get(key, key))
+
+        ax.set(frame_on=True)
+
         self.save_or_show(fname=name, show=self.show)
         mpl.rcParams.update(mpl.rcParamsDefault)
-        return
+        return ax
 
 
 def choose_examples(x, examples_to_use, y=None):

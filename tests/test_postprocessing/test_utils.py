@@ -6,6 +6,7 @@ ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ai4water.postprocessing import LossCurve
 
@@ -20,42 +21,55 @@ def get_history(keys, add_val=False):
 
 
 class TestLossCurve(unittest.TestCase):
-    show = False
+    show = True
 
     def test_plot_loss_1(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss']))
-        visualizer.plot_loss(get_history(['loss'], True))
+        ax = visualizer.plot_loss(get_history(['loss'], True))
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_figsize(self):
+        visualizer = LossCurve(show=self.show, save=False)
+        visualizer.plot_loss(get_history(['loss']), figsize=(10, 10))
+        ax = visualizer.plot_loss(get_history(['loss'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_plot_loss_2(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss', 'nse']))
-        visualizer.plot_loss(get_history(['loss', 'nse'], True))
+        ax = visualizer.plot_loss(get_history(['loss', 'nse'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_plot_loss_3(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2']))
-        visualizer.plot_loss(get_history(['loss', 'nse', 'r2'], True))
+        ax = visualizer.plot_loss(get_history(['loss', 'nse', 'r2'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_plot_loss_4(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge']))
-        visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge'], True))
+        ax = visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_plot_loss_5(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias']))
-        visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias'], True))
+        ax = visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_plot_loss_6(self):
-        visualizer = LossCurve(show=False)
+        visualizer = LossCurve(show=self.show, save=False)
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias']))
-        visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias'], True))
+        ax = visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias'], True))
+        assert isinstance(ax, plt.Axes)
         return
 
 

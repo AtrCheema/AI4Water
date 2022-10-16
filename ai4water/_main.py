@@ -2379,7 +2379,8 @@ class BaseModel(NN):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
         for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
-            attrs[attr] = config[attr]
+            if attr in config:
+                attrs[attr] = config[attr]
 
         model = cls._get_config_and_path(
             cls,
@@ -2389,7 +2390,8 @@ class BaseModel(NN):
         )
 
         for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
-            setattr(model, attr, attrs[attr])
+            if attr in attrs:
+                setattr(model, attr, attrs[attr])
          # now we need to save the config again
         model.save_config()
 
@@ -3279,16 +3281,17 @@ class BaseModel(NN):
             annotate: bool, default=False
                 whether to annotate the points
             annotate_kws : dict, optional
-                annotate_counts : bool, default=False
-                    whether to annotate counts or not.
-                annotate_colors : tuple
-                    pair of colors
-                annotate_color_threshold : float
-                    threshold value for annotation
-                annotate_fmt : str
-                    format string for annotation.
-                annotate_fontsize : int, optinoal (default=7)
-                    fontsize for annotation
+                a dictionary of keyword arguments with following keys
+                    annotate_counts : bool, default=False
+                        whether to annotate counts or not.
+                    annotate_colors : tuple
+                        pair of colors
+                    annotate_color_threshold : float
+                        threshold value for annotation
+                    annotate_fmt : str
+                        format string for annotation.
+                    annotate_fontsize : int, optinoal (default=7)
+                        fontsize for annotation
             show : bool, optional (default=True)
                 whether to show the  plot or not
             save_metadata : bool, optional, default=True

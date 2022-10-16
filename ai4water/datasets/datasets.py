@@ -1099,7 +1099,7 @@ class Quadica(Datasets):
         Returns
         -------
         pd.DataFrame
-            a panras dataframw of shape (time_steps, stations). With default input
+            a pandas dataframe of shape (time_steps, stations). With default input
             arguments, the shape is (828, 1388)
 
         Examples
