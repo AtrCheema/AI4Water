@@ -6,7 +6,6 @@ from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from ai4water.backend import create_subplots
 from ai4water.backend import tf, os, np, pd, plt, easy_mpl
 from ai4water.backend import xgboost, catboost, lightgbm
 from ai4water.hyperopt import HyperOpt
@@ -17,6 +16,7 @@ from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.utils import AttribtueSetter
 from ai4water.postprocessing import ProcessPredictions
 from ai4water.utils.visualizations import edf_plot
+from ai4water.utils.utils import create_subplots
 from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
 
 plot = easy_mpl.plot

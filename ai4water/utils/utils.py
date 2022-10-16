@@ -1,3 +1,4 @@
+
 import copy
 import json
 import pprint
@@ -1845,3 +1846,11 @@ def get_values(outputs):
         outputs = list(outputs.values())[0]
 
     return outputs
+
+def create_subplots(*args, **kwargs):
+    try:
+        from pandas.plotting._matplotlib.tools import create_subplots
+    except ImportError:  # for older pandas versions
+        from pandas.plotting._matplotlib.tools import _subplots as create_subplots
+
+    return create_subplots(*args, **kwargs)
