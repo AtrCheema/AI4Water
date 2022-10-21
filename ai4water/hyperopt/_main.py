@@ -1,7 +1,6 @@
 import json
 import copy
 import inspect
-import warnings
 from typing import Union, Dict
 from collections import OrderedDict
 
@@ -22,7 +21,7 @@ from ai4water.utils.utils import clear_weights
 from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
-from ai4water.backend import create_subplots
+from ai4water.utils.utils import create_subplots
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
 
@@ -75,15 +74,10 @@ else:
 
 if optuna is None:
     plot_contour = None
-    Study = None
 else:
-    Study = optuna.study.Study
     plot_contour = optuna.visualization.plot_contour
 
-try:
-    from.testing import plot_param_importances
-except ModuleNotFoundError:
-    plot_param_importances = None
+from ._fanova import fANOVA
 
 # TODO RayTune libraries under the hood https://docs.ray.io/en/master/tune/api_docs/suggestion.html#summary
 # TODO add generic algorithm, deap/pygad
@@ -629,18 +623,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.use_skopt_gpmin:
             xys = self.xy_of_iterations()
             paras = xys[self.best_iter()]['x']
+
         elif self.backend == 'hyperopt':
             d = get_one_tpe_x_iter(self.trials.best_trial['misc']['vals'], self.hp_space())
             if as_list:
                 return list(d.values())
             else:
                 return d
+
         elif self.backend == 'optuna':
             if as_list:
                 return list(self.study.best_trial.params.values())
             return self.study.best_trial.params
+
         elif self.use_skopt_bayes or self.use_sklearn:
+            # using BayesSerchCV
             paras = self.optfn.best_params_
+
         else:
             paras = sort_x_iters(self.results[self.best_iter()]['x'], list(self.param_space.keys()))
 
@@ -965,16 +964,25 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             for idx, trial in zip(num_iters, self.study.trials):
                 results[idx] = {'y': trial.value, 'x': trial.params}
             return results
+
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
+
         elif self.backend == 'skopt':
-            assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
-            fv = self.gpmin_results['func_vals']
-            xiters = self.gpmin_results['x_iters']
+
+            if self.use_skopt_bayes:
+                fv = self.optfn.cv_results_['mean_test_score']
+                xiters = self.optfn.cv_results_['params']
+            else:
+                assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
+                fv = self.gpmin_results['func_vals']
+                xiters = self.gpmin_results['x_iters']
+
             results = {}
             for idx, y, x in zip(range(len(fv)), fv, xiters):
                 results[idx] = {'y': y, 'x': self.to_kw(x)}
             return results
+
         else:
             # for sklearn based
             return self.results
@@ -983,27 +991,29 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """returns the value of objective function at each iteration."""
         if self.backend == 'hyperopt':
             return np.array([self.trials.results[i]['loss'] for i in range(self.num_iterations)])
+
         elif self.backend == 'optuna':
             return np.array([s.values for s in self.study.trials])
+
+        elif self.use_skopt_bayes or self.use_sklearn:
+            return self.optfn.cv_results_['mean_test_score']
         else:
             return np.array([v['y'] for v in self.results.values()])
 
     def skopt_results(self):
-        if self.use_own and self.algorithm in ["bayes", "bayes_rf"] and self.backend == 'skopt':
-            return self.gpmin_results
-        else:
-            class SR:
-                x_iters = [list(s['x'].values()) for s in self.xy_of_iterations().values()]
-                func_vals = self.func_vals()
-                space = self.skopt_space()
-                if isinstance(self.best_paras(), list):
-                    x = self.best_paras
-                elif isinstance(self.best_paras(), dict):
-                    x = list(self.best_paras().values())
-                else:
-                    raise NotImplementedError
 
-            return SR()
+        class OptimizeResult:
+            x_iters = [list(s['x'].values()) for s in self.xy_of_iterations().values()]
+            func_vals = self.func_vals()
+            space = self.skopt_space()
+            if isinstance(self.best_paras(), list):
+                x = self.best_paras
+            elif isinstance(self.best_paras(), dict):
+                x = list(self.best_paras().values())
+            else:
+                raise NotImplementedError
+
+        return OptimizeResult()
 
     def best_iter(self)->int:
         """returns the iteration on which best/optimized parameters are obtained.
@@ -1103,8 +1113,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.backend != 'skopt' and len(self.space()) < 20 and skopt is not None:
             self._plot_evaluations()
 
-        self.plot_importance(raise_error=False)
-        self.plot_importance(raise_error=False, plot_type="bar")
+        if len(self.best_paras(True))>1:
+            plt.close('all')
+            self.plot_importance()
+            plt.close('all')
+            self.plot_importance(plot_type="bar")
 
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
@@ -1125,40 +1138,48 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, raise_error=True, save=True, plot_type="box"):
+    def plot_importance(self, save=True, plot_type="box", **tree_kws)->plt.Axes:
+        """plots hyperparameter importance using fANOVA"""
+        X = pd.DataFrame([list(iter_xy['x'].values()) for iter_xy in self.xy_of_iterations().values()])
+        Y = np.array([iter_xy['y'] for iter_xy in self.xy_of_iterations().values()])
+        X.columns = list(self.xy_of_iterations()[0]['x'].keys())
+        dtypes = [space.__class__.__name__ for space in self.skopt_space()]
+        bounds = [(space.low, space.high) if isinstance(space, (Real, Integer)) else None for space in self.skopt_space()]
 
-        msg = "You must have optuna installed to get hyper-parameter importance."
-        if optuna is None:
-            if raise_error:
-                raise ModuleNotFoundError(msg)
-            else:
-                warnings.warn(msg)
+        kws = {'X': X, 'Y': Y, 'dtypes': dtypes, 'bounds': bounds}
 
-        else:
-            importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-            if importances is not None:
-                if plot_type in ["bar"]:
-                    if  save:
-                        plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+        kws.update(tree_kws)
+
+        if plot_type == "bar":
+            importance = fANOVA(**kws).feature_importance()
+            df = pd.DataFrame.from_dict(importance, orient='index')
+            ax = bar_chart(df, orient='h', show=False,
+                           ax_kws={'title': "fANOVA hyperparameter importance",
+                                   'xlabel': "Relative Importance"})
+            if save:
+                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
-                else:
-                    plt.close('all')
-                    df = pd.DataFrame.from_dict(importance_paras)
-                    axis = df.boxplot(rot=70, return_type="axes")
-                    axis.set_ylabel("Relative Importance")
-                    if save:
-                        plt.savefig(os.path.join(
-                            self.opt_path,
-                            "fanova_importance_hist.png"),
-                            dpi=300,
-                            bbox_inches='tight')
+            fname = "fanova_importances.json"
+        else:
 
-                with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                    json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
+            mean, std = fANOVA(**kws).feature_importance(return_raw=True)
+            df = pd.DataFrame([mean, std]).T
+            df.columns = ['mean', 'std']
+            plt.close('all')
+            ax = df.boxplot(rot=70, return_type="axes")
+            ax.set_ylabel("Relative Importance")
+            if save:
+                plt.savefig(os.path.join(
+                    self.opt_path,
+                    "fanova_importance_hist.png"),
+                    dpi=300,
+                    bbox_inches='tight')
+            fname = "fanova_importances_raw.json"
 
-                with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-                    json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
-        return
+        with open(os.path.join(self.opt_path, fname), 'w') as fp:
+            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+
+        return ax
 
     def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""
@@ -1288,73 +1309,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 'backend': self.backend,
                 'opt_path': self.opt_path
                 }
-
-    def optuna_study(self) -> Study:
-        """
-        Attempts to create an optuna Study instance so that
-        optuna based plots can be generated.
-        Returns None, if not possible."""
-
-        from optuna.trial import TrialState
-
-        if self.backend == 'optuna':
-            return self.study
-
-        class _Trial:
-            state = TrialState.COMPLETE
-            def __init__(self, number:int, values:list, params:dict, distributions:dict):
-                values = jsonize(values)
-                self._number = number
-                self._values = values
-                if isinstance(values, list):
-                    assert len(values) == 1
-                    self.value = values[0]
-                elif isinstance(values, float) or isinstance(values, int):
-                    self.value = values
-                else:
-                    try:  # try to convert it to float if possible
-                        self.value = float(values)
-                    except Exception as e:
-                        raise NotImplementedError(f"""values must be convertible to list but it is {values} of type
-                         {values.__class__.__name__} Actual error message was {e}""")
-                self.params = params
-                self._distributions = distributions
-                self.distributions = distributions
-
-        class _Study(Study):
-
-            trials = []
-            idx = 0
-
-            distributions = {sn: s.to_optuna() for sn, s in self.space().items()}
-
-            for xy in self.xy_of_iterations().values():
-                _x, _y = xy['x'], xy['y']
-                assert isinstance(_x, dict), f'params must of type dict but provided params are of type {_x.__class__.__name__}'
-
-                trials.append(_Trial(number=idx,
-                                     values=_y,
-                                     params=_x,
-                                     distributions=distributions
-                                     ))
-                idx += 1
-            best_params = self.best_paras()
-            best_trial = None
-            best_value = None
-            _study_id = 0
-            _distributions = distributions
-
-            def __init__(StudyObject):
-                pass
-
-            def _is_multi_objective(StudyObject):
-                return False
-
-        study = _Study()
-
-        setattr(self, 'study', study)
-
-        return study
 
     def save_iterations_as_xy(self):
 

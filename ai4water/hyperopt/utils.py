@@ -35,7 +35,7 @@ plot = easy_mpl.plot
 
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
-    if 'switch' in space.name:
+    if hasattr(space, 'name') and 'switch' in space.name:
         return True
     return False
 
@@ -108,17 +108,19 @@ def skopt_space_from_hp_space(hp_space, prior_name=None):
         skopt_space = to_real(hp_space, prior_name=prior_name)
     elif 'randint' in hp_space.__str__():
         skopt_space = to_int(hp_space, prior_name=prior_name)
+    elif hasattr(hp_space, 'dist') and hp_space.dist.name in ['uniform', 'loguniform', 'quniform', 'qloguniform']:
+        skopt_space = to_real(hp_space, prior_name=prior_name)
     else:
         raise NotImplementedError
 
     return skopt_space
 
 
-def to_categorical(_space, prior_name=None):
+def to_categorical(hp_space, prior_name=None):
     """converts an hp space into a Dimension object."""
     cats = []
     inferred_name = None
-    for arg in _space.pos_args:
+    for arg in hp_space.pos_args:
         if hasattr(arg, '_obj') and arg.pure:
             cats.append(arg._obj)
         elif arg.name == 'hyperopt_param' and len(arg.pos_args)>0:
@@ -172,13 +174,13 @@ def to_int(_space, prior_name=None):
     return Integer(low=limits['low'], high=limits['high'], name=prior_name)
 
 
-def to_real(_space, prior_name=None):
+def to_real(hp_space, prior_name=None):
     """converts an an hp space to real. """
     inferred_name = None
     limits = None
     prior = None
     allowed_names = ['uniform', 'loguniform', 'quniform', 'loguniform', 'qloguniform']
-    for arg in _space.pos_args:
+    for arg in hp_space.pos_args:
         if len(arg.pos_args) > 0:
             for a in arg.pos_args:
                 if a.name == 'literal' and len(arg.named_args) == 0:
@@ -640,20 +642,13 @@ def to_skopt_space(x):
     if isinstance(x, list):
         if all([isinstance(s, Dimension) for s in x]):
             _space = Space(x)
-        elif len(x) == 1 and isinstance(x[0], tuple):
-            if len(x[0]) == 2:
-                if 'int' in x[0][0].__class__.__name__:
-                    _space = Integer(low=x[0][0], high=x[0][1])
-                elif 'float' in x[0][0].__class__.__name__:
-                    _space = Integer(low=x[0][0], high=x[0][1])
-                else:
-                    raise NotImplementedError
-            else:
-                raise NotImplementedError
         elif all([s.__class__.__name__== "Apply" for s in x]):
             _space = Space([skopt_space_from_hp_space(v) for v in x])
         else:
-            raise NotImplementedError
+            # x consits of one or multiple tuples
+            assert all([isinstance(obj, tuple) for obj in x])
+            _space = [make_space(i) for i in x]
+
     elif isinstance(x, dict):  # todo, in random, should we build Only Categorical space?
         space_ = []
         for k, v in x.items():
@@ -970,3 +965,17 @@ def plot_convergence(func_vals, show=False, ax=None, **kwargs):
 
     ax = plot(range(1, n_calls + 1), mins, **_kwargs)
     return ax
+
+
+def make_space(x):
+    if len(x) == 2:
+        low, high = x
+        if 'int' in low.__class__.__name__:
+            space = Integer(low=low, high=high)
+        elif 'float' in low.__class__.__name__:
+            space = Integer(low=low, high=high)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+    return space
