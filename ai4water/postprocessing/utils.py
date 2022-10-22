@@ -1,4 +1,6 @@
 
+from itertools import zip_longest
+
 from ai4water.backend import np, mpl, plt
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.utils import create_subplots
@@ -36,18 +38,33 @@ class LossCurve(Plot):
 
         epochs = range(1, len(history['loss']) + 1)
 
-        fig, axis = create_subplots(len(history), figsize=figsize)
+        nplots = len(history)
+        val_losses = {}
+        losses = history.copy()
+        for k in history.keys():
+            val_key = f"val_{k}"
+            if val_key in history:
+                nplots -= 1
+                val_losses[val_key] = losses.pop(val_key)
+
+        fig, axis = create_subplots(nplots, figsize=figsize)
 
         if not isinstance(axis, np.ndarray):
             axis = np.array([axis])
 
-        for (key, val), ax in zip(history.items(), axis.flat):
+        axis = axis.flat
 
-            ax.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886],
+        for idx, (key, loss), val_data in zip_longest(range(nplots), losses.items(), val_losses.items()):
+
+            ax = axis[idx]
+
+            if val_data is not None:
+                val_key, val_loss = val_data
+                ax.plot(epochs, val_loss, color=[0.96707953, 0.46268314, 0.45772886],
                       label='Validation ')
-            ax.legend()
+                ax.legend()
 
-            ax.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859],
+            ax.plot(epochs, loss, color=[0.13778617, 0.06228198, 0.33547859],
                       label='Training ')
             ax.legend()
             ax.set_xlabel("Epochs")

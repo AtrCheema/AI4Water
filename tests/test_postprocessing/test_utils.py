@@ -21,7 +21,7 @@ def get_history(keys, add_val=False):
 
 
 class TestLossCurve(unittest.TestCase):
-    show = True
+    show = False
 
     def test_plot_loss_1(self):
         visualizer = LossCurve(show=self.show, save=False)
