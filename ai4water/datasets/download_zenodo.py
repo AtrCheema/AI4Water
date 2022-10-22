@@ -68,7 +68,7 @@ def download_from_zenodo(
         outdir,
         doi,
         cont=False,
-        error=False,
+        tolerate_error=False,
         include:list = None,
         **kwargs
 ):
@@ -77,7 +77,7 @@ def download_from_zenodo(
     :param outdir: Output directory, created if necessary. Default: current directory.
     :param doi: str, Zenodo DOI
     :param cont: True, Do not continue previous download attempt. (Default: continue.)
-    :param error: False, Continue with next file if error happens.
+    :param tolerate_error: False, Continue with next file if error happens.
     :param include : files to download. Files which are not in include will not be
         downloaded.
     :param kwargs:
@@ -180,16 +180,16 @@ def download_from_zenodo(
                     for _ in range(retry + 1):
                         try:
                             filename = download(link)
-                        except Exception:
+                        except Exception as e:
                             print('  Download error.')
                             time.sleep(pause)
                         else:
                             break
                     else:
                         print('  Too many errors.')
-                        if not error:
+                        if not tolerate_error:
                             raise Exception('Download is aborted. Too  many errors')
-                        print('  Download continues with the next file.')
+                        print(f'  Ignoring {filename} and downloading the next file.')
                         continue
 
                     h1, h2 = check_hash(filename, checksum)
@@ -202,7 +202,7 @@ def download_from_zenodo(
                             os.remove(filename)
                         else:
                             print('  File is NOT deleted!')
-                        if not error:
+                        if not tolerate_error:
                             sys.exit(1)
                 else:
                     print('All files have been downloaded.')

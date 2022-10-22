@@ -45,11 +45,12 @@ from .mtropics import ecoli_mekong_laos
 from .mtropics import ecoli_houay_pano
 from .mtropics import ecoli_mekong_2016
 from .mtropics import ecoli_mekong
-from .datasets import Quadica
+from ._quadica import Quadica
 from .datasets import RRAlpileCatchments
 from .datasets import RRLuleaSweden
 from .datasets import mg_photodegradation
-from .datasets import GRQA
+from ._grqa import GRQA
+from ._swatch import Swatch
 
 
 def busan_beach(

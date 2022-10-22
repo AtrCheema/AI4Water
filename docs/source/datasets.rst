@@ -176,3 +176,12 @@ RRLuleaSweden
    :show-inheritance:
 
    .. automethod:: __init__
+
+SWatCh
+=======
+.. autoclass:: ai4water.datasets.datasets.Swatch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
