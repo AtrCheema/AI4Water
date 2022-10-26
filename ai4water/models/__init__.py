@@ -22,20 +22,20 @@ def MLP(
     ----------
     units : Union[int, list], default=32
         number of units in Dense layer
-    num_layers : int, optional, (default, 32)
-        number of Dense_ layers to use excluding output layer.
+    num_layers : int, optional, (default, 1)
+        number of Dense_ layers to use as hidden layers, excluding output layer.
     input_shape : tuple, optional (default=None)
         shape of input tensor to the model. If specified, it should exclude batch_size
         for example if model takes inputs (num_examples, num_features) then
         we should define the shape as (num_features,). The batch_size dimension
         is always None.
-    output_features : int, optional
+    output_features : int, (default=1)
         number of output features from the network
-    activation : Union[str, list], optional
+    activation : Union[str, list], optional (default=None)
         activation function to use.
     dropout : Union[float, list], optional
         dropout to use in Dense layer
-    mode : str, optional
+    mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
@@ -86,6 +86,8 @@ def MLP(
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout
 
     """
+    check_backend("MLP")
+
     assert num_layers>=1
 
     units = _check_length(units, num_layers)
@@ -141,7 +143,7 @@ def LSTM(
     ----------
     units : Union[int, list], optional (default 32)
         number of units in LSTM layer
-    num_layers :
+    num_layers : int (default=1)
         number of lstm layers to use
     input_shape : tuple, optional (default=None)
         shape of input tensor to the model. If specified, it should exclude batch_size
@@ -196,6 +198,8 @@ def LSTM(
     .. _LSTM:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
     """
+    check_backend("LSTM")
+
     assert num_layers>=1
 
     if input_shape is None:
@@ -328,9 +332,9 @@ def CNN(
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization
 
     """
+    check_backend("CNN")
 
     assert num_layers>=1
-
 
     assert convolution_type in ("1D", "2D", "3D")
     assert pooling_type in ("MaxPool", "AveragePooling", None)
@@ -474,6 +478,8 @@ def CNNLSTM(
     >>> model.fit(data=data)
 
     """
+    check_backend("CNNLSTM")
+
     assert len(input_shape) == 2
     layers =   {"Input": {"shape": input_shape}}
     lookback = input_shape[-2]
@@ -589,6 +595,9 @@ def LSTMAutoEncoder(
 
     >>> LSTMAutoEncoder((5, 10), 2, 2, [64, 32], [32, 64])
     """
+
+    check_backend("LSTMAutoEncoder")
+
     assert len(input_shape)>=2
     assert encoder_layers >= 1
     assert decoder_layers >= 1
@@ -686,6 +695,8 @@ def TCN(
     >>> TCN((5, 10), 32)
 
     """
+    check_backend("TCN")
+
     layers = {"Input": {"shape": input_shape}}
 
     config = {'nb_filters': filters,
@@ -833,3 +844,19 @@ def _check_length(parameter, num_layers):
         assert len(parameter)==num_layers
 
     return parameter
+
+
+def check_backend(model:str, backend:str="tf")->None:
+    if backend=="tf":
+        try:
+            import tensorflow as tf
+        except Exception as e:
+            raise Exception(f"""You must have install tensorflow to use {model} model. 
+            Importing tensorflow raised following error \n{e}""")
+    elif backend == "torch":
+        try:
+            import torch
+        except Exception as e:
+            raise Exception(f"""You must have install PyTorch to use {model} model. 
+            Importing torch raised following error \n{e}""")
+    return

@@ -138,7 +138,7 @@ HYPE
 
 Weisssee
 ========
-.. autoclass:: ai4water.datasets.datasets.Weisssee
+.. autoclass:: ai4water.datasets.Weisssee
    :members:
    :undoc-members:
    :show-inheritance:
@@ -147,7 +147,7 @@ Weisssee
 
 WeatherJena
 ===========
-.. autoclass:: ai4water.datasets.datasets.WeatherJena
+.. autoclass:: ai4water.datasets.WeatherJena
    :members:
    :undoc-members:
    :show-inheritance:
@@ -165,7 +165,7 @@ Quadica
 
 SWECanada
 =========
-.. autoclass:: ai4water.datasets.datasets.SWECanada
+.. autoclass:: ai4water.datasets.SWECanada
    :members:
    :undoc-members:
    :show-inheritance:
@@ -175,7 +175,7 @@ SWECanada
 
 RRLuleaSweden
 =============
-.. autoclass:: ai4water.datasets.datasets.RRLuleaSweden
+.. autoclass:: ai4water.datasets.RRLuleaSweden
    :members:
    :undoc-members:
    :show-inheritance:
