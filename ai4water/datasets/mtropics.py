@@ -14,7 +14,7 @@ except (ModuleNotFoundError, OSError):
 from ai4water.backend import os, shapefile, xr, np, pd, fiona
 
 from .utils import check_attributes, check_st_en
-from .datasets import Datasets, _maybe_download
+from ._datasets import Datasets, maybe_download
 
 from ai4water.preprocessing.resample import Resampler
 from ai4water.preprocessing.spatial_utils import find_records
@@ -1045,7 +1045,7 @@ def ecoli_mekong_laos(
 
 def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
 
-    _maybe_download(ds_dir, overwrite, url, _name=_name)
+    maybe_download(ds_dir, overwrite, url, name=_name)
     all_files = os.listdir(ds_dir)
     assert len(all_files)==1
     fname = os.path.join(ds_dir, all_files[0])

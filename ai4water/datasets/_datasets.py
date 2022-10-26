@@ -195,8 +195,6 @@
 
 import glob
 import warnings
-import zipfile
-import shutil
 from typing import Union, Tuple, Any, Optional, List
 
 try:
@@ -212,9 +210,9 @@ from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
 from ai4water.backend import xr
 from .download_pangaea import PanDataSet
-from .download_zenodo import download_from_zenodo
-from .utils import download, download_all_http_directory
-from .utils import check_attributes, sanity_check, check_st_en
+from .utils import download_all_http_directory
+from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
+from .utils import check_attributes, check_st_en
 
 SEP = os.sep
 # TODO, add visualization
@@ -292,11 +290,11 @@ class Datasets(object):
 
     def _download(self, overwrite=False, **kwargs):
         """Downloads the dataset. If already downloaded, then"""
-        _maybe_download(self.ds_dir, overwrite, self.url, self.name, **kwargs)
+        maybe_download(self.ds_dir, overwrite, self.url, self.name, **kwargs)
         return
 
     def _download_and_unzip(self):
-        _download_and_unzip(self.ds_dir, self.url)
+        download_and_unzip(self.ds_dir, self.url)
         return
 
     def download_from_pangaea(self, overwrite=False):
@@ -1016,6 +1014,85 @@ def mg_photodegradation(
     return df, cat_encoder, an_encoder
 
 
+def gw_punjab(
+        data_type:str = "full",
+        country:str = None,
+)->pd.DataFrame:
+    """
+    groundwater level (meters below ground level) dataset from Punjab region
+    (Pakistan and north-west India) following the study of MacAllister_ et al., 2022.
+
+    parameters
+    ----------
+    data_type : str (default="full")
+        either ``full`` or ``LTS``. The ``full`` contains the
+        full dataset, there are 68783 rows of observed groundwater level data from
+        4028 individual sites. In ``LTS`` there are 7547 rows of groundwater
+        level observations from 130 individual sites, which have water level data available
+        for a period of more than 40 years and from which at least two thirds of the
+        annual observations are available.
+    country : str (default=None)
+        the country for which data to retrieve. Either ``PAK`` or ``IND``.
+
+    Returns
+    -------
+    pd.DataFrame
+        a pandas DataFrame with datetime index
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import gw_punjab
+    >>> full_data = gw_punjab()
+    find out the earliest observation
+    >>> print(full_data.sort_index().head(1))
+    >>> lts_data = gw_punjab()
+    >>> lts_data.shape
+        (68782, 4)
+    >>> df_pak = gw_punjab(country="PAK")
+    >>> df_pak.sort_index().dropna().head(1)
+
+    .. MacAllister : https://doi.org/10.1038/s41561-022-00926-1
+    """
+    f = 'https://webservices.bgs.ac.uk/accessions/download/167240?fileName=India_Pakistan_WL_NGDC.xlsx'
+
+    ds_dir =os.path.join(os.path.dirname(__file__), "data", 'gw_punjab')
+    if not os.path.exists(ds_dir):
+        os.makedirs(ds_dir)
+
+    fname = os.path.join(ds_dir, "gw_punjab.xlsx")
+    if not os.path.exists(fname):
+        print(f"downloading {fname}")
+        download(f, fname)
+
+    assert data_type in ("full", "LTS")
+
+    if data_type == "full":
+        sheet_name = "Full_dataset"
+    else:
+        sheet_name = "LTS"
+
+    df = pd.read_excel(fname, sheet_name=sheet_name)
+
+    if sheet_name == "LTS":
+        df.iloc[5571, 3] = '01/10/1887'
+        df.iloc[5572, 3] = '01/10/1892'
+        df.iloc[6227, 3] = '01/10/1887'
+        df.iloc[5511, 3] = '01/10/1887'
+        df.iloc[5512, 3] = '01/10/1892'
+        df.iloc[6228, 3] = '01/10/1892'
+
+    df.index = pd.to_datetime(df.pop("DATE"))
+
+    if country:
+        if country == "PAK":
+            pak_stations = [st for st in df['OW_ID'].unique() if st.startswith("PAK")]
+            df = df[df['OW_ID'].isin(pak_stations)]
+        else:
+            pak_stations = [st for st in df['OW_ID'].unique() if st.startswith("IND")]
+            df = df[df['OW_ID'].isin(pak_stations)]
+
+    return df
+
 
 def _ohe_encoder(df:pd.DataFrame, col_name:str)->tuple:
     assert isinstance(col_name, str)
@@ -1033,88 +1110,3 @@ def _le_encoder(df:pd.DataFrame, col_name):
     encoder = LabelEncoder()
     df[col_name] = encoder.fit_transform(df[col_name])
     return df, encoder
-
-
-def _maybe_download(ds_dir, overwrite, url, _name, include=None, **kwargs):
-    if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
-        if overwrite:
-            print(f"removing previous data directory {ds_dir} and downloading new")
-            shutil.rmtree(ds_dir)
-            _download_and_unzip(ds_dir, url, include=include, **kwargs)
-        else:
-            sanity_check(_name, ds_dir)
-            print(f"""
-    Not downloading the data since the directory 
-    {ds_dir} already exists.
-    Use overwrite=True to remove previously saved files and download again""")
-    else:
-        _download_and_unzip(ds_dir, url, include=include, **kwargs)
-    return
-
-
-def _download_and_unzip(ds_dir, url, include=None, **kwargs):
-    """
-    kwargs :
-        any keyword arguments for download_from_zenodo function
-    """
-    if not os.path.exists(ds_dir):
-        os.makedirs(ds_dir)
-    if isinstance(url, str):
-        if 'zenodo' in url:
-            download_from_zenodo(ds_dir, url, include=include, **kwargs)
-        else:
-            download(url, ds_dir)
-        _unzip(ds_dir)
-    elif isinstance(url, list):
-        for url in url:
-            if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url, **kwargs)
-            else:
-                download(url, ds_dir)
-        _unzip(ds_dir)
-    elif isinstance(url, dict):
-        for fname, url in url.items():
-            if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url, **kwargs)
-            else:
-                download(url, os.path.join(ds_dir, fname))
-        _unzip(ds_dir)
-
-    else:
-        raise ValueError(ds_dir)
-
-    return
-
-
-def _unzip(ds_dir, dirname=None):
-    """unzip all the zipped files in a directory"""
-    if dirname is None:
-        dirname = ds_dir
-
-    all_files = glob.glob(f"{dirname}/*.zip")
-    for f in all_files:
-        src = os.path.join(dirname, f)
-        trgt = os.path.join(dirname, f.split('.zip')[0])
-        if not os.path.exists(trgt):
-            print(f"unzipping {src} to {trgt}")
-            with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
-                try:
-                    zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
-                except OSError:
-                    filelist = zip_ref.filelist
-                    for _file in filelist:
-                        if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
-                            zip_ref.extract(_file)
-
-    # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
-    gz_files = glob.glob(f"{ds_dir}/*.gz")
-    for f in gz_files:
-        shutil.unpack_archive(f, ds_dir)
-
-    return
-
-
-def unzip_all_in_dir(dir_name, ext=".gz"):
-    gz_files = glob.glob(f"{dir_name}/*{ext}")
-    for f in gz_files:
-        shutil.unpack_archive(f, dir_name)

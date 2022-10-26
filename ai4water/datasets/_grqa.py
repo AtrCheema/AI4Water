@@ -5,7 +5,7 @@ from typing import Union, List
 
 from ai4water.backend import pd, os
 
-from .datasets import Datasets
+from ._datasets import Datasets
 from .utils import check_st_en
 
 
@@ -80,6 +80,12 @@ class GRQA(Datasets):
         >>> cod_pak = dataset.fetch_parameter("COD", country="Pakistan")
         fetch data for only one site
         >>> cod_kotri = dataset.fetch_parameter("COD", site_name="Indus River - at Kotri")
+        we can find out the number of data points and sites available for a specific country as below
+        >>> for para in dataset.parameters:
+        >>>     data = dataset.fetch_parameter(para, country="Germany")
+        >>>     if len(data)>0:
+        >>>         print(f"{para}, {df.shape}, {len(df['site_name'].unique())}")
+
         """
 
         assert isinstance(parameter, str)

@@ -2,8 +2,8 @@ import json
 import glob
 from typing import Union
 
-from .datasets import Datasets, _unzip
-from .utils import check_attributes, download, sanity_check
+from ._datasets import Datasets
+from .utils import check_attributes, download, sanity_check, _unzip
 from ai4water.utils.utils import dateandtime_now
 from ai4water.backend import os, random, np, pd, xr
 

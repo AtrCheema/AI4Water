@@ -1,13 +1,17 @@
-import os
-import ssl
-from typing import Union
 
+import os
+import sys
+import ssl
+import glob
+import shutil
+import zipfile
 import tempfile
-import sys, shutil
+from typing import Union
 import urllib.request as ulib
 import urllib.parse as urlparse
 
-import pandas as pd
+from ai4water.backend import pd
+
 
 try:
     import requests
@@ -89,6 +93,8 @@ def download(url, out=None):
     if out is not None:
         outdir = os.path.dirname(out)
         out_filename = os.path.basename(out)
+        if outdir == '':
+            outdir = os.getcwd()
         if not os.path.exists(outdir):
             os.makedirs(outdir)
     else:
@@ -234,3 +240,91 @@ def check_st_en(
         df = df.loc[st:en]
 
     return df
+
+
+def unzip_all_in_dir(dir_name, ext=".gz"):
+    gz_files = glob.glob(f"{dir_name}/*{ext}")
+    for f in gz_files:
+        shutil.unpack_archive(f, dir_name)
+    return
+
+
+def maybe_download(ds_dir, overwrite, url, name=None, include=None, **kwargs):
+    if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
+        if overwrite:
+            print(f"removing previous data directory {ds_dir} and downloading new")
+            shutil.rmtree(ds_dir)
+            download_and_unzip(ds_dir, url, include=include, **kwargs)
+        else:
+            sanity_check(name, ds_dir)
+            print(f"""
+    Not downloading the data since the directory 
+    {ds_dir} already exists.
+    Use overwrite=True to remove previously saved files and download again""")
+    else:
+        download_and_unzip(ds_dir, url, include=include, **kwargs)
+    return
+
+
+def download_and_unzip(ds_dir, url, include=None, **kwargs):
+    """
+    kwargs :
+        any keyword arguments for download_from_zenodo function
+    """
+    from .download_zenodo import download_from_zenodo
+
+    if not os.path.exists(ds_dir):
+        os.makedirs(ds_dir)
+    if isinstance(url, str):
+        if 'zenodo' in url:
+            download_from_zenodo(ds_dir, url, include=include, **kwargs)
+        else:
+            download(url, ds_dir)
+        _unzip(ds_dir)
+    elif isinstance(url, list):
+        for url in url:
+            if 'zenodo' in url:
+                download_from_zenodo(ds_dir, url, **kwargs)
+            else:
+                download(url, ds_dir)
+        _unzip(ds_dir)
+    elif isinstance(url, dict):
+        for fname, url in url.items():
+            if 'zenodo' in url:
+                download_from_zenodo(ds_dir, url, **kwargs)
+            else:
+                download(url, os.path.join(ds_dir, fname))
+        _unzip(ds_dir)
+
+    else:
+        raise ValueError(ds_dir)
+
+    return
+
+
+def _unzip(ds_dir, dirname=None):
+    """unzip all the zipped files in a directory"""
+    if dirname is None:
+        dirname = ds_dir
+
+    all_files = glob.glob(f"{dirname}/*.zip")
+    for f in all_files:
+        src = os.path.join(dirname, f)
+        trgt = os.path.join(dirname, f.split('.zip')[0])
+        if not os.path.exists(trgt):
+            print(f"unzipping {src} to {trgt}")
+            with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
+                try:
+                    zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
+                except OSError:
+                    filelist = zip_ref.filelist
+                    for _file in filelist:
+                        if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
+                            zip_ref.extract(_file)
+
+    # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
+    gz_files = glob.glob(f"{ds_dir}/*.gz")
+    for f in gz_files:
+        shutil.unpack_archive(f, ds_dir)
+
+    return

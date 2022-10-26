@@ -4,7 +4,7 @@ __all__ = ["Swatch"]
 from typing import Union
 
 from ai4water.backend import pd, os, np
-from ai4water.datasets.datasets import Datasets
+from ai4water.datasets._datasets import Datasets
 
 
 class Swatch(Datasets):

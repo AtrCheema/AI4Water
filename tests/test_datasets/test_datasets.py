@@ -9,7 +9,7 @@ from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsoto
 from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
 from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
 from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada
+from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada, gw_punjab
 
 
 def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, str] = 'index'):
@@ -160,6 +160,19 @@ class TestPangaea(unittest.TestCase):
         test_jena_weather()
         return
 
+    def test_gw_punjab(self):
+        df = gw_punjab()
+        assert df.shape == (68782, 5)
+        assert isinstance(df.index, pd.DatetimeIndex)
+        df_lts = gw_punjab("LTS")
+        assert df_lts.shape == (68782, 4)
+        assert isinstance(df_lts.index, pd.DatetimeIndex)
+
+        df = gw_punjab(country="IND")
+        assert df.shape == (29172, 5)
+        df = gw_punjab(country="PAK")
+        assert df == (39610, 5)
+        return
 
 if __name__=="__main__":
     unittest.main()

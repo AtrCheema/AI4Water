@@ -32,6 +32,11 @@ Photodegradation of Melachite Green
 .. automodule:: ai4water.datasets.mg_photodegradation
 
 
+Groundwater of Punjab region
+===================================
+.. automodule:: ai4water.datasets.gw_punjab
+
+
 Datasets
 ========
 .. autoclass:: ai4water.datasets.mtropics.Datasets

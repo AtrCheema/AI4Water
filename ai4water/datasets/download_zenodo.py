@@ -9,7 +9,6 @@ import hashlib
 from contextlib import contextmanager
 
 
-
 from .utils import download
 from ai4water.backend import requests, os
 
