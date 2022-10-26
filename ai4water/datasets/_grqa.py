@@ -1,24 +1,34 @@
 
 __all__ = ["GRQA"]
 
-from typing import Union, List, Tuple
+from typing import Union, List
 
-from ai4water.backend import pd, os, np
+from ai4water.backend import pd, os
 
 from .datasets import Datasets
-from .utils import check_attributes, sanity_check, check_st_en
+from .utils import check_st_en
 
 
 class GRQA(Datasets):
-    url = 'https://zenodo.org/record/7056647#.YzBzDHZByUk'
-
     """
     Global River Water Quality Archive following the work of Virro et al., 2021 [21]_.
 
     .. [21] https://essd.copernicus.org/articles/13/5483/2021/
     """
 
-    def __init__(self, download_source=False, **kwargs):
+    url = 'https://zenodo.org/record/7056647#.YzBzDHZByUk'
+
+
+    def __init__(
+            self,
+            download_source:bool = False,
+            **kwargs):
+        """
+        parameters
+        ----------
+        download_source : bool
+            whether to download source data or not
+        """
         super().__init__(**kwargs)
 
         files = ['GRQA_data_v1.3.zip', 'GRQA_meta.zip']
@@ -26,34 +36,89 @@ class GRQA(Datasets):
             files += ['GRQA_source_data.zip']
         self._download(include=files)
 
-    def fetch(
+
+    @property
+    def files(self):
+        return os.listdir(os.path.join(self.ds_dir, "GRQA_data_v1.3", "GRQA_data_v1.3"))
+
+    @property
+    def parameters(self):
+        return [f.split('_')[0] for f in self.files]
+
+    def fetch_parameter(
             self,
-            parameter: Union[List[str], str],
-            location: Union[List[str], str],
-            st=None,
-            en=None,
-    ):
+            parameter: str = "COD",
+            site_name: Union[List[str], str] = None,
+            country: Union[List[str], str] = None,
+            st:Union[int, str, pd.DatetimeIndex] = None,
+            en:Union[int, str, pd.DatetimeIndex] = None,
+    )->pd.DataFrame:
         """
         parameters
         ----------
-        parameter : str/list, optional
+        parameter : str, optional
             name of parameter
-        location : str/list, optional
+        site_name : str/list, optional
             location for which data is to be fetched.
+        country : str/list optional (default=None)
         st : str
-            starting date
+            starting date date or index
         en : str
-            end date
+            end date or index
 
         Returns
         -------
         pd.DataFrame
-            a multiindex dataframe of shape
+            a pandas dataframe
 
         Example
         --------
         >>> from ai4water.datasets import GRQA
         >>> dataset = GRQA()
-        >>> df = dataset.fetch()
+        >>> df = dataset.fetch_parameter()
+        fetch data for only one country
+        >>> cod_pak = dataset.fetch_parameter("COD", country="Pakistan")
+        fetch data for only one site
+        >>> cod_kotri = dataset.fetch_parameter("COD", site_name="Indus River - at Kotri")
         """
-        raise NotImplementedError
+
+        assert isinstance(parameter, str)
+        assert parameter in self.parameters
+
+        if isinstance(site_name, str):
+            site_name = [site_name]
+
+        if isinstance(country, str):
+            country = [country]
+
+        df = self._load_df(parameter)
+
+        if site_name is not None:
+            assert isinstance(site_name, list)
+            df = df[df['site_name'].isin(site_name)]
+        if country is not None:
+            assert isinstance(country, list)
+            df = df[df['site_country'].isin(country)]
+
+        df.index = pd.to_datetime(df.pop("obs_date") + " " + df.pop("obs_time"))
+
+        return check_st_en(df, st, en)
+
+    def _load_df(self, parameter):
+        if hasattr(self, f"_load_{parameter}"):
+            return getattr(self, f"_load_{parameter}")()
+
+        fname = os.path.join(self.ds_dir, "GRQA_data_v1.3", "GRQA_data_v1.3", f"{parameter}_GRQA.csv")
+        return pd.read_csv(fname, sep=";")
+
+    def _load_DO(self):
+        # read_csv is causing mysterious errors
+
+        f = os.path.join(self.ds_dir, "GRQA_data_v1.3",
+                         "GRQA_data_v1.3", f"DO_GRQA.csv")
+        lines = []
+        with open(f, 'r', encoding='utf-8') as fp:
+            for idx, line in enumerate(fp):
+                lines.append(line.split(';'))
+
+        return pd.DataFrame(lines[1:], columns=lines[0])

@@ -118,11 +118,6 @@ class Swatch(Datasets):
             name/names of station id for which the data is to be fetched.
             By default, the data for all stations is fetched. If given, then ``station_id``
             should not be given.
-        st :
-            starting date of data to be retrieved
-        en :
-            end data fo data to be retrieved
-
         Returns
         -------
         pd.DataFrame
@@ -130,7 +125,8 @@ class Swatch(Datasets):
         Examples
         --------
         >>> from ai4water.datasets import Swatch
-
+        >>> ds = Swatch()
+        >>> df = ds.fetch()
         """
         def_paras = ["name", "value", "val_unit", "lat", "long"]
 
