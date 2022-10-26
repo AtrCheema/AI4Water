@@ -290,7 +290,8 @@ class Datasets(object):
 
     def _download(self, overwrite=False, **kwargs):
         """Downloads the dataset. If already downloaded, then"""
-        maybe_download(self.ds_dir, overwrite, self.url, self.name, **kwargs)
+        maybe_download(self.ds_dir, overwrite=overwrite,
+                       url=self.url, name=self.name, **kwargs)
         return
 
     def _download_and_unzip(self):

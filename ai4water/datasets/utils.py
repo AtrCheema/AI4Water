@@ -254,7 +254,7 @@ def maybe_download(ds_dir, overwrite, url, name=None, include=None, **kwargs):
         if overwrite:
             print(f"removing previous data directory {ds_dir} and downloading new")
             shutil.rmtree(ds_dir)
-            download_and_unzip(ds_dir, url, include=include, **kwargs)
+            download_and_unzip(ds_dir, url=url, include=include, **kwargs)
         else:
             sanity_check(name, ds_dir)
             print(f"""
@@ -262,7 +262,7 @@ def maybe_download(ds_dir, overwrite, url, name=None, include=None, **kwargs):
     {ds_dir} already exists.
     Use overwrite=True to remove previously saved files and download again""")
     else:
-        download_and_unzip(ds_dir, url, include=include, **kwargs)
+        download_and_unzip(ds_dir, url=url, include=include, **kwargs)
     return
 
 
@@ -277,21 +277,21 @@ def download_and_unzip(ds_dir, url, include=None, **kwargs):
         os.makedirs(ds_dir)
     if isinstance(url, str):
         if 'zenodo' in url:
-            download_from_zenodo(ds_dir, url, include=include, **kwargs)
+            download_from_zenodo(ds_dir, doi=url, include=include, **kwargs)
         else:
             download(url, ds_dir)
         _unzip(ds_dir)
     elif isinstance(url, list):
         for url in url:
             if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url, **kwargs)
+                download_from_zenodo(ds_dir, url, include=include, **kwargs)
             else:
                 download(url, ds_dir)
         _unzip(ds_dir)
     elif isinstance(url, dict):
         for fname, url in url.items():
             if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url, **kwargs)
+                download_from_zenodo(ds_dir, doi=url, include=include, **kwargs)
             else:
                 download(url, os.path.join(ds_dir, fname))
         _unzip(ds_dir)

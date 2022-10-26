@@ -126,8 +126,10 @@ def download_from_zenodo(
             files = js['files']
             if include:
                 assert isinstance(include, list)
-                assert all([file in files for file in include])
-                files = include
+                filenames = [f['key'] for f in files]
+                assert all([file in filenames for file in include]), f"invlid {include}"
+                # only consider those files which are in include
+                files = [file for file in files if file['key'] in include]
             total_size = sum(f['size'] for f in files)
 
             if md5 is not None:
