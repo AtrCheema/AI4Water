@@ -1,4 +1,6 @@
 
+from typing import List
+
 from scipy.special import boxcox
 from scipy.special import expit
 
@@ -357,53 +359,186 @@ class Center(ScalerWithConfig):
     def get_params(self):
         return {'feature_dim': self.feature_dim, 'axis': self.axis}
 
+class Closures(ScalerWithConfig):
 
-class CLR(ScalerWithConfig):
-    """centre log ratio transformation"""
-    def __init__(self, force_closure:bool = False):
-        self.force_closure = force_closure
+    def __init__(
+            self,
+            force_closure:bool = False,
+            treat_negative:bool = False
+    ):
+
         """
         force_closure: bool
             if ture, and input data is not a closure, it will be converted
             into closure by dividing with the sum of input data
         """
+        self.force_closure = force_closure
+        self.treat_negative = treat_negative
 
-    def fit(self, x):
-        return x
+    def _check_array(self, x):
 
-    def transform(
-            self,
-            x:np.ndarray
-    )->np.ndarray:
+        self.sum_, self.min_ = None, None
+
+        if len(x) == x.size:
+            x = x.reshape(-1,)
+
+        if (x<0).sum() > 0:
+            if self.treat_negative:
+                self.min_ = np.min(x)
+                x = x + self.min_
+            else:
+                ValueError(f"x contains {(x[x<0]).sum()} -ve values")
 
         if not np.allclose(x.sum(), 1.0):
             if self.force_closure:
                 self.sum_ = np.sum(x)
                 x = x / self.sum_
             else:
-                raise ValueError(f"x is not a closure{x.sum()}")
+                raise ValueError(f"x is not a closure with sum of {round(x.sum(), 5)}")
+        return x
+
+    def _check_array_inv(self, x):
+
+        if len(x) == x.size:
+            x = x.reshape(-1,)
+
+        if self.force_closure:
+            x = x * self.sum_
+
+        if self.treat_negative:
+            x = x - self.min_
+
+        return x
+
+    def transform(self, x):
+        raise NotImplementedError
+
+    def fit(self, x):
+        return x
+
+    def fit_transform(self, x):
+        return self.transform(x)
+
+    @property
+    def config_paras(self)->List[str]:
+        return ['sum_', 'min_']
+
+    def get_params(self)->dict:
+        return {
+            'force_closure': self.force_closure,
+            'treat_negative': self.treat_negative,
+        }
+
+
+class ALR(Closures):
+    """
+    Additive log ratio transformation
+
+    Examples
+    ---------
+    >>> from easy_mpl import hist
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
+
+    >>> alr_tr = ALR(True, True)
+    >>> x = data.iloc[:, 0].values
+    >>> x_ = alr_tr.fit_transform(x)
+    >>> _x = alr_tr.inverse_transform(x_)
+    >>> np.allclose(_x, x)
+    True
+    >>> hist([x, x_], hist_kws={"bins": 100}, share_axes=False,
+    ...   labels=["Original", "Transformed"])
+    """
+    def transform(self, x):
+
+        denominator_idx = 0
+        x = self._check_array(x)
+        self.x0_ = x[denominator_idx]
+
+        if x.ndim == 2:
+            mat_t = x.T
+            numerator_idx = list(range(0, mat_t.shape[0]))
+            del numerator_idx[denominator_idx]
+            x = np.log(mat_t[numerator_idx, :] / mat_t[denominator_idx, :]).T
+
+        elif x.ndim == 1:
+            numerator_idx = list(range(0, x.shape[0]))
+            del numerator_idx[denominator_idx]
+            x = np.log(x[numerator_idx] / x[denominator_idx])
+            x = np.roll(np.append(x, self.x0_), shift=1)
+
+        else:
+            raise ValueError("mat must be either 1D or 2D")
+        return x
+
+    def inverse_transform(self, x):
+
+        denominator_idx = 0
+        x = np.array(x)
+
+        if x.ndim == 2:
+            mat_idx = np.insert(x, denominator_idx,
+                                np.repeat(0, x.shape[0]), axis=1)
+            comp = np.zeros(mat_idx.shape)
+            comp[:, denominator_idx] = 1 / (np.exp(x).sum(axis=1) + 1)
+            numerator_idx = list(range(0, comp.shape[1]))
+            del numerator_idx[denominator_idx]
+            for i in numerator_idx:
+                comp[:, i] = comp[:, denominator_idx] * np.exp(mat_idx[:, i])
+        elif x.ndim == 1:
+            mat_idx = np.insert(x, denominator_idx, 0, axis=0)
+            comp = np.zeros(mat_idx.shape)
+            comp[denominator_idx] = 1 / (np.exp(x).sum(axis=0) + 1)
+            numerator_idx = list(range(0, comp.shape[0]))
+            del numerator_idx[denominator_idx]
+            for i in numerator_idx:
+                comp[i] = comp[denominator_idx] * np.exp(mat_idx[i])
+        else:
+            raise ValueError("mat must be either 1D or 2D")
+
+        x = self._check_array_inv(x)
+
+        return x
+
+
+class CLR(Closures):
+    """centre log ratio transformation
+
+    Examples
+    ---------
+    >>> from easy_mpl import hist
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
+
+    >>> clr_tr = CLR(True, True)
+    >>> x = data.iloc[:, 0].values
+    >>> x_ = clr_tr.fit_transform(x)
+    >>> _x = clr_tr.inverse_transform(x_)
+    >>> np.allclose(_x, x)
+    True
+    >>> hist([x, x_], hist_kws={"bins": 100}, share_axes=False,
+    ...   labels=["Original", "Transformed"])
+    """
+
+    def transform(
+            self,
+            x:np.ndarray
+    )->np.ndarray:
+
+        x = self._check_array(x)
 
         lmat = np.log(x)
         gm = lmat.mean(axis=-1, keepdims=True)
         return (lmat - gm).squeeze()
 
-    def fit_transform(self, x):
-        return self.transform(x)
 
     def inverse_transform(self, x:np.ndarray)->np.ndarray:
         emat = np.exp(x)
         x = closure(emat, out=emat)
 
-        if self.force_closure:
-            return x * self.sum_
+        x = self._check_array_inv(x)
+
         return x
-
-    @property
-    def config_paras(self):
-        return ['sum_']
-
-    def get_params(self):
-        return {'force_closure': self.force_closure}
 
 
 class FuncTransformer(ScalerWithConfig):

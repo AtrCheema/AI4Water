@@ -32,3 +32,5 @@ from ._transformations import FunctionTransformer
 from ._transformations import ParetoTransformer
 from ._transformations import VastTransformer
 from ._transformations import MmadTransformer
+from ._transformations import CLR
+from ._transformations import ALR
