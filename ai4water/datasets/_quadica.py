@@ -56,8 +56,9 @@ class Quadica(Datasets):
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
         """
-        Monthly median concentrations, flow-normalized concentrations, and mean
-        fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
+        Monthly median concentrations, flow-normalized concentrations and mean
+        fluxes of water chemistry parameters. These are estimated using Weighted
+        Regressions on Time, Discharge, and Season (WRTDS)
         for stations with enough data availability. This data is available for total
         140 stations. The data from all stations does not start and end at the same period.
         Therefore, some stations have more datapoints while others have less. The maximum
@@ -167,13 +168,14 @@ class Quadica(Datasets):
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
         """
-        average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
+        average monthly  potential evapotranspiration starting from
+        1950-01 to 2018-09
 
         Examples
         --------
             >>> from ai4water.datasets import Quadica
             >>> dataset = Quadica()
-            >>> df = dataset.pet() # -> (828, 1388)
+            >>> df = dataset.pet() # -> (828, 1386)
         """
         fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
         pet = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
@@ -206,7 +208,7 @@ class Quadica(Datasets):
         -------
         pd.DataFrame
             a pandas dataframe of shape (time_steps, stations). With default input
-            arguments, the shape is (828, 1388)
+            arguments, the shape is (828, 1386)
 
         Examples
         --------
@@ -268,10 +270,10 @@ class Quadica(Datasets):
             stations: Union[List[int], int] = None,
     )->pd.DataFrame:
         """
-        Monthly medians over the whole time series of water quality variables
+        This function reads the `c_months.csv` file which contains the monthly
+        medians over the whole time series of water quality variables
         and discharge
 
-        median_COMPOUND : Median concentration from grab sampling data
         parameters
         ----------
         features : list/str, optional, (default=None)
@@ -282,7 +284,9 @@ class Quadica(Datasets):
         Returns
         -------
         pd.DataFrame
-            a dataframe of shape (16629, 18)
+            a dataframe of shape (16629, 18). 15 of the 18 columns represent a
+            water chemistry parameter. 16629 comes from 1386*12 where 1386 is stations
+            and 12 is months.
         """
         fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
         df = pd.read_csv(fname)
@@ -319,6 +323,7 @@ class Quadica(Datasets):
     )->pd.DataFrame:
         """
         Returns static physical catchment attributes in the form of dataframe.
+
         parameters
         ----------
             features : list/str, optional, (default=None)
@@ -422,7 +427,7 @@ class Quadica(Datasets):
             whether to fetch catchment features or not.
         max_nan_tol : int, optional (default=0)
             setting this value to 0 will remove the whole time-series with any
-            missing values.
+            missing values. If None, no time-series with NaNs values will be removed.
 
         Returns
         --------

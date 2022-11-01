@@ -141,9 +141,11 @@ class Real(_Real):
             low : lower limit of parameter
             high : upper limit of parameter
             step : used to define `grid` in conjuction with `low` and `high`
+                This argument is only used when grid search algorithm is used.
             grid : array like, if given, `low`, `high`, `step` and `num_samples`
                 will be redundant.
             num_samples : if given, it will be used to create grid space using the formula
+            ``np.linspace(low, high, num_samples)``
         """
         if low is None:
             assert grid is not None

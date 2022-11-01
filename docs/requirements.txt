@@ -18,5 +18,3 @@ seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery
-
-#
