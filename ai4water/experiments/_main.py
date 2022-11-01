@@ -196,9 +196,8 @@ class Experiments(object):
         if not os.path.exists(self.exp_path):
             os.makedirs(self.exp_path)
 
-        self.update_config(models=self.models, exp_path=self.exp_path,
-                           exp_name=self.exp_name, cases=self.cases,
-                           model_kws=jsonize(model_kws))
+        self.eval_models = {}
+        self.optimized_models = {}
 
         if monitor is None:
             self.monitor = Monitor[self.mode]
@@ -217,24 +216,30 @@ class Experiments(object):
         """Anything that needs to be performed before building the model."""
         return suggested_paras
 
-    def update_and_save_config(self, **kwargs):
-        self.update_config(**kwargs)
-        self.save_config()
-        return
+    def config(self)->dict:
+        _config = {
+            "models":self.models,
+            "exp_path": self.exp_path,
+            "exp_name": self.exp_name,
+            "cases": self.cases,
+            "model_kws": jsonize(self.model_kws),
+            "eval_models": self.eval_models,
+            "optimized_models": self.optimized_models,
+        }
+        for attr in ['is_multiclass_', 'is_binary_', 'is_multilabel_', 'considered_models_']:
+            if hasattr(self, attr):
+                _config[attr] = getattr(self, attr)
 
-    def update_config(self, **kwargs):
-        if not hasattr(self, 'config'):
-            setattr(self, 'config', {})
-        self.config.update(kwargs.copy())
-        return
+        return _config
 
     def save_config(self):
-        dict_to_file(self.exp_path, config=self.config)
+        dict_to_file(self.exp_path, config=self.config())
         return
 
     def build_from_config(self, config_path:str)->Model:
         assert os.path.exists(config_path), f"{config_path} does not exist"
-        model: Model = Model.from_config_file(config_path=config_path)
+        model = Model.from_config_file(config_path=config_path)
+        assert isinstance(model, Model)
         setattr(self, 'model_', model)
         return model
 
@@ -270,9 +275,6 @@ class Experiments(object):
     def _reset(self):
 
         self.cv_scores_ = {}
-
-        self.config['eval_models'] = {}
-        self.config['optimized_models'] = {}
 
         self.metrics = {}
         self.features = {}
@@ -310,23 +312,30 @@ class Experiments(object):
             model_type,
             model_name,
             cross_validate,
-            train_x, train_y, val_x, val_y):
+            train_x, train_y,
+            val_x, val_y):
 
         if self.verbosity >= 0: print(f"running  {model_name} model")
 
-        x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
+        # todo why combine?
+        #x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
 
         config = self._get_config(model_type, model_name, **self._named_x0())
 
         model = self._build_fit(
-            x, y,
+            train_x, train_y,
             title=f"{self.exp_name}{SEP}{model_name}",
+            validation_data=(val_x, val_y),
             cross_validate=cross_validate,
             **config)
 
         train_results = self._predict(model=model, x=train_x, y=train_y)
 
         self._populate_results(model_name, train_results)
+
+        if val_x is not None and (hasattr(val_x, '__len__') and len(val_x)>0):
+            val_results = self._predict(model=model, x=val_x, y=val_y)
+            self._populate_results(model_name, train_results=train_results, val_results=val_results)
 
         if cross_validate:
             cv_scoring = model.val_metric
@@ -376,7 +385,7 @@ class Experiments(object):
 
         self.opt_results = self.optimizer.fit()
 
-        self.config['optimized_models'][model_type] = self.optimizer.opt_path
+        self.optimized_models[model_type] = self.optimizer.opt_path
 
         if cross_validate:
             # if we do train_best, self.model_ will change and this
@@ -394,7 +403,7 @@ class Experiments(object):
 
         if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
             raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
-        self.config['eval_models'][model_type] = self.model_.path
+        self.eval_models[model_type] = self.model_.path
 
         self.iter_metrics[model_type] = self.model_iter_metric
         return
@@ -569,10 +578,7 @@ class Experiments(object):
                     **hpo_kws
                 )
 
-        self.update_and_save_config(considered_models_ = self.considered_models_,
-                                    is_multiclass_ = self.is_multiclass_,
-                                    is_binary_ = self.is_binary_,
-                                    is_multilabel_ = self.is_multilabel_)
+        self.save_config()
 
         save_json_file(os.path.join(self.exp_path, 'features.json'), self.features)
         save_json_file(os.path.join(self.exp_path, 'metrics.json'), self.metrics)
@@ -700,6 +706,7 @@ class Experiments(object):
             include: Union[None, list] = None,
             exclude: Union[None, list] = None,
             figsize: tuple = (9, 7),
+            show:bool = True,
             **kwargs
     ) -> plt.Figure:
         """
@@ -722,6 +729,8 @@ class Experiments(object):
                 if not None, must be a list of models which will excluded.
                 None will result in no exclusion
             figsize : tuple, optional
+            show : bool (default=True)
+                whether to show the plot or not
             **kwargs :
                 all the keyword arguments for taylor_plot_ function.
 
@@ -809,6 +818,10 @@ class Experiments(object):
         )
 
         plt.savefig(fname, dpi=600, bbox_inches="tight")
+
+        if show:
+            plt.show()
+
         return ax
 
     def _consider_include(self, include: Union[str, list], to_filter):
@@ -1066,7 +1079,7 @@ Available cases are {self.models} and you wanted to include
         models.index = labels
 
         bar_chart(ax=axis[0],
-                  labels=models.index.tolist(),
+                  labels=labels,
                   values=models['train'],
                   color=kwargs.get('color', None),
                   ax_kws={'title':"Train",
@@ -1077,7 +1090,7 @@ Available cases are {self.models} and you wanted to include
                   )
 
         bar_chart(ax=axis[1],
-                  labels=models.index.tolist(),
+                  labels=labels,
                   values=models.iloc[:, 1],
                   color=kwargs.get('color', None),
                   ax_kws={'title': models.columns.tolist()[1],
@@ -1163,7 +1176,7 @@ Available cases are {self.models} and you wanted to include
             raise NotImplementedError(f"Non neural network models can not have loss comparison")
 
         loss_curves = {}
-        for _model, _path in self.config['eval_models'].items():
+        for _model, _path in self.eval_models.items():
             if _model in include:
                 df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=[loss_name])
                 loss_curves[_model] = df.values
@@ -1229,13 +1242,13 @@ Available cases are {self.models} and you wanted to include
         .. _plot:
             https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot
         """
-        if len(self.config['optimized_models']) < 1:
+        if len(self.optimized_models) < 1:
             print('No model was optimized')
             return
         plt.close('all')
         fig, axis = plt.subplots()
 
-        for _model, opt_path in self.config['optimized_models'].items():
+        for _model, opt_path in self.optimized_models.items():
             with open(os.path.join(opt_path, 'iterations.json'), 'r') as fp:
                 iterations = json.load(fp)
 
@@ -1447,8 +1460,9 @@ Available cases are {self.models} and you wanted to include
                       numpoints=2,
                       fancybox=False, framealpha=0.0)
 
-        fig.supxlabel("Observed")
-        fig.supylabel("Predicted")
+        if hasattr(fig, "supxlabel"):
+            fig.supxlabel("Observed")
+            fig.supylabel("Predicted")
 
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
@@ -1553,8 +1567,9 @@ Available cases are {self.models} and you wanted to include
                       numpoints=2,
                       fancybox=False, framealpha=0.0)
 
-        fig.supxlabel("Prediction")
-        fig.supylabel("Residual")
+        if hasattr(fig, "supxlabel"):
+            fig.supxlabel("Prediction")
+            fig.supylabel("Residual")
         if save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
@@ -1606,7 +1621,7 @@ Available cases are {self.models} and you wanted to include
 
         exp = cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
 
-        exp.config = config
+        #exp.config = config
         exp._from_config = True
 
         # following four attributes are only available if .fit was run
@@ -1889,7 +1904,7 @@ Available cases are {self.models} and you wanted to include
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
-        if "regressor" in self.tpot_estimator:
+        if "regressor" in self.tpot_estimator.__name__:
             mode = "regression"
         else:
             mode = "classification"

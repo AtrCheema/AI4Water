@@ -102,7 +102,7 @@ class MLClassificationExperiments(Experiments):
         # find all the model folders
         m_paths = []
         for m in model_folders:
-            if any(m in m_ for m_ in self.considered_models):
+            if any(m in m_ for m_ in self.considered_models_):
                 m_paths.append(m)
 
         # load all models from config
