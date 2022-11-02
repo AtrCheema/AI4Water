@@ -317,9 +317,6 @@ class Experiments(object):
 
         if self.verbosity >= 0: print(f"running  {model_name} model")
 
-        # todo why combine?
-        #x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
-
         config = self._get_config(model_type, model_name, **self._named_x0())
 
         model = self._build_fit(

@@ -1,4 +1,4 @@
-__all__ = ["DLRegressionExperiments"]
+__all__ = ["DLRegressionExperiments", "DLClassificationExperiments"]
 
 from ai4water.backend import tf
 from ai4water.utils.utils import jsonize
@@ -167,7 +167,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': MLP(input_shape=self.input_shape, **kwargs)}
+        config = {'model': MLP(input_shape=self.input_shape,
+                               mode=self.mode,
+                               **kwargs)}
         config.update(_kwargs)
         return config
 
@@ -181,7 +183,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': LSTM(input_shape=self.input_shape, **kwargs)}
+        config = {'model': LSTM(input_shape=self.input_shape,
+                               mode=self.mode,
+                                **kwargs)}
         config.update(_kwargs)
         return config
 
@@ -195,7 +199,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': CNN(input_shape=self.input_shape, **kwargs)}
+        config = {'model': CNN(input_shape=self.input_shape,
+                               mode=self.mode,
+                               **kwargs)}
         config.update(_kwargs)
 
         return config
@@ -210,7 +216,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': CNNLSTM(input_shape=self.input_shape, **kwargs)}
+        config = {'model': CNNLSTM(input_shape=self.input_shape,
+                                   mode=self.mode,
+                                   **kwargs)}
         config.update(_kwargs)
         return config
 
@@ -224,7 +232,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': LSTMAutoEncoder(input_shape=self.input_shape, **kwargs)}
+        config = {'model': LSTMAutoEncoder(input_shape=self.input_shape,
+                                           mode=self.mode,
+                                           **kwargs)}
         config.update(_kwargs)
         return config
 
@@ -238,7 +248,9 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': TCN(input_shape=self.input_shape, **kwargs)}
+        config = {'model': TCN(input_shape=self.input_shape,
+                               mode=self.mode,
+                               **kwargs)}
         config.update(_kwargs)
         return config
 
@@ -252,6 +264,46 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config = {'model': TFT(input_shape=self.input_shape, **kwargs)}
+        config = {'model': TFT(input_shape=self.input_shape,
+                               **kwargs)}
         config.update(_kwargs)
         return config
+
+
+class DLClassificationExperiments(DLRegressionExperiments):
+    """
+    Compare multiple neural network architectures for a classification problem
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import MtropicsLaos
+    >>> data = MtropicsLaos().make_classification(
+    ...     input_features=['air_temp', 'rel_hum'],
+    ...     lookback_steps=5)
+    define inputs and outputs
+    >>> inputs = data.columns.tolist()[0:-1]
+    >>> outputs = data.columns.tolist()[-1:]
+    create the experiments class
+    >>> exp = DLClassificationExperiments(
+    ...     input_features=inputs,
+    ...     output_features=outputs,
+    ...     epochs=5,
+    ...     ts_args={"lookback": 5}
+    )
+    run the experiments
+    >>> exp.fit(data=data, include=["TFT", "MLP"])
+
+    """
+    def __init__(
+            self,
+            exp_name=f"DLClassificationExperiments{dateandtime_now()}",
+            *args, **kwargs):
+
+        super(DLClassificationExperiments, self).__init__(
+            exp_name=exp_name,
+            *args, **kwargs
+        )
+
+    @property
+    def mode(self):
+        return "classification"

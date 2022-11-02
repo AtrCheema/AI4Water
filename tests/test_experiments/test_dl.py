@@ -5,11 +5,34 @@ import os
 cwd = os.path.dirname(os.path.abspath(__file__))
 site.addsitedir(os.path.dirname(os.path.dirname(cwd)))
 
-from ai4water.experiments import DLRegressionExperiments
+from ai4water.experiments import DLRegressionExperiments, DLClassificationExperiments
 from ai4water.datasets import busan_beach
 from ai4water.hyperopt import Categorical
+from ai4water.datasets import MtropicsLaos
+
 
 data = busan_beach()
+
+cls_data = MtropicsLaos().make_classification(
+    input_features=['air_temp', 'rel_hum'],
+    lookback_steps=5)
+
+inputs = data.columns.tolist()[0:-1]
+outputs = data.columns.tolist()[-1:]
+
+class TestClassification(unittest.TestCase):
+
+    def test_basic(self):
+        exp = DLClassificationExperiments(
+            input_features=cls_data.columns.tolist()[0:-1],
+            output_features=cls_data.columns.tolist()[-1:],
+            epochs=5,
+            ts_args={"lookback": 5}
+        )
+
+        exp.fit(data=cls_data, include=["TFT",
+                                    "MLP"])
+        return
 
 
 class TestDLExeriments(unittest.TestCase):
