@@ -35,7 +35,8 @@ class TestExperiments(unittest.TestCase):
             nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
                         'features': input_features},
             exp_name=f"dryrun_{dateandtime_now()}",
-            verbosity=0
+            verbosity=0,
+            show=False, save=False
         )
         exclude = [
             'model_RadiusNeighborsRegressor'  # nan predictions
@@ -43,11 +44,11 @@ class TestExperiments(unittest.TestCase):
 
         comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
 
-        comparisons.compare_errors('r2', data=df, show=False)
+        comparisons.compare_errors('r2', data=df)
         best_models = comparisons.compare_errors('r2', data=df, cutoff_type='greater',
-                                                 cutoff_val=0.01, show=False)
-        comparisons.taylor_plot(show=False, data=df)
-        comparisons.compare_regression_plots(data=df, save=False, show=False)
+                                                 cutoff_val=0.01)
+        comparisons.taylor_plot(data=df)
+        comparisons.compare_regression_plots(data=df)
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
@@ -57,7 +58,8 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
                         'features': input_features},
-            verbosity=0
+            verbosity=0,
+            show=False, save=False
         )
 
         ds = DataSet(df, input_features=input_features, output_features=outputs)
@@ -66,9 +68,9 @@ class TestExperiments(unittest.TestCase):
                         validation_data=ds.validation_data(),
                         include=['GaussianProcessRegressor', 'RandomForestRegressor']
                         )
-        comparisons.compare_regression_plots(x=x, y=y, save=False, show=False)
-        comparisons.compare_residual_plots(x=x, y=y, save=False, show=False)
-        comparisons.compare_edf_plots(x=x, y=y, save=False, show=False)
+        comparisons.compare_regression_plots(x=x, y=y)
+        comparisons.compare_residual_plots(x=x, y=y)
+        comparisons.compare_edf_plots(x=x, y=y)
 
         return
 
@@ -80,20 +82,23 @@ class TestExperiments(unittest.TestCase):
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
                         'features': input_features},
             exp_name=f"BestMLModels_{dateandtime_now()}",
-        verbosity=0)
+            verbosity=0,
+            show=False, save=False)
+
         comparisons.num_samples = 2
         comparisons.fit(data=df, run_type="optimize", opt_method="random",
                         num_iterations=4,
                         include=best_models, post_optimize='eval_best')
-        comparisons.compare_errors('r2', data=df, show=False)
-        comparisons.taylor_plot(show=False, data=df)
-        comparisons.plot_improvement('r2', save=False)
-        comparisons.plot_improvement('mse', save=False)
+        comparisons.compare_errors('r2', data=df)
+        comparisons.taylor_plot(data=df)
+        comparisons.plot_improvement('r2')
+        comparisons.plot_improvement('mse')
         comparisons.compare_convergence()
 
-        comparisons.compare_regression_plots(data=df, save=False, show=False)
-        comparisons.compare_residual_plots(data=df, save=False, show=False)
-        comparisons.compare_edf_plots(data=df, save=False, show=False)
+        comparisons.compare_regression_plots(data=df)
+        comparisons.compare_residual_plots(data=df)
+        comparisons.compare_edf_plots(data=df)
+
         return
 
     def test_cross_val(self):
@@ -105,26 +110,28 @@ class TestExperiments(unittest.TestCase):
                         'features': input_features},
             cross_validator = {"KFold": {"n_splits": 5}},
             exp_name=f"MLRegrCrossVal_{dateandtime_now()}",
-        verbosity=0)
+            verbosity=0,
+            show=False, save=False)
+
         comparisons.fit(data=df,
                         cross_validate=True,
                         include=[
                        'HistGradientBoostingRegressor',
                        'RandomForestRegressor'])
-        comparisons.compare_errors('r2', data=df, show=False)
-        comparisons.taylor_plot(data=df, show=False)
-        comparisons.plot_cv_scores(show=False)
-        comparisons.taylor_plot(data=df, show=False, include=['GaussianProcessRegressor',
+        comparisons.compare_errors('r2', data=df)
+        comparisons.taylor_plot(data=df)
+        comparisons.plot_cv_scores()
+        comparisons.taylor_plot(data=df, include=['GaussianProcessRegressor',
                                                      'RandomForestRegressor'])
-        comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
+        comparisons.plot_cv_scores(include=['GaussianProcessRegressor',
                                                         'RandomForestRegressor'])
 
         models = comparisons.sort_models_by_metric('r2')
         assert isinstance(models, pd.DataFrame)
 
-        comparisons.compare_regression_plots(data=df, save=False, show=False)
-        comparisons.compare_residual_plots(data=df, save=False, show=False)
-        comparisons.compare_edf_plots(data=df, save=False, show=False)
+        comparisons.compare_regression_plots(data=df)
+        comparisons.compare_residual_plots(data=df)
+        comparisons.compare_edf_plots(data=df)
 
         return
 
@@ -136,7 +143,8 @@ class TestExperiments(unittest.TestCase):
             nan_filler={'method': 'SimpleImputer', 'features': input_features,
                         'imputer_args': {'strategy': 'mean'}},
             exp_name=f"BestMLModels_{dateandtime_now()}",
-        verbosity=0)
+            verbosity=0,
+            show=False, save=False)
         exp.fit(data=df,
                 run_type="optimize",
                 opt_method="random",
@@ -151,13 +159,13 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(exp2.exp_path, exp.exp_path)
         self.assertEqual(len(exp.metrics), len(exp2.metrics))
         self.assertEqual(len(exp.features), len(exp2.features))
-        exp2.compare_errors('r2', data=df, show=False)
+        exp2.compare_errors('r2', data=df)
 
-        exp2.taylor_plot(data=df, show=False)
+        exp2.taylor_plot(data=df)
 
-        exp2.compare_regression_plots(data=df, save=False, show=False)
-        exp2.compare_residual_plots(data=df, save=False, show=False)
-        exp2.compare_edf_plots(data=df, save=False, show=False)
+        exp2.compare_regression_plots(data=df)
+        exp2.compare_residual_plots(data=df)
+        exp2.compare_edf_plots(data=df)
 
         return
 
@@ -167,7 +175,8 @@ class TestNonSKlearn(unittest.TestCase):
     def test_basic(self):
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
-            verbosity=0
+            verbosity=0,
+            show=False, save=False
         )
 
         include = ["CatBoostRegressor", "XGBRegressor", "LGBMRegressor"]
@@ -207,28 +216,31 @@ class TestNonSKlearn(unittest.TestCase):
 
         x0 = [4, #5,
               32, 0.00029613, 'relu']
-        experiment = MyTransformationExperiments(cases=cases,
-                                                 input_features=input_features,
-                                                 output_features = outputs,
-                                                 param_space=search_space,
-                                                 x0=x0,
-                                                 verbosity=0,
-                                                 ts_args={"lookback": 5},
-                                                 exp_name = f"testing_{dateandtime_now()}")
+        experiment = MyTransformationExperiments(
+            cases=cases,
+             input_features=input_features,
+             output_features = outputs,
+             param_space=search_space,
+             x0=x0,
+             verbosity=0,
+             ts_args={"lookback": 5},
+             exp_name = f"testing_{dateandtime_now()}",
+            show=False, save=False)
         experiment.num_samples = 2
         experiment.fit(data = df, run_type='optimize',
                        opt_method='random',
                        num_iterations=2)
 
-        experiment.compare_regression_plots(data=df, save=False, show=False)
-        experiment.compare_residual_plots(data=df, save=False, show=False)
-        experiment.compare_edf_plots(data=df, save=False, show=False)
+        experiment.compare_regression_plots(data=df)
+        experiment.compare_residual_plots(data=df)
+        experiment.compare_edf_plots(data=df)
         return
 
     def test_fit_with_tpot(self):
         exp = MLRegressionExperiments(
             exp_name=f"tpot_{dateandtime_now()}",
-            verbosity=0)
+            verbosity=0,
+            show=False, save=False)
 
         exp.fit(
             data=busan_beach(),
@@ -244,7 +256,8 @@ class TestNonSKlearn(unittest.TestCase):
 
         exp = MLRegressionExperiments(
             exp_name=f"tpot_{dateandtime_now()}",
-            verbosity=0)
+            verbosity=0,
+            show=False, save=False)
 
         exp.fit_with_tpot(
             data=busan_beach(),

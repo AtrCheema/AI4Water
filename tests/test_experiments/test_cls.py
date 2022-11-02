@@ -53,7 +53,8 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(
             input_features=inputs,
             output_features=outputs,
-            monitor = [f1_score, "accuracy"]
+            monitor = [f1_score, "accuracy"],
+            show=False, save=False
         )
 
         exp.fit(data=data, exclude=[
@@ -63,10 +64,10 @@ class TestCls(unittest.TestCase):
         ],
                 include=['model_XGBRFClassifier', 'model_XGBClassifier']
                 )
-        exp.compare_errors('accuracy', data=data, show=False, save=False)
-        exp.compare_errors('f1_score', data=data, show=False, save=False)
-        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values, show=False, save=False)
-        exp.compare_roc_curves(data[inputs].values, data[outputs].values, show=False, save=False)
+        exp.compare_errors('accuracy', data=data)
+        exp.compare_errors('f1_score', data=data)
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
+        exp.compare_roc_curves(data[inputs].values, data[outputs].values)
 
         return
 
@@ -77,7 +78,8 @@ class TestCls(unittest.TestCase):
             output_features=outputs,
             train_fraction=1.0,
             val_fraction=0.3,
-            cross_validator = {"KFold": {"n_splits": 3}}
+            cross_validator = {"KFold": {"n_splits": 3}},
+            show=False, save=False
         )
 
         exp.fit(data=data,
@@ -90,7 +92,7 @@ class TestCls(unittest.TestCase):
                 cross_validate=True,
                 )
 
-        exp.plot_cv_scores(show=False)
+        exp.plot_cv_scores()
         return
 
     def test_binary_optimize(self):
@@ -100,6 +102,7 @@ class TestCls(unittest.TestCase):
             output_features=outputs,
             train_fraction=1.0,
             val_fraction=0.3,
+            show=False, save=False
         )
 
         exp.fit(data=data,
@@ -110,7 +113,7 @@ class TestCls(unittest.TestCase):
                 ],
                 run_type="optimize",
                 )
-        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values, show=False, save=False)
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
         return
 
     def test_multiclass(self):
@@ -118,7 +121,8 @@ class TestCls(unittest.TestCase):
 
         exp = MLClassificationExperiments(
             input_features=input_features_cls,
-            output_features=['target']
+            output_features=['target'],
+            show=False, save=False
         )
 
         exp.fit(data=data_multiclass,
@@ -135,7 +139,8 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(
             input_features=input_features_cls,
             cross_validator={"KFold": {"n_splits": 3}},
-            output_features=['target']
+            output_features=['target'],
+            show=False, save=False
         )
 
         exp.fit(data=data_multiclass,
@@ -146,7 +151,7 @@ class TestCls(unittest.TestCase):
                 cross_validate=True
                 )
 
-        exp.plot_cv_scores(show=False)
+        exp.plot_cv_scores()
 
         return
 
@@ -156,6 +161,7 @@ class TestCls(unittest.TestCase):
             input_features=inputs,
             output_features=outputs,
             cross_validator={'KFold': {'n_splits': 5}},
+            show=False, save=False
         )
 
         exp.fit(data=data,
@@ -168,7 +174,7 @@ class TestCls(unittest.TestCase):
                     'model_LinearSVC',
                 ]
                 )
-
+        exp.plot_cv_scores()
         return
 
 if __name__ == "__main__":

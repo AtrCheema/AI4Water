@@ -28,7 +28,8 @@ class TestClassification(unittest.TestCase):
             input_features=cls_data.columns.tolist()[0:-1],
             output_features=cls_data.columns.tolist()[-1:],
             epochs=5,
-            ts_args={"lookback": 5}
+            ts_args={"lookback": 5},
+            save=False, show=False
         )
 
         exp.fit(data=cls_data, include=["TFT", "MLP"])
@@ -43,7 +44,8 @@ class TestDLExeriments(unittest.TestCase):
             input_features = data.columns.tolist()[0:-1],
             output_features = data.columns.tolist()[-1:],
             epochs=5,
-            ts_args={"lookback": 9}
+            ts_args={"lookback": 9},
+            save=False, show=False
         )
 
         exp.fit(data=data, include=["TFT",
@@ -51,8 +53,8 @@ class TestDLExeriments(unittest.TestCase):
                                     "CNNLSTM",
                                     "LSTMAutoEncoder"])
 
-        exp.loss_comparison(save=False, show=False)
-        exp.compare_errors('r2', data=data, save=False, show=False)
+        exp.loss_comparison()
+        exp.compare_errors('r2', data=data)
 
         return
 
@@ -62,7 +64,8 @@ class TestDLExeriments(unittest.TestCase):
             input_features = data.columns.tolist()[0:-1],
             output_features = data.columns.tolist()[-1:],
             epochs=5,
-            ts_args={"lookback": 5}
+            ts_args={"lookback": 5},
+            save=False, show=False
         )
 
         exp.batch_size_space = Categorical(categories=[4, 8, 12, 16, 32],

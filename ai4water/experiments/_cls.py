@@ -1,14 +1,11 @@
 
 __all__ = ["MLClassificationExperiments"]
 
-import os.path
-
-import matplotlib.pyplot as plt
-
 from ._main import Experiments
 from .utils import classification_space
 from ai4water.utils.utils import dateandtime_now
-from ai4water.backend import os, sklearn, catboost, xgboost, lightgbm
+from ai4water.backend import catboost, xgboost, lightgbm
+
 
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without
@@ -92,164 +89,6 @@ class MLClassificationExperiments(Experiments):
     @property
     def category(self):
         return "ML"
-
-    def _compare_cls_curves(self, x, y, save, show, func, name):
-
-        model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path,p))]
-
-        _, ax = plt.subplots()
-
-        # find all the model folders
-        m_paths = []
-        for m in model_folders:
-            if any(m in m_ for m_ in self.considered_models_):
-                m_paths.append(m)
-
-        # load all models from config
-        for model_name in m_paths:
-
-            m_path = self._get_best_model_path(model_name)
-
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
-
-            kws = {'estimator': model, 'X': x, 'y': y.reshape(-1, ), 'ax': ax, 'name': model.model_name}
-            if 'LinearSVC' in model.model_name:
-                # sklearn LinearSVC does not have predict_proba but ai4water Model does have this method
-                # which will only throw error
-                kws['estimator'] = model._model
-
-            if model.model_name in ['Perceptron', 'PassiveAggressiveClassifier',
-                                    'NearestCentroid', 'RidgeClassifier',
-                                    'RidgeClassifierCV']:
-                continue
-
-            if model.model_name in ['NuSVC' , 'SVC']:
-                if not model._model.get_params()['probability']:
-                    continue
-
-            if 'SGDClassifier' in model.model_name:
-                if model._model.get_params()['loss'] == 'hinge':
-                    continue
-
-            func(**kws)
-
-        if save:
-            fname = os.path.join(self.exp_path, f"{name}.png")
-            plt.savefig(fname, dpi=300, bbox_inches='tight')
-
-        if show:
-            plt.show()
-
-        return ax
-
-    def compare_precision_recall_curves(
-            self,
-            x,
-            y,
-            save:bool = True,
-            show:bool = True,
-    ):
-        """compares precision recall curves of the all the models.
-
-        parameters
-        ---------
-        x :
-            input data
-        y :
-            labels for the input data
-        save :
-            whether to save the plot or not.
-        show :
-            whether to show the plot or not
-
-        Returns
-        -------
-        plt.Axes
-            matplotlib axes on which figure is drawn
-
-        Example
-        -------
-        >>> from ai4water.datasets import MtropicsLaos
-        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
-        # define inputs and outputs
-        >>> inputs = data.columns.tolist()[0:-1]
-        >>> outputs = data.columns.tolist()[-1:]
-        # initiate the experiment
-        >>> exp = MLClassificationExperiments(
-        ...     input_features=inputs,
-        ...     output_features=outputs)
-        # run the experiment
-        >>> exp.fit(data=data, include=["model_LGBMClassifier",
-        ...                             "model_XGBClassifier",
-        ...                             "RandomForestClassifier"])
-        ... # Compare Precision Recall curves
-        >>> exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
-        """
-
-        return self._compare_cls_curves(
-            x,
-            y,
-            save,
-            show,
-            name="precision_recall_curves",
-            func=sklearn.metrics.PrecisionRecallDisplay.from_estimator
-        )
-
-    def compare_roc_curves(
-            self,
-            x,
-            y,
-            save:bool = True,
-            show:bool = True,
-    ):
-        """compares roc curves of the all the models.
-
-        parameters
-        ---------
-        x :
-            input data
-        y :
-            labels for the input data
-        save :
-            whether to save the plot or not.
-        show :
-            whether to show the plot or not
-
-        Returns
-        -------
-        plt.Axes
-            matplotlib axes on which figure is drawn
-
-        Example
-        -------
-        >>> from ai4water.datasets import MtropicsLaos
-        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
-        # define inputs and outputs
-        >>> inputs = data.columns.tolist()[0:-1]
-        >>> outputs = data.columns.tolist()[-1:]
-        # initiate the experiment
-        >>> exp = MLClassificationExperiments(
-        ...     input_features=inputs,
-        ...     output_features=outputs)
-        # run the experiment
-        >>> exp.fit(data=data, include=["model_LGBMClassifier",
-        ...                             "model_XGBClassifier",
-        ...                             "RandomForestClassifier"])
-        ... # Compare ROC curves
-        >>> exp.compare_roc_curves(data[inputs].values, data[outputs].values)
-        """
-
-        return self._compare_cls_curves(
-            x=x,
-            y=y,
-            save=save,
-            show=show,
-            name="roc_curves",
-            func=sklearn.metrics.RocCurveDisplay.from_estimator
-        )
 
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html

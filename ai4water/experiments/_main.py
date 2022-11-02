@@ -6,7 +6,7 @@ from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from ai4water.backend import tf, os, np, pd, plt, easy_mpl
+from ai4water.backend import tf, os, np, pd, plt, easy_mpl, sklearn
 from ai4water.backend import xgboost, catboost, lightgbm
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
@@ -142,6 +142,8 @@ class Experiments(object):
             num_samples: int = 5,
             verbosity: int = 1,
             monitor: Union[str, list, Callable] = None,
+            show: bool = True,
+            save: bool = True,
             **model_kws,
     ):
         """
@@ -186,6 +188,8 @@ class Experiments(object):
         self.exp_name = 'Experiments_' + str(dateandtime_now()) if exp_name is None else exp_name
         self.num_samples = num_samples
         self.verbosity = verbosity
+        self.show = show
+        self.save = save
 
         self.models = [method for method in dir(self) if method.startswith('model_')]
 
@@ -265,7 +269,11 @@ class Experiments(object):
 
         assert best_weights is not None, f"Can't find weight from {config_path}"
         weight_file = os.path.join(model.w_path, best_weights)
+
         model.update_weights(weight_file=weight_file)
+        if self.verbosity>0:
+            print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
+
         return
 
     @property
@@ -715,7 +723,6 @@ class Experiments(object):
             include: Union[None, list] = None,
             exclude: Union[None, list] = None,
             figsize: tuple = (9, 7),
-            show:bool = True,
             **kwargs
     ) -> plt.Figure:
         """
@@ -738,8 +745,7 @@ class Experiments(object):
                 if not None, must be a list of models which will excluded.
                 None will result in no exclusion
             figsize : tuple, optional
-            show : bool (default=True)
-                whether to show the plot or not
+                figure size as (width,height)
             **kwargs :
                 all the keyword arguments for taylor_plot_ function.
 
@@ -826,9 +832,10 @@ class Experiments(object):
             **kwargs
         )
 
-        plt.savefig(fname, dpi=600, bbox_inches="tight")
+        if self.save:
+            plt.savefig(fname, dpi=600, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
 
         return ax
@@ -874,9 +881,7 @@ Available cases are {self.models} and you wanted to include
             plot_type: str = 'dumbbell',
             lower_limit: Union[int, float] = -1.0,
             upper_limit: Union[int, float] = None,
-            save: bool = True,
             name: str = '',
-            dpi: int = 200,
             **kwargs
     ) -> pd.DataFrame:
         """
@@ -894,10 +899,8 @@ Available cases are {self.models} and you wanted to include
                 clip the values below this value. Set this value to None to avoid clipping.
             upper_limit : float/int, optional (default=None)
                 clip the values above this value
-            save : bool
-                whether to save the plot or not
             name : str, optional
-            dpi : int, optional
+                name of file to save the figure
             **kwargs :
                 any additional keyword arguments for
                 `dumbell plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.dumbbell_plot>`_
@@ -981,13 +984,14 @@ Available cases are {self.models} and you wanted to include
             ax.legend()
             plt.title('Improvement after Optimization')
 
-        if save:
+        if self.save:
             fname = os.path.join(
                 os.getcwd(),
                 f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{metric_name}.png')
-            plt.savefig(fname, dpi=dpi, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+            plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))
 
-        plt.show()
+        if self.show:
+            plt.show()
 
         return improvement
 
@@ -999,11 +1003,9 @@ Available cases are {self.models} and you wanted to include
             data = None,
             cutoff_val: float = None,
             cutoff_type: str = None,
-            save: bool = True,
             sort_by: str = 'test',
             ignore_nans: bool = True,
             name: str = 'ErrorComparison',
-            show: bool = True,
             **kwargs
     ) -> pd.DataFrame:
         """
@@ -1030,8 +1032,6 @@ Available cases are {self.models} and you wanted to include
                  one of ``greater``, ``greater_equal``, ``less`` or ``less_equal``.
                  Criteria to determine cutoff_val. For example if we want to
                  show only those models whose $R^2$ is > 0.5, it will be 'max'.
-            save : bool, optional (default = True)
-                whether to save the plot or not
             sort_by:
                 either ``test`` or ``train``. How to sort the results for plotting.
                 If 'test', then test performance matrics will be sorted otherwise
@@ -1042,7 +1042,6 @@ Available cases are {self.models} and you wanted to include
                 resulted in nans for the given performance matric.
             name:
                 name of the saved file.
-            show : whether to show the plot at the end or not?
 
             kwargs :
 
@@ -1111,22 +1110,21 @@ Available cases are {self.models} and you wanted to include
                   )
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"
-        if save:
+        if self.save:
             fname = os.path.join(
                 os.getcwd(),
                 f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
 
-        if show:
+        if self.show:
             plt.show()
+
         return models
 
     def loss_comparison(
             self,
             loss_name: str = 'loss',
             include: list = None,
-            save: bool = True,
-            show: bool = True,
             figsize: int = None,
             start: int = 0,
             end: int = None,
@@ -1142,10 +1140,6 @@ Available cases are {self.models} and you wanted to include
                 the name of loss value, must be recorded during training
             include:
                 name of models to include
-            save:
-                whether to save the plot or not
-            show:
-                whether to show the plot or now
             figsize : tuple
                 size of the figure
             start : int
@@ -1204,19 +1198,17 @@ Available cases are {self.models} and you wanted to include
             label = shred_model_name(_model)
             plot(_loss[start:end], ax=axis, label=label, show=False, **_kwargs, **kwargs)
 
-        if save:
+        if self.save:
             fname = os.path.join(self.exp_path, f'loss_comparison_{loss_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches='tight')
 
-        if show:
+        if self.show:
             plt.show()
 
         return axis
 
     def compare_convergence(
             self,
-            show: bool = True,
-            save: bool = False,
             name: str = 'convergence_comparison',
             **kwargs
     ) -> Union[plt.Axes, None]:
@@ -1227,11 +1219,7 @@ Available cases are {self.models} and you wanted to include
 
         Parameters
         ----------
-            show :
-                whether to show the plot or now
-            save :
-                whether to save the plot or not
-            name :
+            name : str
                 name of file to save the plot
             kwargs :
                 keyword arguments to plot_ function
@@ -1274,11 +1262,11 @@ Available cases are {self.models} and you wanted to include
                 show=False,
                 **kwargs
             )
-        if save:
+        if self.save:
             fname = os.path.join(self.exp_path, f'{name}.png')
             plt.savefig(fname, dpi=100, bbox_inches='tight')
 
-        if show:
+        if self.show:
             plt.show()
         return axis
 
@@ -1289,8 +1277,6 @@ Available cases are {self.models} and you wanted to include
             data=None,
             exclude:Union[list, str] = None,
             figsize=None,
-            save: Optional[bool] = True,
-            show: Optional[bool] = True,
             fname: Optional[str] = "edf"
     ):
         """compare EDF plots of all the models which have been fitted.
@@ -1308,10 +1294,6 @@ Available cases are {self.models} and you wanted to include
             name of models to exclude from plotting
         figsize :
             figure size
-        save : bool, optional (default=True)
-            whether to save the plot or not?
-        show : bool, optional (default=True)
-            whether to show the plot or not?
         fname : str, optional
 
         Returns
@@ -1375,11 +1357,11 @@ Available cases are {self.models} and you wanted to include
         if len(model_folders)>7:
             axes.legend(loc=(1.05, 0.0))
 
-        if save:
+        if self.save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
 
-        if show:
+        if self.show:
             plt.show()
 
         return
@@ -1390,8 +1372,6 @@ Available cases are {self.models} and you wanted to include
             y=None,
             data=None,
             figsize=None,
-            save: Optional[bool] = True,
-            show: Optional[bool] = True,
             fname: Optional[str] = "regression"
     ):
         """compare regression plots of all the models which have been fitted.
@@ -1407,10 +1387,6 @@ Available cases are {self.models} and you wanted to include
             raw unprocessed data from which x,y pairs of the test data are drawn
         figsize :
             figure size
-        save : bool, optional (default=True)
-            whether to save the plot or not?
-        show : bool, optional (default=True)
-            whether to show the plot or not?
         fname : str, optional
             name of the file to save the plot
         Returns
@@ -1473,11 +1449,11 @@ Available cases are {self.models} and you wanted to include
             fig.supxlabel("Observed")
             fig.supylabel("Predicted")
 
-        if save:
+        if self.save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
 
-        if show:
+        if self.show:
             plt.show()
 
         return
@@ -1487,9 +1463,7 @@ Available cases are {self.models} and you wanted to include
             x=None,
             y=None,
             data = None,
-            figsize = None,
-            save: Optional[bool] = True,
-            show: Optional[bool] = True,
+            figsize: tuple = None,
             fname: Optional[str] = "residual"
     )->plt.Figure:
         """compare residual plots of all the models which have been fitted.
@@ -1504,12 +1478,10 @@ Available cases are {self.models} and you wanted to include
         data :
             raw unprocessed data frmm which test x,y pairs are drawn using
             :py:meth:`ai4water.preprocessing.DataSet`. class. Only valid if x and y are not given.
-        figsize :
-        save : bool, optional (default=True)
-            whether to save the plot or not?
-        show : bool, optional (default=True)
-            whether to show the plot or not?
+        figsize : tuple
+            figure size as (width, height)
         fname : str, optional
+            name of file to save the plot
 
         Returns
         -------
@@ -1579,11 +1551,11 @@ Available cases are {self.models} and you wanted to include
         if hasattr(fig, "supxlabel"):
             fig.supxlabel("Prediction")
             fig.supylabel("Residual")
-        if save:
+        if self.save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
             plt.savefig(fname, dpi=600, bbox_inches='tight')
 
-        if show:
+        if self.show:
             plt.show()
 
         return fig
@@ -1650,7 +1622,6 @@ Available cases are {self.models} and you wanted to include
 
     def plot_cv_scores(
             self,
-            show: bool = False,
             name: str = "cv_scores",
             exclude: Union[str, list] = None,
             include: Union[str, list] = None,
@@ -1664,11 +1635,12 @@ Available cases are {self.models} and you wanted to include
 
         Arguments
         ---------
-            show : whether to show the plot or not
-            name : name of the plot
-            include : models to include
+            name : str
+                name of the file to save the plot
+            include : str/list
+                models to include
             exclude : models to exclude
-            kwargs : any of the following keyword arguments
+            **kwargs : any of the following keyword arguments
 
                 - notch
                 - vert
@@ -1707,17 +1679,11 @@ Available cases are {self.models} and you wanted to include
 
         _, axis = plt.subplots(figsize=kwargs.get('figsize', (8, 6)))
 
-        d = axis.boxplot(np.array(list(cv_scores.values())).squeeze().T,
+        axis.boxplot(np.array(list(cv_scores.values())).squeeze().T,
                          notch=kwargs.get('notch', None),
                          vert=kwargs.get('vert', None),
                          labels=model_names
                          )
-
-        whiskers = d['whiskers']
-        caps = d['caps']
-        boxes = d['boxes']
-        medians = d['medians']
-        fliers = d['fliers']
 
         axis.set_xticklabels(model_names, rotation=rotation)
         axis.set_xlabel("Models", fontsize=16)
@@ -1725,12 +1691,159 @@ Available cases are {self.models} and you wanted to include
 
         fname = os.path.join(os.getcwd(),
                              f'results{SEP}{self.exp_name}{SEP}{name}_{len(model_names)}.png')
-        plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        if self.save:
+            plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))
 
-        if show:
+        if self.show:
             plt.show()
 
         return axis
+
+    def _compare_cls_curves(self, x, y, func, name):
+
+        assert self.mode == "classification", f"{name} is only available for classification mode."
+
+        model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path, p))]
+
+        _, ax = plt.subplots()
+
+        # find all the model folders
+        m_paths = []
+        for m in model_folders:
+            if any(m in m_ for m_ in self.considered_models_):
+                m_paths.append(m)
+
+        # load all models from config
+        for model_name in m_paths:
+
+            m_path = self._get_best_model_path(model_name)
+
+            c_path = os.path.join(m_path, 'config.json')
+            model = self.build_from_config(c_path)
+            # calculate pr curve for each model
+            self.update_model_weight(model, m_path)
+
+            kws = {'estimator': model, 'X': x, 'y': y.reshape(-1, ), 'ax': ax, 'name': model.model_name}
+            if 'LinearSVC' in model.model_name:
+                # sklearn LinearSVC does not have predict_proba but ai4water Model does have this method
+                # which will only throw error
+                kws['estimator'] = model._model
+
+            if model.model_name in ['Perceptron', 'PassiveAggressiveClassifier',
+                                    'NearestCentroid', 'RidgeClassifier',
+                                    'RidgeClassifierCV']:
+                continue
+
+            if model.model_name in ['NuSVC', 'SVC']:
+                if not model._model.get_params()['probability']:
+                    continue
+
+            if 'SGDClassifier' in model.model_name:
+                if model._model.get_params()['loss'] == 'hinge':
+                    continue
+
+            func(**kws)
+
+        if self.save:
+            fname = os.path.join(self.exp_path, f"{name}.png")
+            plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+        if self.show:
+            plt.show()
+
+        return ax
+
+    def compare_precision_recall_curves(
+            self,
+            x,
+            y,
+    ):
+        """compares precision recall curves of the all the models.
+
+        parameters
+        ----------
+        x :
+            input data
+        y :
+            labels for the input data
+
+        Returns
+        -------
+        plt.Axes
+            matplotlib axes on which figure is drawn
+
+        Example
+        -------
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> from ai4water.experiments import MLClassificationExperiments
+        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        # define inputs and outputs
+        >>> inputs = data.columns.tolist()[0:-1]
+        >>> outputs = data.columns.tolist()[-1:]
+        # initiate the experiment
+        >>> exp = MLClassificationExperiments(
+        ...     input_features=inputs,
+        ...     output_features=outputs)
+        # run the experiment
+        >>> exp.fit(data=data, include=["model_LGBMClassifier",
+        ...                             "model_XGBClassifier",
+        ...                             "RandomForestClassifier"])
+        ... # Compare Precision Recall curves
+        >>> exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
+        """
+
+        return self._compare_cls_curves(
+            x,
+            y,
+            name="precision_recall_curves",
+            func=sklearn.metrics.PrecisionRecallDisplay.from_estimator
+        )
+
+    def compare_roc_curves(
+            self,
+            x,
+            y,
+    ):
+        """compares roc curves of the all the models.
+
+        parameters
+        ----------
+        x :
+            input data
+        y :
+            labels for the input data
+
+        Returns
+        -------
+        plt.Axes
+            matplotlib axes on which figure is drawn
+
+        Example
+        -------
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> from ai4water.experiments import MLClassificationExperiments
+        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        # define inputs and outputs
+        >>> inputs = data.columns.tolist()[0:-1]
+        >>> outputs = data.columns.tolist()[-1:]
+        # initiate the experiment
+        >>> exp = MLClassificationExperiments(
+        ...     input_features=inputs,
+        ...     output_features=outputs)
+        # run the experiment
+        >>> exp.fit(data=data, include=["model_LGBMClassifier",
+        ...                             "model_XGBClassifier",
+        ...                             "RandomForestClassifier"])
+        ... # Compare ROC curves
+        >>> exp.compare_roc_curves(data[inputs].values, data[outputs].values)
+        """
+
+        return self._compare_cls_curves(
+            x=x,
+            y=y,
+            name="roc_curves",
+            func=sklearn.metrics.RocCurveDisplay.from_estimator
+        )
 
     def sort_models_by_metric(
             self,
