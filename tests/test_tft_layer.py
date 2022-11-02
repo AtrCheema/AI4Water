@@ -19,7 +19,7 @@ tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))
 if tf_version>=250:
     tf.compat.v1.experimental.output_all_intermediates(True) # todo
 
-if 230 <= tf_version < 260:
+if 230 <= tf_version < 280:
     from ai4water.functional import Model
 
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
@@ -61,6 +61,7 @@ kwargs = {}
 if tf_version in [210, 115]:
     kwargs['callbacks'] = []
 
+
 class Test_TFT(unittest.TestCase):
 
     def test_as_model(self):
@@ -100,6 +101,7 @@ class Test_TFT(unittest.TestCase):
         # The following test is passing if only one test is run in this file and it fails if multiple tests are run
         # Thus if will fail due to randomness.
         #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)  # 0.4319019560303007/0.49118527361324854
+        model.predict(x)
         return
 
     def test_as_layer(self):
@@ -127,6 +129,7 @@ class Test_TFT(unittest.TestCase):
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
 
         self.assertEqual(num_paras, 7411)
+        model.predict(x=x)
         return
 
     def test_as_layer_for_nowcasting(self):
@@ -156,6 +159,7 @@ class Test_TFT(unittest.TestCase):
         #assert model.forecast_step == 0
         #assert model.num_outs == len(quantiles)
         self.assertEqual(num_paras, 5484)
+        model.predict(x=x)
         return
 
     def test_use_cnn(self):
@@ -191,6 +195,7 @@ class Test_TFT(unittest.TestCase):
             model._model.fit(x=xx,y=yy, validation_split=0.3, verbose=0)
         else:
             model.fit_fn(x=xx,y=yy, validation_split=0.3, verbose=0,  **kwargs)
+        model.predict(x=xx)
         return
 
 if __name__ == "__main__":
