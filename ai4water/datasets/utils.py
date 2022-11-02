@@ -249,7 +249,13 @@ def unzip_all_in_dir(dir_name, ext=".gz"):
     return
 
 
-def maybe_download(ds_dir, overwrite, url, name=None, include=None, **kwargs):
+def maybe_download(ds_dir,
+                   url,
+                   overwrite=False,
+                   name=None,
+                   include=None,
+                   **kwargs):
+
     if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
         if overwrite:
             print(f"removing previous data directory {ds_dir} and downloading new")

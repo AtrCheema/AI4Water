@@ -52,6 +52,7 @@ from ._datasets import mg_photodegradation
 from ._grqa import GRQA
 from ._swatch import Swatch
 from ._datasets import gw_punjab
+from ._rc4uscoast import RC4USCoast
 
 
 def busan_beach(

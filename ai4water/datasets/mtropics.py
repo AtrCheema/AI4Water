@@ -1045,7 +1045,7 @@ def ecoli_mekong_laos(
 
 def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
 
-    maybe_download(ds_dir, overwrite, url, name=_name)
+    maybe_download(ds_dir, overwrite=overwrite, url=url, name=_name)
     all_files = os.listdir(ds_dir)
     assert len(all_files)==1
     fname = os.path.join(ds_dir, all_files[0])
