@@ -18,6 +18,8 @@ from ai4water.postprocessing import ProcessPredictions
 from ai4water.utils.visualizations import edf_plot
 from ai4water.utils.utils import create_subplots
 from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
+from ai4water.functional import Model as FModel
+from ai4water._main import BaseModel
 
 plot = easy_mpl.plot
 bar_chart = easy_mpl.bar_chart
@@ -212,6 +214,10 @@ class Experiments(object):
         # _run_type is actually set during call to .fit
         self._run_type = None
 
+    @property
+    def category(self)->str:
+        raise NotImplementedError
+
     def _pre_build_hook(self, **suggested_paras):
         """Anything that needs to be performed before building the model."""
         return suggested_paras
@@ -236,10 +242,16 @@ class Experiments(object):
         dict_to_file(self.exp_path, config=self.config())
         return
 
-    def build_from_config(self, config_path:str)->Model:
+    def build_from_config(self, config_path:str)->BaseModel:
         assert os.path.exists(config_path), f"{config_path} does not exist"
-        model = Model.from_config_file(config_path=config_path)
-        assert isinstance(model, Model)
+
+        if self.category == "DL":
+            model = FModel
+        else:
+            model = Model
+
+        model = model.from_config_file(config_path=config_path)
+        assert isinstance(model, BaseModel)
         setattr(self, 'model_', model)
         return model
 
@@ -1996,7 +2008,12 @@ Available cases are {self.models} and you wanted to include
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
-        model = Model(
+        if self.category == "DL":
+            model = FModel
+        else:
+            model = Model
+
+        model = model(
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,
@@ -2219,7 +2236,7 @@ Available cases are {self.models} and you wanted to include
             # calculate pr curve for each model
             self.update_model_weight(model, m_path)
 
-            out = model.predict(x, y, return_true=True, process_results=False)
+            out = model.predict(x=x, y=y, return_true=True, process_results=False)
 
             self._populate_results(f"model_{model_name}", train_results=None, test_results=out)
 

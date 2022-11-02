@@ -365,11 +365,13 @@ class BaseModel(NN):
                 # todo
                 _mode = "regression"
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f" Can't determine mode for {self.model_name}")
+
         elif self.config['loss'] in ['sparse_categorical_crossentropy',
                                      'categorical_crossentropy',
                                      'binary_crossentropy']:
             _mode = "classification"
+
         elif self.model_name == "layers":
             # todo
             _mode = "regression"

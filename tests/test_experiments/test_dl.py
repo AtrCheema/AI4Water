@@ -20,6 +20,7 @@ cls_data = MtropicsLaos().make_classification(
 inputs = data.columns.tolist()[0:-1]
 outputs = data.columns.tolist()[-1:]
 
+
 class TestClassification(unittest.TestCase):
 
     def test_basic(self):
@@ -30,8 +31,7 @@ class TestClassification(unittest.TestCase):
             ts_args={"lookback": 5}
         )
 
-        exp.fit(data=cls_data, include=["TFT",
-                                    "MLP"])
+        exp.fit(data=cls_data, include=["TFT", "MLP"])
         return
 
 
