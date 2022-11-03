@@ -123,11 +123,12 @@ class BaseModel(NN):
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
-                see_ `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/declarative_model_def_tf.html>`_
+                `see examples <https://ai4water.readthedocs.io/en/dev/declarative_def_tf.html>`_
             x_transformation:
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
-                ai4water.utils.transformations.py. The user can specify more than
+                :py:class:`ai4water.preprocessing.transformations.Transformation` .
+                The user can specify more than
                 one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
@@ -250,9 +251,6 @@ class BaseModel(NN):
 
         .. _transformation:
             https://stats.stackexchange.com/q/555839/314919
-
-        .. _see:
-            https://ai4water.readthedocs.io/en/latest/build_dl_models/
 
         .. _RegressionMetrics:
             https://seqmetrics.readthedocs.io/en/latest/rgr.html#regressionmetrics

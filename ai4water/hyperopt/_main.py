@@ -1,6 +1,7 @@
 import json
 import copy
 import inspect
+import warnings
 from typing import Union, Dict
 from collections import OrderedDict
 
@@ -1068,9 +1069,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         bbox_inches='tight')
         return
 
-    def _plot_convergence(self, original=False,
-                          ax = None, save=True,
-                          show=False, **kwargs):
+    def _plot_convergence(self,
+                          original:bool=False,
+                          ax = None,
+                          save=True,
+                          show=False,
+                          **kwargs):
         plt.close('all')
         if original:
             ax = easy_mpl.plot(self.func_vals(), '--.',
@@ -1151,7 +1155,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         kws.update(tree_kws)
 
         if plot_type == "bar":
-            importance = fANOVA(**kws).feature_importance()
+            try:
+                importance = fANOVA(**kws).feature_importance()
+            except RuntimeError:
+                warnings.warn(f"RuntimeError encountered during fANOVA")
+                return
+
             df = pd.DataFrame.from_dict(importance, orient='index')
             ax = bar_chart(df, orient='h', show=False,
                            ax_kws={'title': "fANOVA hyperparameter importance",
@@ -1162,9 +1171,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             fname = "fanova_importances.json"
         else:
 
-            mean, std = fANOVA(**kws).feature_importance(return_raw=True)
-            df = pd.DataFrame([mean, std]).T
-            df.columns = ['mean', 'std']
+            try:
+                mean, std = fANOVA(**kws).feature_importance(return_raw=True)
+            except RuntimeError:
+                warnings.warn(f"RuntimeError encountered during fANOVA")
+                return
+
+            df = pd.DataFrame([mean, std])
             plt.close('all')
             ax = df.boxplot(rot=70, return_type="axes")
             ax.set_ylabel("Relative Importance")
