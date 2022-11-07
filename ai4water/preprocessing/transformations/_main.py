@@ -1,6 +1,8 @@
 
 from typing import Union
 
+from sklearn.utils.validation import assert_all_finite
+
 from ai4water.backend import np, pd, plt, stats
 from ai4water.backend import easy_mpl as em
 from ai4water.utils.utils import dateandtime_now, deepcopy_dict_without_clone
@@ -407,7 +409,10 @@ class Transformation(TransformationsContainer):
 
         to_transform, proc = self._preprocess(data)
 
-        data = self.transformer_.fit_transform(to_transform.values, **kwargs)
+        try:
+            data = self.transformer_.fit_transform(to_transform.values, **kwargs)
+        except ValueError as e:
+            raise ValueError(f"Transformation {self.method} of {self.features} features raised {e}")
 
         return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
