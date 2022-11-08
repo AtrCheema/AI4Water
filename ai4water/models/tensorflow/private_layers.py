@@ -396,18 +396,26 @@ class Conditionalize(tf.keras.layers.Layer):
     >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
     >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
     """
-    def __init__(self, units, max_num_cond=10, **kwargs):
+    def __init__(self, units,
+                 max_num_cond=10,
+                 use_bias:bool = True,
+                 **kwargs):
         self.units = units
         super().__init__(**kwargs)
 
         # single cond
-        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units, name="conditional_dense")
+        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units,
+                                                                use_bias=use_bias,
+                                                                name="conditional_dense")
 
         # multi cond
         self.multi_cond_to_init_state_dense = []
 
         for i in range(max_num_cond):
-            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(units=self.units, name=f"conditional_dense{i}"))
+            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(
+                units=self.units,
+                use_bias=use_bias,
+                name=f"conditional_dense{i}"))
 
         self.multi_cond_p = tf.keras.layers.Dense(1, activation=None, use_bias=True, name="conditional_dense_out")
 
@@ -431,8 +439,9 @@ class Conditionalize(tf.keras.layers.Layer):
         cond = inputs
         if len(cond) > 1:  # multiple conditions.
             init_state_list = []
-            for ii, c in enumerate(cond):
-                init_state_list.append(self.multi_cond_to_init_state_dense[ii](self._standardize_condition(c)))
+            for idx, c in enumerate(cond):
+                init_state_list.append(self.multi_cond_to_init_state_dense[idx](self._standardize_condition(c)))
+
             multi_cond_state = tf.stack(init_state_list, axis=-1)  # -> (?, units, num_conds)
             multi_cond_state = self.multi_cond_p(multi_cond_state)  # -> (?, units, 1)
             cond_state = tf.squeeze(multi_cond_state, axis=-1)  # -> (?, units)
