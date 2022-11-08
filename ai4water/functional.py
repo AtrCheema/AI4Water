@@ -309,7 +309,7 @@ class Model(BaseModel):
                         layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
                         # todo, following conditioning is not good
                         # for concat layer inputs should be ([a,b,c]) instaed of (a,b,c)
-                        if isinstance(lyr_inputs, list) and lyr_name != "Concatenate":
+                        if isinstance(lyr_inputs, list) and lyr_name not in  ["Concatenate", "Multiply"]:
                             layer_outputs = layer_initialized(*call_args, **add_args)
                         else:
                             layer_outputs = layer_initialized(call_args, **add_args)

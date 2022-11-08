@@ -35,7 +35,7 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
     )
 
     _ = model.fit(data=data)
-
+    #
     _ = model.predict_on_training_data(data=data)
     _ = model.predict_on_validation_data(data=data)
     _ = model.evaluate_on_training_data(data=data)
@@ -46,11 +46,14 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
     model.fit(x=x,y=y, epochs=1)
     model.fit_on_all_training_data(data=data, epochs=1)
     _ = model.predict(x=x,y=y)
+    # initial conditions are not given!
+    _ = model.predict(x=x[0])
     model.predict_on_validation_data(data=data)
     model.predict_on_all_data(data=data)
-    weights = model.get_attention_weights(x=x)
+    model.get_attention_weights(x=x)
 
     return pred_y
+
 
 class TestModels(unittest.TestCase):
 
@@ -83,6 +86,19 @@ class TestModels(unittest.TestCase):
                                   data=arg_busan,
                                   input_features=arg_input_features,
                                   x_transformation='minmax',
+                                  y_transformation='zscore',
+                                  output_features=arg_output_features)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
+
+    def test_IA_with_transformation_list(self):
+
+        prediction = make_and_run(InputAttentionModel,
+                                  data=arg_busan,
+                                  input_features=arg_input_features,
+                                  x_transformation=[
+                                      {'method': 'minmax', 'features': ['tide_cm']},
+                                      {'method': 'minmax', 'features': ['sal_psu']}],
                                   y_transformation='zscore',
                                   output_features=arg_output_features)
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)

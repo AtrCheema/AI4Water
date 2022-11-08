@@ -185,7 +185,7 @@ def regression_space(
                 ['uniform', 'auto', 10, 1]},
         "RANSACRegressor": {
             "param_space": [
-                Integer(low=10, high=1000, name='max_trials'),
+                Integer(low=10, high=1000, name='max_trials', num_samples=num_samples),
                 Real(low=0.01, high=0.99, name='min_samples', num_samples=num_samples)],
             "x0":
                 [10, 0.01]},

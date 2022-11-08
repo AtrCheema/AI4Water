@@ -1,13 +1,19 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel"]
 
+import warnings
+
 from easy_mpl import imshow
 
 from .backend import tf, plt, np, os
 from .backend import keras
 from .functional import Model as FModel
 from ai4water.utils.utils import print_something
+from .utils.utils import DataNotFound
+from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.utils import dateandtime_now
 from ai4water.nn_tools import check_act_fn
 from ai4water.preprocessing import DataSet
+from ai4water.preprocessing.dataset._main import _DataSet
 from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
 
@@ -320,7 +326,7 @@ class DualAttentionModel(FModel):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def fetch_data(self, x, y, source, **kwargs):
+    def fetch_data(self, x, y, source, data=None, **kwargs):
 
         if self.teacher_forcing:
             x, prev_y, labels = getattr(self.dh_, f'{source}_data')(**kwargs)
@@ -356,19 +362,17 @@ class DualAttentionModel(FModel):
 
     def training_data(self, x=None, y=None, data='training', key=None):
 
-        if x is not None:
-            return x, y
-
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='training', key=key)
+        return self.fetch_data(x=x, y=y, source='training', data=data, key=key)
 
     def validation_data(self, x=None, y=None, data='validation', **kwargs):
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='validation', **kwargs)
+
+        return self.fetch_data(x=x, y=y, source='validation', data=data, **kwargs)
 
     def test_data(self, x=None, y=None, data='test',  **kwargs):
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='test', **kwargs)
+        return self.fetch_data(x=x, y=y, source='test', data=data, **kwargs)
 
     def _maybe_dh_not_set(self, data):
         """if dh_ has not been set yet, try to create it using data argument if
@@ -548,6 +552,29 @@ class DualAttentionModel(FModel):
             transformation.insert(1, self.config['y_transformation'])
         return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
 
+    def _fetch_data(self, source:str, x=None, y=None, data=None):
+        """The main idea is that the user should be able to fully customize
+        training/test data by overwriting training_data and test_data methods.
+        However, if x is given or data is DataSet then the training_data/test_data
+        methods of this(Model) class will not be called."""
+
+        x, y, prefix, key, user_defined_x = super()._fetch_data(source, x, y, data)
+        if isinstance(x, np.ndarray):
+            if not self.config['drop_remainder']:
+                n_s_feature_dim = self.config['enc_config']['n_s']
+                n_h_feature_dim = self.config['enc_config']['n_h']
+
+                s0 = np.zeros((x.shape[0], n_s_feature_dim))
+                h0 = np.zeros((x.shape[0], n_h_feature_dim))
+
+                if self.__class__.__name__ == "DualAttentionModel":
+                    p_feature_dim = self.dec_config['p']
+                    h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
+                    x = [x, s0, h0, h_de0, s_de0]
+                else:
+                    x = [x, s0, h0]
+
+        return x, y, prefix, key, user_defined_x
 
 class InputAttentionModel(DualAttentionModel):
     """
@@ -590,9 +617,24 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def fetch_data(self, x, y, source, **kwargs):
+    def fetch_data(self, source, x=None, y=None, data=None, **kwargs):
 
-        data = getattr(self.dh_, f'{source}_data')(**kwargs)
+        if x is None:
+            if isinstance(data, str):
+                if data in ("training", "test", "validation"):
+                    if hasattr(self, 'dh_'):
+                        data = getattr(self.dh_, f'{data}_data')(**kwargs)
+                    else:
+                        raise DataNotFound(source)
+                else:
+                    raise ValueError
+            else:
+                dh = DataSet(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                data = getattr(dh, f'{source}_data')(**kwargs)
+        else:
+            data = x, y
+
         if self.teacher_forcing:
             x, prev_y, labels = data
         else:

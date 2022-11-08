@@ -914,7 +914,8 @@ def rank_folders(opt_dir, results, best_results):
 
 
 class TrainTestSplit(object):
-    """train_test_split of sklearn can not be used for list of arrays so here
+    """
+    train_test_split of sklearn can not be used for list of arrays so here
     we go
     """
     def __init__(
@@ -938,7 +939,7 @@ class TrainTestSplit(object):
     def split_by_slicing(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
         """splits the x and y by slicing which is defined by `test_fraction`
         Arguments:
@@ -968,14 +969,18 @@ class TrainTestSplit(object):
             return train, test
 
         train_x, test_x = split_arrays(x)
-        train_y, test_y = split_arrays(y)
+
+        if y is not None:
+            train_y, test_y = split_arrays(y)
+        else:
+            train_y, test_y = [], []
 
         return train_x, test_x, train_y, test_y
 
     def split_by_random(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
         """
         splits the x and y by random splitting.
@@ -1013,7 +1018,7 @@ class TrainTestSplit(object):
     def split_by_indices(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
         """splits the x and y by user defined `train_indices` and `test_indices`"""
 
@@ -1024,6 +1029,8 @@ class TrainTestSplit(object):
 
     @staticmethod
     def slice_with_indices(array, indices):
+        if array is None:
+            return []
         if isinstance(array, list):
             _data = []
 
@@ -1665,18 +1672,25 @@ def plot_activations_along_inputs(
     return
 
 
+class DataNotFound(Exception):
+
+    def __init__(self, source):
+        self.source= source
+
+    def __str__(self):
+        return f"""
+        Unable to get {self.source} data.
+        You must specify the data either using 'x' or 'data' keywords."""
+
 def print_something(something, prefix=''):
     """prints shape of some python object"""
-    if isinstance(something, np.ndarray):
+    if hasattr(something, "shape"):
         print(f"{prefix} shape: ", something.shape)
     elif isinstance(something, list):
-        print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
+        print(f"{prefix} shape: ", [thing.shape for thing in something if hasattr(thing, "shape")])
     elif isinstance(something, dict):
         print(f"{prefix} shape: ")
-        pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
-    elif something is not None:
-        print(f"{prefix} shape: ", something.shape)
-        print(something)
+        pprint.pprint({k: v.shape for k, v in something.items() if hasattr(v, "shape")}, width=40)
     else:
         print(something)
 

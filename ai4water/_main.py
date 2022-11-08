@@ -20,6 +20,7 @@ from .nn_tools import NN
 from .utils.utils import make_model
 from .utils.utils import AttribtueSetter
 from .utils.utils import get_values
+from .utils.utils import DataNotFound
 from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .utils.utils import maybe_three_outputs, get_version_info
@@ -3692,17 +3693,6 @@ def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
                 config[idx] = transformer
 
     return config
-
-
-class DataNotFound(Exception):
-
-    def __init__(self, source):
-        self.source= source
-
-    def __str__(self):
-        return f"""
-        Unable to get {self.source} data.
-        You must specify the data either using 'x' or 'data' keywords."""
 
 
 def fill_val(metric_name, default="min", default_min=99999999):
