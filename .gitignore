@@ -24,7 +24,6 @@ data/
 testing/
 _models/
 paper/
-envs/
 
 # build related
 *dist/

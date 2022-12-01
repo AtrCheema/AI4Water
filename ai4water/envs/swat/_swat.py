@@ -6,28 +6,17 @@ from ai4water.backend import np, pd, plt
 from ai4water.utils.utils import dateandtime_now
 
 
-weir_codes = {
-    'sangju': 56,
-    #'nakdan': 63,
-    'gumi': 72,
-    'chilguk': 85,
-    'gangjeong': 108,
-    'dalseong': 117,
-    'chanyeong_hamon': 134,
-    'hamhan': 161,
-}
-
-
 class SWAT(object):
-
-    def __init__(self, dir_name) -> None:
+    """interface to swat model"""
+    def __init__(self, dir_name, weir_codes:dict):
 
         self.dir_name = dir_name
+        self.weir_codes = weir_codes
 
     def get_wq_rch(self, wq_name, rch_id):
         """get wq data for a single weir"""
 
-        df = self.read_results(rch_id)
+        df = self.read_wql_output(rch_id)
 
         return df[wq_name]
 
@@ -202,12 +191,12 @@ class SWAT(object):
                 return line.split()[0]
         return
 
-    def plot_wq_all_weirs(self, wq_name="ALGAE_INppm"):
+    def plot_wq_all_weirs(self, wq_name:str="ALGAE_INppm"):
         """plot chla for all weirs
         plot_chla_all_weirs()
         """
         rch_wq = {}
-        for k ,v in weir_codes.items():
+        for k ,v in self.weir_codes.items():
 
             rch_wq[k] = self.get_wq_rch(wq_name, v)[wq_name]
 
@@ -218,9 +207,9 @@ class SWAT(object):
         plt.savefig(f"{self.dir_name}_rch_chla_obs", bbox_inches="tight", dpi=300)
         return rch_wq_df
 
-    def __call__(self, executable="swat2012.exe"):
+    def __call__(self, executable:str="swat2012.exe")->None:
+        """run the swat model"""
 
-        # run the swat model
         old_wd = os.getcwd()
 
         os.chdir(self.dir_name)
@@ -310,7 +299,7 @@ class SWAT(object):
 
     def get_weirs_outflow(self, start_date="20000101"):
         weir_outflow = {}
-        for idx, (k, v) in enumerate(weir_codes.items()):
+        for idx, (k, v) in enumerate(self.weir_codes.items()):
 
             _day = str(v).rjust(3, '0')
             fname = f'{self.dir_name}\\00{_day}0000.day'
@@ -341,6 +330,7 @@ def jday_to_monthday(jday:int, year=2000):
     date = datetime.datetime(year, 1, 1) + datetime.timedelta(jday - 1)
 
     return f"{str(date.month).rjust(2, '0')}{str(date.day).rjust(2, '0')}"
+
 
 def jday_to_date(year:int, jday:int)->str:
 
