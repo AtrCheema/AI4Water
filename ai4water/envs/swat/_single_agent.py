@@ -35,17 +35,17 @@ class SWATSingleReservoir(gym.Env):
     """
     def __init__(
             self,
-            swat_path,
-            backup_path,
-            weir_codes,
-            start_day=5,
-            delta = 5,
-            end_day=365,
-            lookback = 4,
-            downstream_rch_id=144,
-            reservoir_id=134,
-            year = 2017,
-            weir_num = 134
+            swat_path:str,
+            backup_path:str,
+            weir_codes:dict,
+            start_day:int = 5,
+            delta:int = 5,
+            end_day:int = 365,
+            lookback:int = 4,
+            downstream_rch_id: int = 144,
+            reservoir_id: int = 134,
+            year:int = 2017,
+            weir_num:int = 134
     ):
 
         self.swat_path = swat_path
@@ -218,7 +218,10 @@ class SWATSingleReservoir(gym.Env):
         wql_out = self.swat.read_wql_output(self.downstream_rch_id)
         #a = jday_to_date(year, day)
 
-        return wql_out.loc[:, constituent].mean(), rch_out.loc[:, "FLOW_INcms"].mean()
+        chla = wql_out.loc[:, constituent].mean()
+        # convert from ppm to mg/m3
+        chla = 0.0409 * chla * 893.5
+        return chla, rch_out.loc[:, "FLOW_INcms"].mean()
 
     def config(self)->dict:
         _config = dict()
