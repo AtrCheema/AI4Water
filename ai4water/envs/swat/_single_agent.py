@@ -1,4 +1,6 @@
 
+from typing import Union
+
 import shutil
 import inspect
 import json
@@ -15,6 +17,10 @@ from ._swat import SWAT
 
 class SWATSingleReservoir(gym.Env):
     """
+    parameters
+    -----------
+    state_names :
+        names of columns from output.rch file to be used as states
 
     >>> swat_env = SWATSingleReservoir(
     ... swat_path= 'path/to/swat/files',
@@ -45,7 +51,8 @@ class SWATSingleReservoir(gym.Env):
             downstream_rch_id: int = 144,
             reservoir_id: int = 134,
             year:int = 2017,
-            weir_num:int = 134
+            weir_num:int = 134,
+            state_names:Union[str, list] = "FLOW_INcms"
     ):
 
         self.swat_path = swat_path
@@ -55,6 +62,11 @@ class SWATSingleReservoir(gym.Env):
         self.start_day = start_day
         self.end_day = end_day
         self.weir_num = str(weir_num).rjust(3, '0')
+
+        if isinstance(state_names, str):
+            state_names = [state_names]
+        assert isinstance(state_names, list)
+        self.state_names = state_names
 
         src = os.path.join(backup_path, f"00{self.weir_num}0000.day")
         dst = os.path.join(swat_path, f"00{self.weir_num}0000.day")
@@ -85,10 +97,16 @@ class SWATSingleReservoir(gym.Env):
         self.swat.write_outflow(self.reservoir_id, np.full(10, 0.0))
 
         self.action_space = Box(low=0, high=1, shape=(1,), dtype=np.float32)
-        self.observation_space = Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+        self.observation_space = Box(low=-1, high=1, shape=(len(state_names),), dtype=np.float32)
 
         self.terminal = False
-        self.state = 0
+
+        if len(state_names)==1:
+            self.state_t0 = 0
+        else:
+            self.state_t0 = [0 for _ in range(len(self.state_names))]
+
+        self.state = self.state_t0
         self.reward = 0
 
         self.num_episodes = 0
@@ -158,7 +176,7 @@ class SWATSingleReservoir(gym.Env):
 
     def reset(self):
         self.terminal = False
-        self.state = 0
+        self.state =self.state_t0
 
         self.ep_mean_rewards.append(np.mean(self.step_rewards))
         self.ep_sum_rewards.append(np.sum(self.step_rewards))
@@ -221,7 +239,8 @@ class SWATSingleReservoir(gym.Env):
         chla = wql_out.loc[:, constituent].mean()
         # convert from ppm to mg/m3
         chla = 0.0409 * chla * 893.5
-        return chla, rch_out.loc[:, "FLOW_INcms"].mean()
+
+        return chla, rch_out.loc[:, self.state_names].mean().values.tolist()
 
     def config(self)->dict:
         _config = dict()
@@ -249,25 +268,27 @@ class SWATSingleReservoir(gym.Env):
 
     def save_results(self, model=None):
 
+        n = len(self.step_states_total)
+
         pd.DataFrame(
             np.concatenate([
                 np.array(self.step_actions_total).reshape(-1, 1),
                 np.array(self.step_rewards_total).reshape(-1, 1),
                 np.array(self.step_chla_total).reshape(-1, 1),
-                np.array(self.step_states_total).reshape(-1, 1),
+                np.array(self.step_states_total).reshape(n, len(self.state_names)),
                  ], axis=1
             ),
-            columns=["actions", "rewards", "chla", "state"]
+            columns=["actions", "rewards", "chla", *self.state_names]
         ).to_csv(os.path.join(self.path, "results.csv"))
 
         pd.DataFrame(
             np.concatenate([
                 np.array(self.step_actions).reshape(-1,1),
                 np.array(self.step_rewards).reshape(-1, 1),
-                np.array(self.step_states).reshape(-1, 1),
+                np.array(self.step_states).reshape(-1, len(self.state_names)),
                 np.array(self.step_chla).reshape(-1, 1),
             ], axis=1),
-            columns=["actions", "rewards", "chla", "state"]
+            columns=["actions", "rewards", "chla", *self.state_names]
         ).to_csv(os.path.join(self.path, "last_episode.csv"))
 
         pd.DataFrame(
