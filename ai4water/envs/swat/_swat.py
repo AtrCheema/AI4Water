@@ -1,7 +1,7 @@
 
 import os
 import datetime
-from typing import Union
+from typing import Union, List
 
 from ai4water.backend import np, pd, plt
 from ai4water.utils.utils import dateandtime_now
@@ -9,9 +9,9 @@ from ai4water.utils.utils import dateandtime_now
 
 class SWAT(object):
     """interface to swat model"""
-    def __init__(self, dir_name, weir_codes:dict):
+    def __init__(self, path, weir_codes):
 
-        self.dir_name = dir_name
+        self.path = path
         self.weir_codes = weir_codes
 
     def get_wq_rch(self, wq_name, rch_id):
@@ -33,7 +33,7 @@ class SWAT(object):
             rch_id = [rch_id]
 
         # read SWAT results
-        fname = os.path.join(self.dir_name, "output.wql")
+        fname = os.path.join(self.path, "output.wql")
 
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -86,7 +86,7 @@ class SWAT(object):
 
     def read_res(self, res_id, year, skip_rows=8):
 
-        fname = os.path.join(self.dir_name, "output.rsv")
+        fname = os.path.join(self.path, "output.rsv")
 
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -128,7 +128,7 @@ class SWAT(object):
                  year=None,
                  skip_rows=8)->pd.DataFrame:
 
-        fname = os.path.join(self.dir_name, "output.rch")
+        fname = os.path.join(self.path, "output.rch")
 
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -213,8 +213,150 @@ class SWAT(object):
         """reads NYSKIP from .cio file"""
         return self._read_cio_para("NYSKIP")
 
+    def solar_rad_file(self)->str:
+        """returns path of file which contains solar radiation"""
+        fname = self._read_cio_para('SLRFILE')
+        fpath = os.path.join(self.path, fname)
+        assert os.path.exists(fpath), f"{fname} not found at {self.path}"
+        return fpath
+
+    def humidity_file(self)->str:
+        """returns path of file which contains relative humidity data"""
+        fname = self._read_cio_para('RHFILE')
+        fpath = os.path.join(self.path, fname)
+        assert os.path.exists(fpath), f"{fname} not found at {self.path}"
+        return fpath
+
+    def wind_speed_file(self)->str:
+        """returns path of file which contains wind speed"""
+        fname = self._read_cio_para('WNDFILE')
+        fpath = os.path.join(self.path, fname)
+        assert os.path.exists(fpath), f"{fname} not found at {self.path}"
+        return fpath
+
+    def tmp_files(self)->List[str]:
+        fname = os.path.join(self.path, "file.cio")
+        with open(fname, 'r') as f:
+            lines = f.readlines()
+
+        files = []
+        for line in lines:
+            if ".tmp" in line:
+                files.append(line.replace('\n', ''))
+
+        assert len(files) == self.num_pcp_files()
+        return files
+
+    def _tmp_fpath(self):
+        fname = self.tmp_files()
+        assert len(fname)==1
+        fname = fname[0]
+        return os.path.join(self.path, fname)
+
+    def num_pcp_files(self)->int:
+        return int(self._read_cio_para("NRGAGE"))
+
+    def pcp_files(self)->List[str]:
+        fname = os.path.join(self.path, "file.cio")
+        with open(fname, 'r') as f:
+            lines = f.readlines()
+
+        files = []
+        for line in lines:
+            if ".pcp" in line:
+                files.append(line.replace('\n', ''))
+
+        assert len(files) == self.num_pcp_files()
+        return files
+
+    def _pcp_fpath(self):
+        fname = self.pcp_files()
+        assert len(fname)==1
+        fname = fname[0]
+        return os.path.join(self.path, fname)
+
+    def pcp_stations(self):
+        """names of stations in .pcp file"""
+        with open(self._pcp_fpath(), 'r') as f:
+            lines = f.readlines()
+        return lines[0]
+
+    def pcp_lat(self):
+        """latitute of stations in .pcp file"""
+        with open(self._pcp_fpath(), 'r') as f:
+            lines = f.readlines()
+        return lines[1]
+
+    def pcp_long(self):
+        """longitude of stations in .pcp file"""
+        with open(self._pcp_fpath(), 'r') as f:
+            lines = f.readlines()
+        return lines[2]
+
+    def pcp_elev(self):
+        """longitude of stations in .pcp file"""
+        with open(self._pcp_fpath(), 'r') as f:
+            lines = f.readlines()
+        return lines[3]
+
+    @staticmethod
+    def read_ts_file(fpath:str, width:int, nrows_skip:int)->pd.DataFrame:
+        date = []
+        data = []
+        with open(fpath, 'r') as f:
+            for idx, line in enumerate(f):
+                if idx>nrows_skip:
+                    data_ = line[7:]
+                    data.append([data_[i:i+width] for i in range(0, len(data_), width)])
+                    date.append(jday_to_date(int(line[0:4]), int(line[4:7])))
+
+        data = pd.DataFrame(data)
+        data = data.iloc[:, 0:-1].astype(np.float32)
+        data.index = pd.to_datetime(date)
+        return data
+
+    def read_tmp(self)->pd.DataFrame:
+        """reads a temperature .tmp file """
+        tmp = self.read_ts_file(self._tmp_fpath(), 5, 3)
+
+        assert tmp.shape[1] == int(self._read_cio_para('NTTOT'))
+
+        return tmp
+
+    def read_pcp(self)->pd.DataFrame:
+        """reads a precipitation file .pcp"""
+        pcp = self.read_ts_file(self._pcp_fpath(), 5, 3)
+
+        assert pcp.shape[1] == int(self._read_cio_para('NRGFIL'))
+
+        return pcp
+
+    def read_solar_rad(self)->pd.DataFrame:
+        """reads a solar radiation data from .slr file"""
+        slr = self.read_ts_file(self.solar_rad_file(), 8, 1)
+
+        assert slr.shape[1] == int(self._read_cio_para('NSTOT'))
+
+        return slr
+
+    def read_relative_hum(self)->pd.DataFrame:
+        """reads a solar radiation data from .slr file"""
+        hmd = self.read_ts_file(self.humidity_file(), 8, 1)
+
+        assert hmd.shape[1] == int(self._read_cio_para('NHTOT'))
+
+        return hmd
+
+    def read_wind_speed(self)->pd.DataFrame:
+        """reads wind speed data from .slr file"""
+        wnd = self.read_ts_file(self.wind_speed_file(), 8, 1)
+
+        assert wnd.shape[1] == int(self._read_cio_para('NWTOT'))
+
+        return wnd
+
     def _read_cio_para(self, para_name):
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
 
@@ -258,7 +400,7 @@ class SWAT(object):
 
         out = rch_wq_df.plot(subplots=True, figsize=(8, 12), **kwargs)
         if save:
-            plt.savefig(f"{self.dir_name}_rch_chla_obs", bbox_inches="tight", dpi=300)
+            plt.savefig(f"{self.path}_rch_chla_obs", bbox_inches="tight", dpi=300)
 
         if show:
             plt.show()
@@ -269,7 +411,7 @@ class SWAT(object):
 
         old_wd = os.getcwd()
 
-        os.chdir(self.dir_name)
+        os.chdir(self.path)
         os.system(executable)
 
         os.chdir(old_wd)
@@ -279,7 +421,7 @@ class SWAT(object):
     def write_outflow(self, rich_id, outflow):
 
         day = str(rich_id).rjust(3, '0')
-        fname = f'{self.dir_name}\\00{day}0000.day'
+        fname = f'{self.path}\\00{day}0000.day'
 
         header = f"Daily Reservoir Outflow file: .day file Subbasin:{rich_id}  created {dateandtime_now()} \n"
 
@@ -290,7 +432,7 @@ class SWAT(object):
         return
 
     def change_start_day(self, day:int):
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
 
@@ -300,14 +442,14 @@ class SWAT(object):
                 l = l[0:13] + str(day).ljust(5) + l[18:]
             new_lines.append(l)
 
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'w') as f:
            f.writelines(new_lines)
 
         return
 
     def change_end_day(self, day:int):
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
 
@@ -317,13 +459,13 @@ class SWAT(object):
                 l = l[0:13] + str(day).ljust(5) + l[18:]
             new_lines.append(l)
 
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'w') as f:
             f.writelines(new_lines)
         return
 
     def change_nbyr(self, years):
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
 
@@ -333,13 +475,13 @@ class SWAT(object):
                 l = l[0:14] + str(years).rjust(2) + l[16:]
             new_lines.append(l)
 
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'w') as f:
             f.writelines(new_lines)
         return
 
     def change_iyr(self, year):
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
 
@@ -349,7 +491,7 @@ class SWAT(object):
                 l = l[0:12] + str(year).rjust(4) + l[16:]
             new_lines.append(l)
 
-        fname = os.path.join(self.dir_name, "file.cio")
+        fname = os.path.join(self.path, "file.cio")
         with open(fname, 'w') as f:
             f.writelines(new_lines)
         return
@@ -359,7 +501,7 @@ class SWAT(object):
         for idx, (k, v) in enumerate(self.weir_codes.items()):
 
             _day = str(v).rjust(3, '0')
-            fname = f'{self.dir_name}\\00{_day}0000.day'
+            fname = f'{self.path}\\00{_day}0000.day'
 
             day_weir = pd.read_csv(fname, skiprows=0, encoding= 'unicode_escape')
             index = pd.date_range(self.sim_start(), periods=len(day_weir), freq='D')
@@ -376,7 +518,7 @@ class SWAT(object):
         """get outflow for a single weir"""
 
         day = str(weir_id).rjust(3, '0')
-        fname = f'{self.dir_name}\\00{day}0000.day'
+        fname = f'{self.path}\\00{day}0000.day'
         weir_outflow = pd.read_csv(fname, skiprows=0, encoding='unicode_escape')
         index = pd.date_range(start_date, periods=len(weir_outflow), freq='D')
         weir_outflow.index = index
