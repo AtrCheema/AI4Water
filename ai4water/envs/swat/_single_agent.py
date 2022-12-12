@@ -51,7 +51,6 @@ class SWATSingleReservoir(gym.Env):
             downstream_rch_id: int = 144,
             reservoir_id: int = 134,
             year:int = 2017,
-            weir_num:int = 134,
             state_names:Union[str, list] = "FLOW_INcms"
     ):
 
@@ -61,7 +60,7 @@ class SWATSingleReservoir(gym.Env):
 
         self.start_day = start_day
         self.end_day = end_day
-        self.weir_num = str(weir_num).rjust(3, '0')
+        self.weir_num = str(reservoir_id).rjust(3, '0')
 
         if isinstance(state_names, str):
             state_names = [state_names]
@@ -220,7 +219,6 @@ class SWATSingleReservoir(gym.Env):
         >>> a,b = swat_env.run_swat(50, 51)
         """
         # swat output at the start
-        #res_out_ini = self.swat.read_rch(downstream_rch_id, year)
 
         # write outflow in .day file
         outflow_df = self.swat.get_weir_outflow(self.reservoir_id)
@@ -391,5 +389,6 @@ class SWATSingleReservoir(gym.Env):
              title="Average of rewards after each Episode",
              xlabel="Episodes", show=False)
         plt.savefig(os.path.join(self.path, "avg_rew_ep"))
+        plt.close('all')
 
         return

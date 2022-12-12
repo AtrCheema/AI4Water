@@ -1868,3 +1868,10 @@ def create_subplots(*args, **kwargs):
         from pandas.plotting._matplotlib.tools import _subplots as create_subplots
 
     return create_subplots(*args, **kwargs)
+
+def mad():
+    try:
+        from scipy.stats import median_abs_deviation as _mad
+    except ImportError:
+        from scipy.stats import median_absolute_deviation as _mad
+    return _mad

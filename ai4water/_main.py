@@ -10,13 +10,10 @@ from typing import Union, Callable, Tuple, List
 import joblib  # since sklearn is required, this will automatically come in
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-try:
-    from scipy.stats import median_abs_deviation as mad
-except ImportError:
-    from scipy.stats import median_absolute_deviation as mad
 
 from .nn_tools import NN
 
+from .utils.utils import mad
 from .utils.utils import make_model
 from .utils.utils import AttribtueSetter
 from .utils.utils import get_values
@@ -1228,7 +1225,7 @@ class BaseModel(NN):
             cv_name = str(cross_validator)
             fname = os.path.join(self.path, f'{cv_name}_scores.json')
             with open(fname, 'w') as fp:
-                json.dump(scores, fp)
+                json.dump(scores, fp, indent=True)
 
         ## set it as class attribute so that it can be used
         setattr(self, f'cross_val_scores', scores)

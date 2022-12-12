@@ -1,6 +1,7 @@
 
 import os
 import datetime
+from typing import Union
 
 from ai4water.backend import np, pd, plt
 from ai4water.utils.utils import dateandtime_now
@@ -14,13 +15,22 @@ class SWAT(object):
         self.weir_codes = weir_codes
 
     def get_wq_rch(self, wq_name, rch_id):
-        """get wq data for a single weir"""
+        """get wq data for weir"""
+        if not isinstance(wq_name, list):
+            wq_name = [wq_name]
+        if not isinstance(rch_id, list):
+            rch_id = [rch_id]
 
         df = self.read_wql_output(rch_id)
 
-        return df[wq_name]
+        return df[wq_name + ["rch_id"]]
 
-    def read_wql_output(self, rch_id):
+    def read_wql_output(self,
+                        rch_id:Union[str, int, list]
+                        )->pd.DataFrame:
+
+        if not isinstance(rch_id, list):
+            rch_id = [rch_id]
 
         # read SWAT results
         fname = os.path.join(self.dir_name, "output.wql")
@@ -62,11 +72,15 @@ class SWAT(object):
             "CBOD_OUTppm": np.float32,
         })
 
-        pred = pred.loc[pred['rch_id' ] == rch_id, :]
+        pred = pred.loc[pred['rch_id' ].isin(rch_id), :]
 
         date_range = pd.date_range(self.sim_start(), end=self.sim_end(), freq="D")
 
-        pred.index = date_range
+        if len(pred)==len(date_range):
+            pred.index = date_range
+        else:
+            # when getting values for multiple rch_ids,
+            assert len(rch_id)>1, f"rch_id is {rch_id} pred: {pred.shape}"
 
         return pred
 
@@ -109,9 +123,10 @@ class SWAT(object):
 
         return res_yr
 
-    def read_rch(self, rch_id, year, skip_rows=8):
-
-        start_date = f"{year}{jday_to_monthday(int(self.sim_start_day()), year)}"
+    def read_rch(self,
+                 rch_id:Union[int, list],
+                 year=None,
+                 skip_rows=8)->pd.DataFrame:
 
         fname = os.path.join(self.dir_name, "output.rch")
 
@@ -142,12 +157,29 @@ class SWAT(object):
         rch_df['RCH'] = rch_df['RCH'].astype(np.int32)
         rch_df['MON'] = rch_df['MON'].astype(np.int32)
 
-        rch = rch_df.loc[rch_df['RCH' ]==rch_id, :]
+        if not isinstance(rch_id, list):
+            rch_id = [rch_id]
 
-        date_range = pd.date_range(start_date, periods=len(rch), freq="D")
+        rch_df = rch_df.loc[rch_df['RCH' ].isin(rch_id), :]
 
-        rch.index = date_range
-        return rch
+        if len(rch_id)>1:
+            assert year is None
+        else:
+            if self.sim_len()>365:
+                year_ = int(self.sim_start_yr()) + int(self.num_skip_years())
+            else:
+                year_ = year
+            start_date = f"{year_}{jday_to_monthday(int(self.sim_start_day()), year_)}"
+            date_range = pd.date_range(start_date, periods=len(rch_df), freq="D")
+            rch_df.index = date_range
+
+            if year:
+                rch_df = rch_df.loc[rch_df.index.year == year]
+
+        return rch_df
+
+    def sim_len(self):
+        return len(pd.date_range(self.sim_start(), self.sim_end(), freq="D"))
 
     def get_weir_chla(self, weir_name, rch_id):
         """get chla for a single weir"""
@@ -177,7 +209,7 @@ class SWAT(object):
         """reads value of IYR from .cio file"""
         return self._read_cio_para("IYR")
 
-    def num_skip_years(self):
+    def num_skip_years(self)->str:
         """reads NYSKIP from .cio file"""
         return self._read_cio_para("NYSKIP")
 
@@ -191,21 +223,46 @@ class SWAT(object):
                 return line.split()[0]
         return
 
-    def plot_wq_all_weirs(self, wq_name:str="ALGAE_INppm"):
+    def wq_rches(self, rch_ids, wq_name:str = "ALGAE_INppm")->pd.DataFrame:
+        """returns water quality of one or multiple rch_ids"""
+        rch_wq_df = self.get_wq_rch(wq_name, rch_ids)
+        groups = rch_wq_df.groupby('rch_id')
+        rch_wq_df = pd.DataFrame(np.column_stack([grp[wq_name] for grp_name, grp in groups]))
+        rch_wq_df.columns = list(groups.groups.keys())
+
+        del groups
+
+        date_range = pd.date_range(self.sim_start(), end=self.sim_end(), freq="D")
+        rch_wq_df.index = date_range
+        return rch_wq_df
+
+    def wq_all_weirs(self, wq_name:str = "ALGAE_INppm")->pd.DataFrame:
+        """
+        reads water quality of all weirs
+        """
+        rch_wq_df = self.wq_rches(list(self.weir_codes.values()), wq_name)
+        cols = {v:k for k,v in self.weir_codes.items()}
+        rch_wq_df.rename(cols, axis='columns', inplace=True)
+
+        return rch_wq_df
+
+    def plot_wq_all_weirs(self,
+                          wq_name:str="ALGAE_INppm",
+                          save=True,
+                          show:bool = True,
+                          **kwargs)->pd.DataFrame:
         """plot chla for all weirs
         plot_chla_all_weirs()
         """
-        rch_wq = {}
-        for k ,v in self.weir_codes.items():
+        rch_wq_df = self.wq_all_weirs(wq_name=wq_name)
 
-            rch_wq[k] = self.get_wq_rch(wq_name, v)[wq_name]
+        out = rch_wq_df.plot(subplots=True, figsize=(8, 12), **kwargs)
+        if save:
+            plt.savefig(f"{self.dir_name}_rch_chla_obs", bbox_inches="tight", dpi=300)
 
-        rch_wq_df = pd.concat(rch_wq.values(), axis=1)
-        rch_wq_df.columns = list(rch_wq.keys())
-
-        rch_wq_df.plot(subplots=True, figsize=(8, 12))
-        plt.savefig(f"{self.dir_name}_rch_chla_obs", bbox_inches="tight", dpi=300)
-        return rch_wq_df
+        if show:
+            plt.show()
+        return out
 
     def __call__(self, executable:str="swat2012.exe")->None:
         """run the swat model"""
@@ -297,7 +354,7 @@ class SWAT(object):
             f.writelines(new_lines)
         return
 
-    def get_weirs_outflow(self, start_date="20000101"):
+    def get_weirs_outflow(self, start_date=None)->pd.DataFrame:
         weir_outflow = {}
         for idx, (k, v) in enumerate(self.weir_codes.items()):
 
@@ -305,13 +362,15 @@ class SWAT(object):
             fname = f'{self.dir_name}\\00{_day}0000.day'
 
             day_weir = pd.read_csv(fname, skiprows=0, encoding= 'unicode_escape')
-            index = pd.date_range(start_date, periods=len(day_weir), freq='D')
+            index = pd.date_range(self.sim_start(), periods=len(day_weir), freq='D')
             day_weir.index = index
             weir_outflow[k] = day_weir
 
-        _df = pd.concat(weir_outflow.values(), axis=1)
-        _df.columns = list(weir_outflow.keys())
-        return _df, weir_outflow
+        df = pd.concat(weir_outflow.values(), axis=1)
+        df.columns = list(weir_outflow.keys())
+        if start_date:
+            df = df.loc[start_date:, :]
+        return df
 
     def get_weir_outflow(self, weir_id:int, start_date="20000101"):
         """get outflow for a single weir"""

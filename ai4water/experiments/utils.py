@@ -258,13 +258,13 @@ def regression_space(
                 Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),
                 Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
                 Real(low=0.0001, high=0.1,  name='learning_rate', prior='log-uniform', num_samples=num_samples),
-                Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
+                Integer(low=20, high=100, name='n_estimators', num_samples=num_samples)],
             "x0":
                 ['gbdt', 31, 0.1, 100]},
         "CatBoostRegressor": {
             "param_space": [
                 # maximum number of trees that can be built
-                Integer(low=500, high=5000, name='iterations', num_samples=num_samples),
+                Integer(low=20, high=100, name='iterations', num_samples=num_samples),
                 # Used for reducing the gradient step.
                 Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # Coefficient at the L2 regularization term of the cost function.
