@@ -232,7 +232,6 @@ class SWATSingleReservoir(gym.Env):
         # read new chl-a concentration
         rch_out = self.swat.read_rch(self.downstream_rch_id, self.year)
         wql_out = self.swat.read_wql_output(self.downstream_rch_id)
-        #a = jday_to_date(year, day)
 
         chla = wql_out.loc[:, constituent].mean()
         # convert from ppm to mg/m3
@@ -309,14 +308,21 @@ class SWATSingleReservoir(gym.Env):
                 "n_steps",
                 "batch_size",
                 "observation_space",
+                "max_grad_norm",
                 "action_space",
                 "num_timesteps",
                 "gamma",
                 "gae_lambda",
                 "learning_rate",
+                "vf_coef",
+                "start_time",
+                "seed",
+                "sde_sample_freq",
             ]:
-                model_attrs[attr] = str(getattr(model, attr))
+                model_attrs[attr] = str(getattr(model, attr, None))
             model_attrs['policy_name'] = model.policy._get_name()
+            model_attrs['class_name'] = model.__class__.__name__
+
             with open(os.path.join(self.path, "model_attrs.json"), "w") as fp:
                 json.dump(model_attrs, fp, indent=4, sort_keys=True)
 
