@@ -1,5 +1,5 @@
 
-from typing import Union
+from typing import Union, Tuple
 
 import shutil
 import inspect
@@ -12,16 +12,32 @@ from ai4water.backend import os, np, pd, plt
 from ai4water.utils.utils import dateandtime_now
 from ai4water.backend import easy_mpl as ep
 
-from ._swat import SWAT
+from ._swat import SWAT, jday_to_date
 
 
 class SWATSingleReservoir(gym.Env):
     """
+    gym environment which can be used for single weir optimization/control.
+
     parameters
     -----------
+    swat_path : str
+        path where SWAT model results/files are located
+    backup_path : str
+        same as swat_path but this is used only for backup.
+    weir_location : int
+        reservoir/reach on which weir is located. The outflow from this
+        reservoir will be controlled by using .day file and
+        the reservoir parameters in downstream to this reservoir
+        will be read from corresponding .wql and .rch files and used
+        used as ``state``.
+    start_day : int
+        julian day to start
     state_names :
         names of columns from output.rch file to be used as states
 
+    Examples
+    --------
     >>> swat_env = SWATSingleReservoir(
     ... swat_path= 'path/to/swat/files',
     ... backup_path= 'path/to/swat/files/as/backup',
@@ -43,29 +59,34 @@ class SWATSingleReservoir(gym.Env):
             self,
             swat_path:str,
             backup_path:str,
-            weir_codes:dict,
+            weir_location:int,
             start_day:int = 5,
             delta:int = 5,
             end_day:int = 365,
             lookback:int = 4,
-            downstream_rch_id: int = 144,
-            reservoir_id: int = 134,
             year:int = 2017,
             state_names:Union[str, list] = "FLOW_INcms"
     ):
 
         self.swat_path = swat_path
         self.backup_path = backup_path
-        self.weir_codes = weir_codes
 
         self.start_day = start_day
         self.end_day = end_day
-        self.weir_num = str(reservoir_id).rjust(3, '0')
+        self.weir_num = str(weir_location).rjust(3, '0')
 
         if isinstance(state_names, str):
             state_names = [state_names]
         assert isinstance(state_names, list)
+        self.num_states = len(state_names)
         self.state_names = state_names
+
+        ext_states = []
+        for var in ['pcp', 'temp', 'solar_rad', 'wind_speed', 'rel_hum']:
+            if var in state_names:
+                state_names.remove(var)
+                ext_states.append(var)
+        self.state_names_rch = state_names
 
         src = os.path.join(backup_path, f"00{self.weir_num}0000.day")
         dst = os.path.join(swat_path, f"00{self.weir_num}0000.day")
@@ -83,27 +104,30 @@ class SWATSingleReservoir(gym.Env):
         dst = os.path.join(swat_path, "output.wql")
         shutil.copy(src, dst)
 
-        self.reservoir_id = reservoir_id
-        self.year = year
-        self.downstream_rch_id = downstream_rch_id
-        self.delta = delta
-        self.lookback = lookback
-        self.swat = SWAT(swat_path, weir_codes=weir_codes)
+        # initialize the class which interacts with SWAT model
+        self.swat = SWAT(swat_path)
         self.swat.change_nbyr(1)
-        self.swat.change_iyr(2017)
+        self.swat.change_iyr(self.year)
         self.swat.change_start_day(start_day - self.lookback)
         self.swat.change_end_day(start_day + delta)
         self.swat.write_outflow(self.reservoir_id, np.full(10, 0.0))
 
+        self.reservoir_id = weir_location
+        self.year = year
+        self.downstream_rch_id =  self.swat.downstream_rch_to_rch(weir_location)
+        self.delta = delta
+        self.lookback = lookback
+        self.start_date = jday_to_date(year, start_day)
+
         self.action_space = Box(low=0, high=1, shape=(1,), dtype=np.float32)
-        self.observation_space = Box(low=-1, high=1, shape=(len(state_names),), dtype=np.float32)
+        self.observation_space = Box(low=-1, high=1, shape=(self.num_states,), dtype=np.float32)
 
         self.terminal = False
 
-        if len(state_names)==1:
+        if self.num_states==1:
             self.state_t0 = 0
         else:
-            self.state_t0 = [0 for _ in range(len(self.state_names))]
+            self.state_t0 = [0 for _ in range(self.num_states)]
 
         self.state = self.state_t0
         self.reward = 0
@@ -133,6 +157,9 @@ class SWATSingleReservoir(gym.Env):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         self.save_config()
+
+    def _process_states(self):
+        return
 
     @staticmethod
     def get_reward(chla):
@@ -200,8 +227,8 @@ class SWATSingleReservoir(gym.Env):
 
     def __exit__(self, exc_type, exc_val, exc_tb)->None:
         """
-        Even if an error is encountered during ``fit``, the results, report and config
-        must be saved.
+        Even if an error is encountered during ``fit``, the results, report and
+        config must be saved.
 
         """
         if exc_type:
@@ -212,13 +239,17 @@ class SWATSingleReservoir(gym.Env):
 
         return
 
-    def run_swat(self, outflow:float, day, constituent="ALGAE_INppm"):
+    def run_swat(
+            self,
+            outflow:float,
+            day:int,
+            constituent="ALGAE_INppm"
+    )->Tuple[float, list]:
         """runs the SWAT model for a single step with the outflow
         # ALGAE_INppm, CHLA_INkg
         >>> swat_env = SWATSingleReservoir(start_day=5, delta=3, lookback=3)
         >>> a,b = swat_env.run_swat(50, 51)
         """
-        # swat output at the start
 
         # write outflow in .day file
         outflow_df = self.swat.get_weir_outflow(self.reservoir_id)
@@ -237,7 +268,7 @@ class SWATSingleReservoir(gym.Env):
         # convert from ppm to mg/m3
         chla = 0.0409 * chla * 893.5
 
-        return chla, rch_out.loc[:, self.state_names].mean().values.tolist()
+        return chla, rch_out.loc[:, self.state_names_rch].mean().values.tolist()
 
     def config(self)->dict:
         _config = dict()
@@ -272,7 +303,7 @@ class SWATSingleReservoir(gym.Env):
                 np.array(self.step_actions_total).reshape(-1, 1),
                 np.array(self.step_rewards_total).reshape(-1, 1),
                 np.array(self.step_chla_total).reshape(-1, 1),
-                np.array(self.step_states_total).reshape(n, len(self.state_names)),
+                np.array(self.step_states_total).reshape(n, self.num_states),
                  ], axis=1
             ),
             columns=["actions", "rewards", "chla", *self.state_names]
@@ -282,7 +313,7 @@ class SWATSingleReservoir(gym.Env):
             np.concatenate([
                 np.array(self.step_actions).reshape(-1,1),
                 np.array(self.step_rewards).reshape(-1, 1),
-                np.array(self.step_states).reshape(-1, len(self.state_names)),
+                np.array(self.step_states).reshape(-1, self.num_states),
                 np.array(self.step_chla).reshape(-1, 1),
             ], axis=1),
             columns=["actions", "rewards", "chla", *self.state_names]

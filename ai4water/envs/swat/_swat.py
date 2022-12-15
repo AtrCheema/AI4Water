@@ -8,8 +8,21 @@ from ai4water.utils.utils import dateandtime_now
 
 
 class SWAT(object):
-    """interface to swat model"""
-    def __init__(self, path, weir_codes):
+    """interface to swat model
+
+    parameters
+    -----------
+    path : str
+        path where SWAT files are located included the executable.
+    weir_codes : list
+        The codes for weirs
+
+    """
+    def __init__(
+            self,
+            path,
+            weir_codes:List[int] = None
+    ):
 
         self.path = path
         self.weir_codes = weir_codes
@@ -213,14 +226,14 @@ class SWAT(object):
         """reads NYSKIP from .cio file"""
         return self._read_cio_para("NYSKIP")
 
-    def solar_rad_file(self)->str:
+    def sol_rad_file(self)->str:
         """returns path of file which contains solar radiation"""
         fname = self._read_cio_para('SLRFILE')
         fpath = os.path.join(self.path, fname)
         assert os.path.exists(fpath), f"{fname} not found at {self.path}"
         return fpath
 
-    def humidity_file(self)->str:
+    def rel_hum_file(self)->str:
         """returns path of file which contains relative humidity data"""
         fname = self._read_cio_para('RHFILE')
         fpath = os.path.join(self.path, fname)
@@ -319,7 +332,7 @@ class SWAT(object):
         """reads a temperature .tmp file """
         tmp = self.read_ts_file(self._tmp_fpath(), 5, 3)
 
-        assert tmp.shape[1] == int(self._read_cio_para('NTTOT'))
+        assert tmp.shape[1] == int(self._read_cio_para('NTTOT'))*2, f"{tmp.shape} {self._read_cio_para('NTTOT')}"
 
         return tmp
 
@@ -331,17 +344,17 @@ class SWAT(object):
 
         return pcp
 
-    def read_solar_rad(self)->pd.DataFrame:
+    def read_sol_rad(self)->pd.DataFrame:
         """reads a solar radiation data from .slr file"""
-        slr = self.read_ts_file(self.solar_rad_file(), 8, 1)
+        slr = self.read_ts_file(self.sol_rad_file(), 8, 1)
 
         assert slr.shape[1] == int(self._read_cio_para('NSTOT'))
 
         return slr
 
-    def read_relative_hum(self)->pd.DataFrame:
-        """reads a solar radiation data from .slr file"""
-        hmd = self.read_ts_file(self.humidity_file(), 8, 1)
+    def read_rel_hum(self)->pd.DataFrame:
+        """reads a relative humidity data from .slr file"""
+        hmd = self.read_ts_file(self.rel_hum_file(), 8, 1)
 
         assert hmd.shape[1] == int(self._read_cio_para('NHTOT'))
 
@@ -382,17 +395,19 @@ class SWAT(object):
         """
         reads water quality of all weirs
         """
-        rch_wq_df = self.wq_rches(list(self.weir_codes.values()), wq_name)
-        cols = {v:k for k,v in self.weir_codes.items()}
-        rch_wq_df.rename(cols, axis='columns', inplace=True)
+        rch_wq_df = self.wq_rches(self.weir_codes, wq_name)
+        #cols = {v:k for k,v in self.weir_codes.items()}
+        #rch_wq_df.rename(cols, axis='columns', inplace=True)
 
         return rch_wq_df
 
-    def plot_wq_all_weirs(self,
-                          wq_name:str="ALGAE_INppm",
-                          save=True,
-                          show:bool = True,
-                          **kwargs)->pd.DataFrame:
+    def plot_wq_all_weirs(
+            self,
+            wq_name:str="ALGAE_INppm",
+            save:bool = True,
+            show:bool = True,
+            **kwargs
+    )->pd.DataFrame:
         """plot chla for all weirs
         plot_chla_all_weirs()
         """
@@ -498,15 +513,15 @@ class SWAT(object):
 
     def get_weirs_outflow(self, start_date=None)->pd.DataFrame:
         weir_outflow = {}
-        for idx, (k, v) in enumerate(self.weir_codes.items()):
+        for idx, code in enumerate(self.weir_codes):
 
-            _day = str(v).rjust(3, '0')
+            _day = str(code).rjust(3, '0')
             fname = f'{self.path}\\00{_day}0000.day'
 
             day_weir = pd.read_csv(fname, skiprows=0, encoding= 'unicode_escape')
             index = pd.date_range(self.sim_start(), periods=len(day_weir), freq='D')
             day_weir.index = index
-            weir_outflow[k] = day_weir
+            weir_outflow[code] = day_weir
 
         df = pd.concat(weir_outflow.values(), axis=1)
         df.columns = list(weir_outflow.keys())
@@ -524,6 +539,137 @@ class SWAT(object):
         weir_outflow.index = index
 
         return weir_outflow
+
+    def precip_for_sub(self,
+                       basin_id:Union[int, str]
+                       )->pd.Series:
+        """returns precipitation data for a sub-basin"""
+        gage_id = self.precip_gage_for_sub(basin_id)
+        pcp = self.read_pcp()
+        # +1 because python uses 0 based indexing and gage_ids start from 1
+        return pcp.iloc[:, gage_id+1]
+
+    def temp_for_sub(
+            self,
+            basin_id:Union[int, str]
+    )->pd.DataFrame:
+        """returns maximum and minimum temperature data for a sub-basin"""
+        gage_id = self.temp_gage_for_sub(basin_id)
+        temp = self.read_tmp()
+        # +1 because python uses 0 based indexing and gage_ids start from 1
+        # +2 because 3 means upto 3rd excluding 3rd
+        return temp.iloc[:, gage_id+1: gage_id+3]
+
+    def wind_for_sub(
+            self,
+            basin_id:Union[int, str]
+    )->pd.DataFrame:
+        """returns wind speed data for a sub-basin"""
+        gage_id = self.wind_gage_for_sub(basin_id)
+        wind = self.read_wind_speed()
+        # +1 because python uses 0 based indexing and gage_ids start from 1
+        return wind.iloc[:, gage_id+1]
+
+    def rel_hum_for_sub(
+            self,
+            basin_id:Union[int, str]
+    )->pd.DataFrame:
+        """returns relative humidity data for a sub-basin"""
+        gage_id = self.rel_hum_gage_for_sub(basin_id)
+        rel_hum = self.read_rel_hum()
+        # +1 because python uses 0 based indexing and gage_ids start from 1
+        return rel_hum.iloc[:, gage_id+1]
+
+    def sol_rad_for_sub(
+            self,
+            basin_id:Union[int, str]
+    )->pd.DataFrame:
+        """returns relative humidity data for a sub-basin"""
+        gage_id = self.sol_rad_gage_for_sub(basin_id)
+        rel_hum = self.read_sol_rad()
+        # +1 because python uses 0 based indexing and gage_ids start from 1
+        return rel_hum.iloc[:, gage_id+1]
+
+    def precip_gage_for_sub(self, basin_id)->int:
+        """returns the gage measuring/containing precipitation data for a sub-basin"""
+        return int(self.gage_for_sub('IRGAGE', basin_id))
+
+    def temp_gage_for_sub(self, basin_id)->int:
+        """returns the gage measuring/containing temperature data for a sub-basin"""
+        return int(self.gage_for_sub('ITGAGE', basin_id))
+
+    def sol_rad_gage_for_sub(self, basin_id)->int:
+        """returns the gage measuring/containing solar radiation data for a sub-basin"""
+        return int(self.gage_for_sub('ISGAGE', basin_id))
+
+    def rel_hum_gage_for_sub(self, basin_id)->int:
+        """returns the gage measuring/containing humidity data for a sub-basin"""
+        return int(self.gage_for_sub('IHGAGE', basin_id))
+
+    def wind_gage_for_sub(self, basin_id)->int:
+        """returns the gage measuring/containing wind speed data for a sub-basin"""
+        return int(self.gage_for_sub('IWGAGE', basin_id))
+
+    def gage_for_sub(self, para_name:str, basin_id:Union[int, str])->str:
+        basin_id = str(basin_id).rjust(3, '0')
+        fpath = os.path.join(self.path, f"00{basin_id}0000.sub")
+
+        with open(fpath, 'r') as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if para_name in line:
+                return line.split()[0]
+        raise ValueError
+
+    def subbasins(self)->List[int]:
+        """returns the subbasin number for all the subbasins being modeled.
+        It reads the .fig file and returns SUB_NUM values for subbasin command
+        """
+        sub_nums = []
+        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+            for idx, line in enumerate(fp):
+                if line.startswith('subbasin'):
+                    _, hyd_stor, sub_command, sub_num, *sub_gis = line.split()
+                    sub_nums.append(int(sub_num))
+        return sub_nums
+
+    def reaches(self)->List[int]:
+        """returns the reaches being modeled in the sequence as they are given
+        in .fig file
+
+        Returns
+        -------
+        list
+        """
+        rch_nums = []
+        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+            for idx, line in enumerate(fp):
+                if line.startswith('route'):
+                    _, rch_command, hyd_stor, rch_num, *_ = line.split()
+                    rch_nums.append(int(rch_num))
+
+        return rch_nums
+
+    def downstream_rch_to_rch(self, upstream_rch_num:int)->int:
+        """returns the downstream reach to a reach"""
+        reaches = self.reaches()
+        if upstream_rch_num == reaches[-1]:
+            raise ValueError(f"{upstream_rch_num} is the last reach. No downstream reach found")
+
+        val = [reaches[idx + 1] for idx, val in enumerate(reaches) if val == upstream_rch_num]
+        assert len(val)==1
+        return val[0]
+
+    def upstream_rch_to_rch(self, downstream_rch_num:int)->int:
+        """returns the downstream reach to a reach"""
+        reaches = self.reaches()
+        if downstream_rch_num == reaches[0]:
+            raise ValueError(f"{downstream_rch_num} is the first reach. No upstream reach found")
+
+        val = [reaches[idx - 1] for idx, val in enumerate(reaches) if val == downstream_rch_num]
+        assert len(val) == 1
+        return val[0]
 
 
 def jday_to_monthday(jday:int, year=2000):
