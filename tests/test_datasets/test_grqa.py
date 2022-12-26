@@ -4,7 +4,7 @@ import unittest
 import pandas as pd
 from ai4water.datasets import GRQA
 
-ds = GRQA()
+ds = GRQA(path=r'F:\data\GRQA')
 
 
 class TestGRQA(unittest.TestCase):
@@ -71,7 +71,7 @@ class TestGRQA(unittest.TestCase):
         df = ds.fetch_parameter("COD", country="Pakistan")
         assert len(df) == 1317
         df = ds.fetch_parameter(site_name="Indus River - at Kotri")
-        assert df.shape == (345, 34), df.shape
+        assert df.shape == (345, 32), df.shape
         return
 
     def test_DC(self):

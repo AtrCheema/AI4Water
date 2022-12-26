@@ -16,14 +16,18 @@ class Swatch(Datasets):
     """
 
     url = "https://zenodo.org/record/6484939"
-    def __init__(self, remove_csv_after_download=False, **kwargs):
+    def __init__(self,
+                 remove_csv_after_download=False,
+                 path=None,
+                 **kwargs):
         """
         parameters
         ----------
         remove_csv_after_download : bool (default=False)
             if True, the csv will be removed after downloading and processing.
         """
-        super().__init__(**kwargs)
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
 
         self._download(tolerate_error=True)
         self._maybe_to_binary()

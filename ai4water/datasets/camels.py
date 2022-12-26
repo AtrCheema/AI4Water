@@ -65,6 +65,11 @@ class Camels(Datasets):
         'CAMELS-GB': {'url': gb_message},
     }
 
+    def __init__(self, path=None, **kwargs):
+        super(Camels, self).__init__(path=path, **kwargs)
+        self.ds_dir = path
+
+
     def stations(self):
         raise NotImplementedError
 
@@ -144,8 +149,10 @@ class Camels(Datasets):
         if x is None:
             x = os.path.join(self.camels_dir, self.__class__.__name__)
 
-        if not os.path.exists(x):
-            os.makedirs(x)
+            if not os.path.exists(x):
+                os.makedirs(x)
+        else:
+            assert os.path.exists(x)
         # sanity_check(self.name, x)
         self._ds_dir = x
 
@@ -503,7 +510,7 @@ class LamaH(Camels):
 
         super().__init__(**kwargs)
 
-        self._download()
+        #self._download()
 
         fpath = os.path.join(self.ds_dir, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
 
@@ -535,11 +542,6 @@ class LamaH(Camels):
                              f'1_attributes{SEP}Catchment_attributes.csv')
         df = pd.read_csv(fname, sep=';', index_col='ID')
         return df.columns.to_list()
-
-    @property
-    def ds_dir(self):
-        """Directory where a particular dataset will be saved. """
-        return os.path.join(self.camels_dir, self.name)
 
     @property
     def data_type_dir(self):
@@ -849,6 +851,12 @@ class HYSETS(Camels):
             **kwargs
     ):
         """returns attributes of multiple stations
+        Examples
+        --------
+        >>> from ai4water.datasets import HYSETS
+        >>> dataset = HYSETS()
+        >>> stations = dataset.stations()[0:3]
+        >>> attributes = dataset.fetch_stations_attributes(stations)
         """
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
@@ -858,6 +866,8 @@ class HYSETS(Camels):
             dyn = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
+                                               st=st,
+                                               en=en,
                                                **kwargs
                                                )
 
@@ -865,6 +875,8 @@ class HYSETS(Camels):
                 to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
+                                                     st=st,
+                                                     en=en,
                                                      **kwargs
                                                      )
                 to_return['static'] = static
@@ -892,7 +904,14 @@ class HYSETS(Camels):
             en=None,
             as_dataframe=False
     ):
-        """Fetches dynamic attributes of one station."""
+        """Fetches dynamic attributes of one station.
+
+        Examples
+        --------
+        >>> from ai4water.datasets import HYSETS
+        >>> dataset = HYSETS()
+        >>> dyn_features = dataset.fetch_dynamic_features('station_name')
+        """
         station = [int(stn_id)]
         return self._fetch_dynamic_features(
             stations=station,
@@ -975,7 +994,14 @@ class HYSETS(Camels):
             en=None,
             as_ts=False
     ) -> pd.DataFrame:
-        """returns static atttributes of a station"""
+        """returns static atttributes of a station
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import HYSETS
+        >>> dataset = HYSETS()
+        >>> static_features = dataset.static_features()
+        """
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
     def read_static_data(self):
@@ -1007,12 +1033,14 @@ class CAMELS_US(Camels):
     dynamic_features = ['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
                         'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)', 'Flow']
 
-    def __init__(self, data_source='basin_mean_daymet'):
+    def __init__(self, data_source='basin_mean_daymet', path=None):
 
         assert data_source in self.folders, f'allwed data sources are {self.folders.keys()}'
         self.data_source = data_source
 
-        super().__init__("CAMELS_US")
+        super().__init__(path=path, name="CAMELS_US")
+
+        self.ds_dir = path
 
         if os.path.exists(self.ds_dir):
             print(f"dataset is already downloaded at {self.ds_dir}")
@@ -1025,11 +1053,6 @@ class CAMELS_US(Camels):
         self.dataset_dir = os.path.join(self.ds_dir, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
 
         self._maybe_to_netcdf('camels_us_dyn')
-
-    @property
-    def ds_dir(self):
-        """Directory where a particular dataset will be saved. """
-        return os.path.join(self.camels_dir, self.name)
 
     @property
     def start(self):
@@ -1177,18 +1200,13 @@ class CAMELS_BR(Camels):
                'temperature_max': '13_CAMELS_BR_temperature_max_cpc'
                }
 
-    def __init__(self):
+    def __init__(self, path=None):
 
-        super().__init__("CAMELS-BR")
-
+        super().__init__(path=path, name="CAMELS-BR")
+        self.ds_dir = path
         self._download()
 
         self._maybe_to_netcdf('camels_dyn_br')
-
-    @property
-    def ds_dir(self):
-        """Directory where a particular dataset will be saved. """
-        return os.path.join(self.camels_dir, self.name)
 
     @property
     def _all_dirs(self):
@@ -1348,6 +1366,10 @@ class CAMELS_BR(Camels):
         -------
         >>> dataset = Camels('CAMELS-BR')
         >>> df = dataset.fetch_static_features('11500000', 'climate')
+        # read all static features of all stations
+        >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
+        >>> data.shape
+        (597, 67)
 
         """
         if isinstance(stn_id, int):
@@ -1388,8 +1410,7 @@ class CAMELS_GB(Camels):
                         "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
     def __init__(self, path=None):
-        super().__init__(name="CAMELS-GB")
-        self.ds_dir = path
+        super().__init__(name="CAMELS-GB", path=path)
 
         self._maybe_to_netcdf('camels_gb_dyn')
 
@@ -1580,13 +1601,12 @@ class CAMELS_AUS(Camels):
                 data will downloaded.
         """
         if path is not None:
-            assert isinstance(path,
-                              str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
+            assert isinstance(path, str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
             if not os.path.exists(path) or len(os.listdir(path)) < 2:
                 raise FileNotFoundError(f"The path {path} does not exist")
         self.ds_dir = path
 
-        super().__init__()
+        super().__init__(path=path)
         if not os.path.exists(self.ds_dir):
             os.makedirs(self.ds_dir)
 
@@ -1699,7 +1719,14 @@ class CAMELS_AUS(Camels):
             features='all',
             **kwargs
     ) -> pd.DataFrame:
-        """Fetches static attribuets of one station as dataframe."""
+        """Fetches static attribuets of one station as dataframe.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_AUS
+        >>> dataset = CAMELS_AUS()
+        >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
+        """
 
         return self._read_static(stn_id, features)
 
@@ -1757,9 +1784,9 @@ class CAMELS_CL(Camels):
             path: path where the CAMELS-CL dataset has been downloaded. This path must
                   contain five zip files and one xlsx file.
         """
-        self.ds_dir = path
 
-        super().__init__()
+        super().__init__(path=path)
+        self.ds_dir = path
 
         if not os.path.exists(self.ds_dir):
             os.makedirs(self.ds_dir)
@@ -1842,10 +1869,10 @@ class CAMELS_CL(Camels):
 
     def _read_static(self, stations: list, attributes: list) -> pd.DataFrame:
         # overwritten for speed
-        stns_df = pd.DataFrame(columns=attributes)
         path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
 
+        stns_df = []
         for stn in stations:
             df = pd.DataFrame()
             if stn in _df:
@@ -1853,8 +1880,9 @@ class CAMELS_CL(Camels):
             elif ' ' + stn in _df:
                 df[stn] = _df[' ' + stn]
 
-            stns_df = stns_df.append(df.transpose()[attributes])
+            stns_df.append(df.transpose()[attributes])
 
+        stns_df = pd.concat(stns_df)
         return stns_df
 
     def fetch_static_features(
@@ -1932,7 +1960,7 @@ class HYPE(Camels):
         'PET_mm'
     ]
 
-    def __init__(self, time_step: str = 'daily', **kwargs):
+    def __init__(self, time_step: str = 'daily', path = None, **kwargs):
         """
         Parameters
         ----------
@@ -1943,8 +1971,8 @@ class HYPE(Camels):
         """
         assert time_step in ['daily', 'month', 'year']
         self.time_step = time_step
-        self.ds_dir = None
-        super().__init__(**kwargs)
+        self.ds_dir = path
+        super().__init__(path=path, **kwargs)
 
         self._download()
 

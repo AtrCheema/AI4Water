@@ -26,8 +26,9 @@ class RC4USCoast(Datasets):
         'info.xlsx': 'https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0260455/supplemental/dataset_info.xlsx'
     }
 
-    def __init__(self, *args, **kwargs):
-        super(RC4USCoast, self).__init__(*args, **kwargs)
+    def __init__(self, path=None, *args, **kwargs):
+        super(RC4USCoast, self).__init__(path=path, *args, **kwargs)
+        self.ds_dir = path
         self._download()
 
     @property

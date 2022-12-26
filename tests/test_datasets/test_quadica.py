@@ -6,7 +6,7 @@ from ai4water.datasets import Quadica
 
 class TestQuadica(unittest.TestCase):
 
-    dataset = Quadica()
+    dataset = Quadica(path=r'F:\data\Quadica')
 
     def test_avg_temp(self):
         assert self.dataset.avg_temp().shape == (828, 1386)

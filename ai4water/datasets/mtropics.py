@@ -83,12 +83,13 @@ class MtropicsLaos(Datasets):
     weather_station_data = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
     inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
 
-    def __init__(self, **kwargs):
+    def __init__(self, path=None, **kwargs):
 
         if xr is None:
             raise ModuleNotFoundError("xarray must be installed to use datasets sub-module")
 
-        super().__init__(**kwargs)
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
         self._download()
 
         # we need to pre-process the land use shapefiles

@@ -4,7 +4,7 @@ import unittest
 from ai4water.datasets import RC4USCoast
 
 
-ds = RC4USCoast()
+ds = RC4USCoast(path=r'F:\data\RC4USCoast')
 
 
 class TestRC4USCoast(unittest.TestCase):

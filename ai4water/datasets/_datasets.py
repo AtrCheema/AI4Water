@@ -255,13 +255,19 @@ class Datasets(object):
         We don't host datasets. Each dataset is downloaded fromt he target remote
         server and saved into local disk.
     """
-    def __init__(self, name=None, units=None):
+    def __init__(self,
+                 name=None,
+                 units=None,
+                 path:str = None
+                 ):
         """
         Arguments:
             name : str (default=None)
                 name of dataset
             units : str, (default=None)
                 the unit system being used
+            path : str (default=None)
+                path where data is available. If not, it will be downloaded
         """
         if name is None:
             name = self.__class__.__name__
@@ -283,10 +289,18 @@ class Datasets(object):
 
     @property
     def ds_dir(self):
-        _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
+        return self._ds_dir
+
+    @ds_dir.setter
+    def ds_dir(self, path=None):
+        if path is None:
+            _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
+        else:
+            _dir = path
         if not os.path.exists(_dir):
             os.makedirs(_dir)
-        return _dir
+        self._ds_dir = _dir
+        return
 
     def _download(self, overwrite=False, **kwargs):
         """Downloads the dataset. If already downloaded, then"""
@@ -342,6 +356,11 @@ class Weisssee(Datasets):
 
     url = '10.1594/PANGAEA.898217'
 
+    def __init__(self, path=None, overwrite=False, **kwargs):
+        super(Weisssee, self).__init__(path=path, **kwargs)
+        self.ds_dir = path
+        self.download_from_pangaea(overwrite=overwrite)
+
     def fetch(self, **kwargs):
         """
         Examples
@@ -350,7 +369,7 @@ class Weisssee(Datasets):
             >>> dataset = Weisssee()
             >>> data = dataset.fetch()
         """
-        self.download_from_pangaea()
+
         data = {}
         for f in self.data_files:
             fpath = os.path.join(self.ds_dir, f)
@@ -507,7 +526,7 @@ class WeatherJena(Datasets):
     """
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
 
-    def __init__(self, obs_loc='roof'):
+    def __init__(self, path=None, obs_loc='roof'):
         """
         The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
 
@@ -521,7 +540,7 @@ class WeatherJena(Datasets):
             raise ValueError
         self.obs_loc = obs_loc
 
-        super().__init__()
+        super().__init__(path=path)
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
 
@@ -651,8 +670,9 @@ class SWECanada(Datasets):
     features = ['snw', 'snd', 'den']
     q_flags = ['data_flag_snw', 'data_flag_snd', 'qc_flag_snw', 'qc_flag_snd']
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
 
         self._download()
 

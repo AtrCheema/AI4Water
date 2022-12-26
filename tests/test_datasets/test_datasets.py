@@ -24,7 +24,7 @@ def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, s
 
 
 def test_jena_weather():
-    wj = WeatherJena()
+    wj = WeatherJena(path=r'F:\data\WeatherJena')
     df = wj.fetch()
 
     assert df.shape[0] >= 919551
@@ -37,7 +37,7 @@ def test_jena_weather():
 
 
 def test_swe_canada():
-    swe = SWECanada()
+    swe = SWECanada(path=r'F:\data\SWECanada')
 
     stns = swe.stations()
 
@@ -61,15 +61,15 @@ def test_swe_canada():
 class TestPangaea(unittest.TestCase):
 
     def test_Weisssee(self):
-        dataset = Weisssee()
+        dataset = Weisssee(path=r'F:\data\Weisssee')
         check_data(dataset, 21, 29)
 
     def test_jordanwq(self):
-        dataset = WQJordan()
+        dataset = WQJordan(path=r'F:\data\WQJordan')
         check_data(dataset, 1, 428)
 
     def test_jordanwq2(self):
-        dataset = WQJordan2()
+        dataset = WQJordan2(path=r'F:\data\WQJordan2')
         check_data(dataset, 1, 189)
 
     def test_YamaguchiClimateJp(self):

@@ -28,9 +28,9 @@ class Quadica(Datasets):
             "https://www.hydroshare.org/resource/88254bd930d1466c85992a7dea6947a4/data/contents/catchment_attributes.csv"
     }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
         self._download()
 
     @property
@@ -624,12 +624,23 @@ class Quadica(Datasets):
 
         output_features = [f'median_C_{target}']
 
+        _ds_args = {
+            'val_fraction': 0.2,
+            'train_fraction': 0.7
+        }
+
+        if ds_args is None:
+            ds_args = dict()
+
+        _ds_args.update(ds_args)
+
         dsets = []
         for idx, grp in dyn.groupby("OBJECTID"):
-            ds = DataSet(data=grp, ts_args={'lookback': lookback},
+            ds = DataSet(data=grp,
+                         ts_args={'lookback': lookback},
                          input_features=input_features,
                          output_features=output_features,
-                         **ds_args)
+                         **_ds_args)
             dsets.append(ds)
 
         return DataSetPipeline(*dsets)

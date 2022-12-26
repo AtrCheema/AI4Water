@@ -22,6 +22,7 @@ class GRQA(Datasets):
     def __init__(
             self,
             download_source:bool = False,
+            path = None,
             **kwargs):
         """
         parameters
@@ -29,8 +30,8 @@ class GRQA(Datasets):
         download_source : bool
             whether to download source data or not
         """
-        super().__init__(**kwargs)
-
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
         files = ['GRQA_data_v1.3.zip', 'GRQA_meta.zip']
         if download_source:
             files += ['GRQA_source_data.zip']

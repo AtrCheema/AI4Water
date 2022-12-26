@@ -4,7 +4,7 @@ import unittest
 from ai4water.datasets import Swatch
 
 
-ds = Swatch()
+ds = Swatch(path=r'F:\data\Swatch')
 df = ds.fetch()
 
 class TestSwatch(unittest.TestCase):
