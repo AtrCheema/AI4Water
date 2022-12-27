@@ -778,7 +778,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 self.results[idx] = {'y': y, 'x': x}
 
         if self._process_results:
-            post_process_skopt_results(search_result, self.results, self.opt_path)
+            post_process_skopt_results(search_result, self.results,
+                                       self.opt_path, rename=True)
 
             if len(search_result.func_vals)<=100 and self.algorithm != "bayes_rf":
                 save_skopt_results(search_result, self.opt_path)
@@ -814,7 +815,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self.results[idx] = {'y':err, 'x':sort_x_iters(para, self.original_para_order())}
 
         if self._process_results:
-            clear_weights(self.opt_path, self.results)
+            clear_weights(self.opt_path, self.results, rename=True)
             self.process_results()
 
         if self.eval_on_best:
@@ -1041,7 +1042,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
 
-    def _plot_parallel_coords(self, save=True, **kwargs):
+    def _plot_parallel_coords(self, save=True, show=False, **kwargs):
         """ parallel coordinates of hyperparameters
         """
         d = self.xy_of_iterations()
@@ -1058,6 +1059,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if save:
             fname = os.path.join(self.opt_path, "parallel_coordinates")
             plt.savefig(fname, dpi=500, bbox_inches="tight")
+
+        if show:
+            plt.show()
         return
 
     def _plot_evaluations(self, save=True):
@@ -1142,7 +1146,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, save=True, plot_type="box", **tree_kws)->plt.Axes:
+    def plot_importance(self, save=True,
+                        show:bool=False,
+                        plot_type="box",
+                        **tree_kws)->plt.Axes:
         """plots hyperparameter importance using fANOVA"""
         X = pd.DataFrame([list(iter_xy['x'].values()) for iter_xy in self.xy_of_iterations().values()])
         Y = np.array([iter_xy['y'] for iter_xy in self.xy_of_iterations().values()])
@@ -1191,6 +1198,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         with open(os.path.join(self.opt_path, fname), 'w') as fp:
             json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+
+        if show:
+            plt.show()
 
         return ax
 
@@ -1397,3 +1407,35 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             y0.append(float(y))
             x0.append(list(x.values()))
         return x0, y0
+
+    def load_results(self, fname:str):
+        """loads the previously computed results. It should not
+        be used after .fit()
+
+        parameters
+        ----------
+        fname : str
+            complete path of  hpo_results.bin file e.g.
+            path/to/hpo_results.bin
+        """
+
+        from joblib import load  # some modules may not be dependent upon joblib
+
+        assert len(self.results) == 0, f"""
+        Loading results after call to .fit is not allowed.
+        Create a new instance of HyperOpt and then call this function.
+        """
+
+        if not os.path.exists(fname):
+            raise FileNotFoundError(f" File {fname} does not exist")
+
+        new_results =  load(fname)
+
+        self.gpmin_results = new_results
+
+        fv = new_results.func_vals
+        xiters = new_results.x_iters
+        for idx, y, x in zip(range(len(fv)), fv, xiters):
+            self.results[idx] = {'y': y, 'x': x}
+
+        return

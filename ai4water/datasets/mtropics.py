@@ -381,7 +381,7 @@ class MtropicsLaos(Datasets):
 
         nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
         if not os.path.exists(nc_fname):
-            self._load_weather_stn_from_xl_files()
+            df = self._load_weather_stn_from_xl_files()
         else:  # feather file already exists so load from it
             try:
                 df = xr.load_dataset(nc_fname).to_dataframe()

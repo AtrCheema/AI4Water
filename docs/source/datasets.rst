@@ -200,3 +200,13 @@ GRQA
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+WaterBenchIowa
+===============
+.. autoclass:: ai4water.datasets.WaterBenchIowa
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

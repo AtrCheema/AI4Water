@@ -298,11 +298,11 @@ def plot_hyperparameters(
         plt.show()
 
 
-def post_process_skopt_results(skopt_results, results, opt_path):
+def post_process_skopt_results(skopt_results, results, opt_path, rename=True):
 
     skopt_plots(skopt_results, pref=opt_path)
 
-    clear_weights(results=results, opt_dir=opt_path)
+    clear_weights(results=results, opt_dir=opt_path, rename=rename)
 
     return
 
@@ -320,6 +320,8 @@ def save_skopt_results(skopt_results, opt_path):
         with open(fname + '.json', 'w') as fp:
             json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
 
+    dump(skopt_results, os.path.join(opt_path, 'hpo_results.bin'),
+         store_objective=False)
     return
 
 
@@ -334,7 +336,9 @@ def _plot_objective(search_results, pref="", threshold=20):
     return
 
 
-def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
+def skopt_plots(search_result,
+                pref=os.getcwd(),
+                threshold=20):
 
     if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
         plt.close('all')
@@ -350,7 +354,8 @@ def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
     return
 
 
-def convergence(func_vals, color=None, show_original=False):
+def convergence(func_vals, color=None,
+                show_original=False):
 
     _, ax = plt.subplots()
     ax.grid()
@@ -364,7 +369,7 @@ def convergence(func_vals, color=None, show_original=False):
     else:
         data = mins
 
-    plot(data,
+    return plot(data,
          color=color,
          marker=".", markersize=12, lw=2,
          title="Convergence plot",
@@ -372,8 +377,6 @@ def convergence(func_vals, color=None, show_original=False):
          ylabel=r"$\min f(x)$ after $n$ calls",
          show=False,
          ax=ax)
-
-    return
 
 class SerializeSKOptResults(object):
     """
@@ -959,6 +962,7 @@ def plot_convergence(func_vals, show=False, ax=None, **kwargs):
         "xlabel": 'Number of calls $n$',
         "ylabel": '$\min f(x)$ after $n$ calls',
         'ax': ax,
+        'grid': True
     }
 
     _kwargs.update(kwargs)
