@@ -324,26 +324,34 @@ class MtropicsLaos(Datasets):
         # todo, does nan means 0 rainfall?
         fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
         if not os.path.exists(fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
-            df = pd.DataFrame()
-            for f in files:
-                _df = pd.read_excel(f, sheet_name='Daily',
-                                    usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
-                                    keep_default_na=False)
-                df = pd.concat([df, _df])
-
-            for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
-
-            df = df.reset_index(drop=True)  # index is of type Int64Index
-            df.to_xarray().to_netcdf(fname)
+            df = self._load_rain_gauge_from_xl_files()
 
         else:  # feather file already exists so load from it
-            df = xr.load_dataset(fname).to_dataframe()
+            try:
+                df = xr.load_dataset(fname).to_dataframe()
+            except AttributeError:
+                df = self._load_rain_gauge_from_xl_files()
 
         df.index = pd.date_range('20010101', periods=len(df), freq='D')
 
         return df[st:en]
+
+    def _load_rain_gauge_from_xl_files(self):
+        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
+        df = pd.DataFrame()
+        for f in files:
+            _df = pd.read_excel(f, sheet_name='Daily',
+                                usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
+                                keep_default_na=False)
+            df = pd.concat([df, _df])
+
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+
+        df = df.reset_index(drop=True)  # index is of type Int64Index
+        df.to_xarray().to_netcdf(fname)
+        return df
 
     def fetch_weather_station_data(
             self,
@@ -373,45 +381,12 @@ class MtropicsLaos(Datasets):
 
         nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
         if not os.path.exists(nc_fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
-
-            vbsfile = os.path.join(self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
-            create_vbs_script(vbsfile)
-
-            dataframes = []
-            for xlsx_file in files:
-
-                if not xlsx_file.startswith("~"):
-
-                    if os.name == "nt":
-                        data_dir = os.path.join(self.ds_dir, "weather_station")
-                        df = to_csv_and_read(xlsx_file,
-                                             data_dir,
-                                             sheed_id='2',
-                                             usecols=['Date', 'Time', 'T', 'H', 'W', 'Gr'],
-                                             parse_dates={'datetime': ['Date', 'Time']})
-                    else:
-                        df = pd.read_excel(xlsx_file,
-                                           sheet_name='Hourly',
-                                           usecols=['Date', 'T', 'H', 'W', 'Gr'],
-                                           parse_dates={'datetime': ['Date']},
-                                           keep_default_na=False)
-                    df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
-                    df = df.dropna(how="all")
-                    df.index = pd.to_datetime(df.pop('datetime'))
-                    dataframes.append(df)
-
-            df = pd.concat(dataframes)
-            del dataframes
-
-            # non-numertic dtype causes problem in converting/saving netcdf
-            for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
-
-            df = df.reset_index()  # index is of type Int64Index
-            df.to_xarray().to_netcdf(nc_fname)
+            self._load_weather_stn_from_xl_files()
         else:  # feather file already exists so load from it
-            df = xr.load_dataset(nc_fname).to_dataframe()
+            try:
+                df = xr.load_dataset(nc_fname).to_dataframe()
+            except AttributeError:
+                df = self._load_weather_stn_from_xl_files()
 
         df.index = pd.to_datetime(df.pop('datetime'))
 
@@ -422,6 +397,47 @@ class MtropicsLaos(Datasets):
         df = df.bfill()
 
         return check_st_en(df, st, en)
+
+    def _load_weather_stn_from_xl_files(self):
+        nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
+
+        vbsfile = os.path.join(self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
+        create_vbs_script(vbsfile)
+
+        dataframes = []
+        for xlsx_file in files:
+
+            if not xlsx_file.startswith("~"):
+
+                if os.name == "nt":
+                    data_dir = os.path.join(self.ds_dir, "weather_station")
+                    df = to_csv_and_read(xlsx_file,
+                                         data_dir,
+                                         sheed_id='2',
+                                         usecols=['Date', 'Time', 'T', 'H', 'W', 'Gr'],
+                                         parse_dates={'datetime': ['Date', 'Time']})
+                else:
+                    df = pd.read_excel(xlsx_file,
+                                       sheet_name='Hourly',
+                                       usecols=['Date', 'T', 'H', 'W', 'Gr'],
+                                       parse_dates={'datetime': ['Date']},
+                                       keep_default_na=False)
+                df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+                df = df.dropna(how="all")
+                df.index = pd.to_datetime(df.pop('datetime'))
+                dataframes.append(df)
+
+        df = pd.concat(dataframes)
+        del dataframes
+
+        # non-numertic dtype causes problem in converting/saving netcdf
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+
+        df = df.reset_index()  # index is of type Int64Index
+        df.to_xarray().to_netcdf(nc_fname)
+        return df
 
     def fetch_pcp(self,
                   st: Union[str, pd.Timestamp] = '20010101 00:06:00',
@@ -453,20 +469,20 @@ class MtropicsLaos(Datasets):
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         # feather file does not exist
         if not os.path.exists(fname):
-            df = self._load_from_excel_files()
+            df = self._load_pcp_from_excel_files()
         else:  # nc file already exists so load from it
             try:
                 df = xr.load_dataset(fname).to_dataframe()
                 # on linux, it is giving error
             except AttributeError:  # 'EntryPoints' object has no attribute 'get'
-                df = self._load_from_excel_files()
+                df = self._load_pcp_from_excel_files()
 
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
         df.columns = ['pcp']
 
         return df[st:en]
 
-    def _load_from_excel_files(self):
+    def _load_pcp_from_excel_files(self):
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
         df = pd.DataFrame()
@@ -501,57 +517,13 @@ class MtropicsLaos(Datasets):
         wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
         spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
         if not os.path.exists(wl_fname):
-            print("reading data from xlsx files and saving them in netcdf format.")
-            print("This will happen only once but will save io time.")
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
-            wl = pd.DataFrame()
-            spm = pd.DataFrame()
-            for f in files:
-
-                _df = pd.read_excel(f, sheet_name='Aperiodic')
-                _wl = _df[['Date', 'Time', 'RWL04']]
-
-                if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx"]:
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-                if os.path.basename(f) in [ "OMPrawdataLaos2006.xlsx"]:
-                    _wl = _wl.iloc[0:-1]
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-                if os.path.basename(f) in [ "OMPrawdataLaos2008.xlsx"]:
-                    _wl = _wl.dropna()
-                if os.path.basename(f) in [ "OMPrawdataLaos2009.xlsx",
-                                            "OMPrawdataLaos2010.xlsx",
-                                            "OMPrawdataLaos2011.xlsx",
-                    "OMPrawdataLaos2015.xlsx", "OMPrawdataLaos2016.xlsx",
-                    "OMPrawdataLaos2017.xlsx", "OMPrawdataLaos2018.xlsx",
-                    "OMPrawdataLaos2019.xlsx",
-                                            ]:
-                    _wl = _wl.dropna(how="all")
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-
-                _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
-                _spm = _df[['Date.1', 'Time.1', 'SPM04']]
-                _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
-                if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
-                    _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
-                    _spm.iloc[247] = ['2016-07-23', '12:57:47', 8.15714]
-                    _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
-                    _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
-                if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
-                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str))
-                else:
-                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str) + ' ' + _spm['Time.1'].astype(str))
-                wl = pd.concat([wl, _wl['RWL04']])
-                spm = pd.concat([spm, _spm['SPM04']])
-
-            wl.columns = ['water_level']
-            #wl = wl.reset_index()
-            wl.to_xarray().to_netcdf(wl_fname)
-            spm.columns = ['susp_pm']
-            #spm = spm.reset_index()
-            spm.to_xarray().to_netcdf(spm_fname)
+            wl, spm = self._load_hydro_from_xl_files()
         else:
-            wl = xr.load_dataset(wl_fname).to_dataframe()
-            spm = xr.load_dataset(spm_fname).to_dataframe()
+            try:
+                wl = xr.load_dataset(wl_fname).to_dataframe()
+                spm = xr.load_dataset(spm_fname).to_dataframe()
+            except AttributeError:
+                wl, spm = self._load_hydro_from_xl_files()
 
         # wl.index = pd.to_datetime(wl.pop('index'))
         # spm.index = pd.to_datetime(spm.pop('index'))
@@ -560,6 +532,61 @@ class MtropicsLaos(Datasets):
 
         # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
         return wl.loc[st:en], spm.loc[st:en]
+
+    def _load_hydro_from_xl_files(self):
+
+        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
+        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
+
+        print("reading data from xlsx files and saving them in netcdf format.")
+        print("This will happen only once but will save io time.")
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
+        wl = pd.DataFrame()
+        spm = pd.DataFrame()
+        for f in files:
+
+            _df = pd.read_excel(f, sheet_name='Aperiodic')
+            _wl = _df[['Date', 'Time', 'RWL04']]
+
+            if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx"]:
+                _wl['Time'].iloc[-1] = datetime.time(0)
+            if os.path.basename(f) in ["OMPrawdataLaos2006.xlsx"]:
+                _wl = _wl.iloc[0:-1]
+                _wl['Time'].iloc[-1] = datetime.time(0)
+            if os.path.basename(f) in ["OMPrawdataLaos2008.xlsx"]:
+                _wl = _wl.dropna()
+            if os.path.basename(f) in ["OMPrawdataLaos2009.xlsx",
+                                       "OMPrawdataLaos2010.xlsx",
+                                       "OMPrawdataLaos2011.xlsx",
+                                       "OMPrawdataLaos2015.xlsx", "OMPrawdataLaos2016.xlsx",
+                                       "OMPrawdataLaos2017.xlsx", "OMPrawdataLaos2018.xlsx",
+                                       "OMPrawdataLaos2019.xlsx",
+                                       ]:
+                _wl = _wl.dropna(how="all")
+                _wl['Time'].iloc[-1] = datetime.time(0)
+
+            _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
+            _spm = _df[['Date.1', 'Time.1', 'SPM04']]
+            _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
+            if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
+                _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
+                _spm.iloc[247] = ['2016-07-23', '12:57:47', 8.15714]
+                _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
+                _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
+            if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
+                _spm.index = pd.to_datetime(_spm['Date.1'].astype(str))
+            else:
+                _spm.index = pd.to_datetime(_spm['Date.1'].astype(str) + ' ' + _spm['Time.1'].astype(str))
+            wl = pd.concat([wl, _wl['RWL04']])
+            spm = pd.concat([spm, _spm['SPM04']])
+
+        wl.columns = ['water_level']
+        # wl = wl.reset_index()
+        wl.to_xarray().to_netcdf(wl_fname)
+        spm.columns = ['susp_pm']
+        # spm = spm.reset_index()
+        spm.to_xarray().to_netcdf(spm_fname)
+        return wl, spm
 
     def make_classification(
             self,
