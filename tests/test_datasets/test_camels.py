@@ -13,6 +13,7 @@ import xarray as xr
 
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
+from ai4water.datasets import WaterBenchIowa
 
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_dataframe=False):
@@ -320,6 +321,11 @@ class TestCamels(unittest.TestCase):
         test_hysets()
         return
 
+    def test_waterbenchiowa(self):
+
+        ds = WaterBenchIowa(path=r'F:\data\CAMELS\WaterBenchIowa')
+        data = ds.fetch_dynamic_features('644')
+        return
 
 if __name__=="__main__":
     unittest.main()

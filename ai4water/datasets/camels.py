@@ -1,6 +1,6 @@
 import json
 import glob
-from typing import Union
+from typing import Union, List
 
 from ._datasets import Datasets
 from .utils import check_attributes, download, sanity_check, _unzip
@@ -73,7 +73,8 @@ class Camels(Datasets):
     def stations(self):
         raise NotImplementedError
 
-    def _read_dynamic_from_csv(self, stations, dynamic_features, st=None, en=None):
+    def _read_dynamic_from_csv(self, stations, dynamic_features, st=None,
+                               en=None)->dict:
         raise NotImplementedError
 
     def fetch_static_features(
@@ -290,6 +291,7 @@ class Camels(Datasets):
             as_dataframe : whether to return the data as pandas dataframe. default
                 is xr.dataset object
             kwargs dict: additional keyword arguments
+
         Returns:
             Dynamic and static features of multiple stations. Dynamic features
             are by default returned as xr.Dataset unless `as_dataframe` is True, in
@@ -316,7 +318,8 @@ class Camels(Datasets):
             ... # find out station ids
             >>> dataset.stations()
             ... # get data of selected stations
-            >>> dataset.fetch_stations_attributes(['912101A', '912105A', '915011A'], as_dataframe=True)
+            >>> dataset.fetch_stations_attributes(['912101A', '912105A', '915011A'],
+            ...  as_dataframe=True)
         """
         st, en = self._check_length(st, en)
 
@@ -2048,3 +2051,96 @@ class HYPE(Camels):
     @property
     def end(self):
         return '20191231'
+
+
+class WaterBenchIowa(Camels):
+    """
+    Rainfall run-off dataset for Iowa (US) following the work of
+    `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
+
+    Examples
+    >>> ds = WaterBenchIowa()
+    ... # fetch static and dynamic features of 5 stations
+    >>> data = ds.fetch(5)
+    ... # fetch only dynamic features of 5 stations
+    >>> data = ds.fetch(5, static_features=None)
+    ... # using another method
+    >>> data = ds.fetch_dynamic_features('644')
+    """
+    url = "https://zenodo.org/record/7087806#.Y6rW-BVByUk"
+
+    def __init__(self, path=None):
+        super(WaterBenchIowa, self).__init__(path=path)
+
+        self._download()
+
+    def stations(self)->List[str]:
+        return [fname.split('_')[0] for fname in os.listdir(self.ts_path) if fname.endswith('.csv')]
+
+    @property
+    def ts_path(self)->str:
+        return os.path.join(self.ds_dir, 'data_time_series', 'data_time_series')
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        return ['precipitation', 'et', 'discharge']
+
+    @property
+    def static_features(self)->List[str]:
+        return ['travel_time', 'area', 'slope', 'loam', 'silt',
+                'sandy_clay_loam', 'silty_clay_loam']
+
+    @property
+    def dyn_fname(self):
+        return os.path.join(self.ts_path, "WaterBenchIowa_dyn.nc")
+
+    def fetch_station_attributes(
+            self,
+            station: str,
+            dynamic_features: Union[str, list, None] = 'all',
+            static_features: Union[str, list, None] = None,
+            as_ts: bool = False,
+            st: Union[str, None] = None,
+            en: Union[str, None] = None,
+            **kwargs
+    ) -> pd.DataFrame:
+
+        check_attributes(dynamic_features, self.dynamic_features)
+        fname = os.path.join(self.ts_path, f"{station}_data.csv")
+        df = pd.read_csv(fname)
+        df.index = pd.to_datetime(df.pop('datetime'))
+
+        return df
+
+    def fetch_static_features(
+            self,
+            stn_id: Union[str, list],
+            features: Union[str, list] = None
+    )->pd.DataFrame:
+        features = check_attributes(features, self.static_features)
+        fname = os.path.join(self.ts_path, f"{stn_id}_data.csv")
+        df = pd.read_csv(fname, nrows=2)
+        return df.iloc[0, :][features]
+
+    def _read_dynamic_from_csv(
+            self,
+            stations,
+            dynamic_features,
+            st=None,
+            en=None)->dict:
+
+        dyn = dict()
+        for stn in stations:
+            fname = os.path.join(self.ts_path, f"{stn}_data.csv")
+            df = pd.read_csv(fname)
+            df.index = pd.to_datetime(df.pop('datetime'))
+            dyn[stn] = df[self.dynamic_features]
+        return dyn
+
+    @property
+    def start(self):
+        return "20111001 12:00"
+
+    @property
+    def end(self):
+        return "20180930 11:00"

@@ -12,6 +12,7 @@ from .camels import CAMELS_US
 from .camels import LamaH
 from .camels import HYSETS
 from .camels import HYPE
+from .camels import WaterBenchIowa
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

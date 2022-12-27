@@ -453,21 +453,30 @@ class MtropicsLaos(Datasets):
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         # feather file does not exist
         if not os.path.exists(fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
-            df = pd.DataFrame()
-            for f in files:
-                _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
-                df = pd.concat([df, _df])
-
-            df = df.reset_index(drop=True)
-            df.to_xarray().to_netcdf(fname)
-        else:  # feather file already exists so load from it
-            df = xr.load_dataset(fname).to_dataframe()
+            df = self._load_from_excel_files()
+        else:  # nc file already exists so load from it
+            try:
+                df = xr.load_dataset(fname).to_dataframe()
+                # on linux, it is giving error
+            except AttributeError:  # 'EntryPoints' object has no attribute 'get'
+                df = self._load_from_excel_files()
 
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
         df.columns = ['pcp']
 
         return df[st:en]
+
+    def _load_from_excel_files(self):
+        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
+        df = pd.DataFrame()
+        for f in files:
+            _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
+            df = pd.concat([df, _df])
+
+        df = df.reset_index(drop=True)
+        df.to_xarray().to_netcdf(fname)
+        return df
 
     def fetch_hydro(
             self,
