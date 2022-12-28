@@ -116,6 +116,11 @@ def busan_beach(
     Example:
         >>> from ai4water.datasets import busan_beach
         >>> dataframe = busan_beach()
+        >>> dataframe.shape
+        (1446, 14)
+        >>> dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
+        >>> dataframe.shape
+        (1446, 15)
 
     .. _Jang:
         https://doi.org/10.1016/j.watres.2021.117001

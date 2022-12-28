@@ -17,26 +17,6 @@ Groundwater of Punjab region
 ===================================
 .. automodule:: ai4water.datasets.gw_punjab
 
-
-Datasets
-========
-.. autoclass:: ai4water.datasets.mtropics.Datasets
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-MtropicsLaos
-=============
-.. autoclass:: ai4water.datasets.mtropics.MtropicsLaos
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
 Weisssee
 ========
 .. autoclass:: ai4water.datasets.Weisssee

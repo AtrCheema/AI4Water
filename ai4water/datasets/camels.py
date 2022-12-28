@@ -821,7 +821,7 @@ class HYSETS(Camels):
         self._ds_dir = x
 
     @property
-    def static_features(self):
+    def static_features(self)->list:
         df = self.read_static_data()
         return df.columns.to_list()
 
@@ -834,19 +834,19 @@ class HYSETS(Camels):
 
         Examples
         --------
-            >>> dataset = CAMELS_AUS()
-            ... # get name of all stations as list
-            >>> dataset.stations()
+        >>> dataset = HYSETS()
+        ... # get name of all stations as list
+        >>> dataset.stations()
 
         """
         return self.read_static_data().index.to_list()
 
     @property
-    def start(self):
+    def start(self)->str:
         return "19500101"
 
     @property
-    def end(self):
+    def end(self)->str:
         return "20181231"
 
     def fetch_stations_attributes(
@@ -2160,8 +2160,8 @@ class CAMELS_CL(Camels):
 class HYPE(Camels):
     """
     Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_ .
-    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily,
-    monthly and yearly time steps.
+    This is a rainfall-runoff dataset of Sweden of 564 stations from 1985 to
+    2019 at daily, monthly and yearly time steps.
 
     Examples
     --------

@@ -21,3 +21,13 @@ Ecoli data from Mekong river (2016)
 ===================================
 .. automodule:: ai4water.datasets.mtropics
    :members: ecoli_mekong_2016
+
+
+MtropicsLaos
+=============
+.. autoclass:: ai4water.datasets.mtropics.MtropicsLaos
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

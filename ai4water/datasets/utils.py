@@ -55,7 +55,12 @@ def download_all_http_directory(url, outpath=None, filetypes=".zip", match_name=
     mathc_name str: if not None, then only those files will be downloaded whose name
         have match_name string in them.
     """
-    import bs4
+    try:
+        import bs4
+    except (ModuleNotFoundError, ImportError) as e:
+        raise e(f"You must install bs4 library e.g. by using"
+                f"pip install bs4")
+
     if os.name == 'nt':
         ssl._create_default_https_context = ssl._create_unverified_context
     page = list(urlparse.urlsplit(url))[2].split('/')[-1]

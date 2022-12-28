@@ -249,7 +249,7 @@ DATASETS = [
 
 class Datasets(object):
     """
-    Base class for datasets
+    This is the base class for datasets
 
     Note:
         We don't host datasets. Each dataset is downloaded fromt he target remote
@@ -523,17 +523,29 @@ class WeatherJena(Datasets):
     """
     10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
     from 2002 onwards.
+
+        Examples
+        --------
+        >>> from ai4water.datasets import WeatherJena
+        >>> dataset = WeatherJena()
+        >>> data = dataset.fetch()
+        >>> data.sum()
     """
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
 
-    def __init__(self, path=None, obs_loc='roof'):
+    def __init__(self,
+                 path=None,
+                 obs_loc='roof'):
         """
         The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
 
         Parameters
         ----------
             obs_loc : str, optional (default=roof)
-                location of observation.
+                location of observation. It can be one of following
+                    - roof
+                    - soil
+                    - saale
         """
 
         if obs_loc not in ['roof', 'soil', 'saale']:
@@ -541,7 +553,7 @@ class WeatherJena(Datasets):
         self.obs_loc = obs_loc
 
         super().__init__(path=path)
-
+        self.ds_dir = path
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
 
         if not os.path.exists(sub_dir):
@@ -600,9 +612,13 @@ class WeatherJena(Datasets):
         --------
             >>> from ai4water.datasets import WeatherJena
             >>> dataset = WeatherJena()
-            >>> df = dataset.fetch()
+            >>> data = dataset.fetch()
+            >>> data.shape
+            (972111, 21)
             ... # get data between specific period
-            >>> df = dataset.fetch("20110101", "20201231")
+            >>> data = dataset.fetch("20110101", "20201231")
+            >>> data.shape
+            (525622, 21)
         """
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
@@ -651,15 +667,24 @@ class SWECanada(Datasets):
         >>> swe = SWECanada()
         ... # get names of all available stations
         >>> stns = swe.stations()
+        >>> len(stns)
+        2607
         ... # get data of one station
         >>> df1 = swe.fetch('SCD-NS010')
+        >>> df1['SCD-NS010'].shape
+        (33816, 3)
         ... # get data of 10 stations
-        >>> df10 = swe.fetch(10, st='20110101')
+        >>> df5 = swe.fetch(5, st='20110101')
+        >>> df5.keys()
+        ['YT-10AA-SC01', 'ALE-05CA805', 'SCD-NF078', 'SCD-NF086', 'INA-07RA01B']
+        >>> [v.shape for v in df5.values()]
+        [(3500, 3), (3500, 3), (3500, 3), (3500, 3), (3500, 3)]
         ... # get data of 0.1% of stations
         >>> df2 = swe.fetch(0.001, st='20110101')
         ... # get data of one stations starting from 2011
         >>> df3 = swe.fetch('ALE-05AE810', st='20110101')
-        ...
+        >>> df3.keys()
+        >>> ['ALE-05AE810']
         >>> df4 = swe.fetch(stns[0:10], st='20110101')
 
     .. _Brown:
@@ -801,9 +826,9 @@ class RRLuleaSweden(Datasets):
     .. [11] https://doi.org/10.5194/hess-24-869-2020
     """
     url = "https://zenodo.org/record/3931582"
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
         self._download()
 
     def fetch(
@@ -844,13 +869,16 @@ class RRLuleaSweden(Datasets):
         Returns
         -------
         pd.DataFrame
-            a dataframe of shape (37_618, 3)
+            a dataframe of shape (37_618, 3) where the columns are velocity,
+            level and flow rate
 
         Examples
         --------
             >>> from ai4water.datasets import RRLuleaSweden
             >>> dataset = RRLuleaSweden()
             >>> flow = dataset.fetch_flow()
+            >>> flow.shape
+            (37618, 3)
         """
         fname = os.path.join(self.ds_dir, "flow_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
@@ -882,6 +910,8 @@ class RRLuleaSweden(Datasets):
             >>> from ai4water.datasets import RRLuleaSweden
             >>> dataset = RRLuleaSweden()
             >>> pcp = dataset.fetch_pcp()
+            >>> pcp.shape
+            (967080, 1)
 
         """
 
@@ -976,10 +1006,16 @@ def mg_photodegradation(
     --------
     >>> from ai4water.datasets import mg_photodegradation
     >>> mg_data, catalyst_encoder, anion_encoder = mg_photodegradation()
+    >>> mg_data.shape
+    (1200, 12)
     ... # the default encoding is None, but if we want to use one hot encoder
-    >>> mg_data_le, _, _ = mg_photodegradation(encoding="ohe")
+    >>> mg_data_ohe, _, _ = mg_photodegradation(encoding="ohe")
+    >>> mg_data_ohe.shape
+    (1200, 33)
     ... # if we want to use label encoder
-    >>> mg_data_none, _, _ = mg_photodegradation(encoding="le")
+    >>> mg_data_le, _, _ = mg_photodegradation(encoding="le")
+    >>> mg_data_le.shape
+    (1200, 12)
     ... # By default the target is efficiency but if we want
     ... # to use first order k as target
     >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")

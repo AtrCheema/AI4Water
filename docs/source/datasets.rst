@@ -13,3 +13,12 @@ datasets
 
    datasets/misc
 
+
+Datasets
+========
+.. autoclass:: ai4water.datasets.mtropics.Datasets
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

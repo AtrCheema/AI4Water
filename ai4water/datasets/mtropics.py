@@ -942,7 +942,9 @@ def ecoli_mekong(
     Examples
     --------
         >>> from ai4water.datasets import ecoli_mekong
-        >>> ecoli = ecoli_mekong()
+        >>> ecoli_data = ecoli_mekong()
+        >>> ecoli_data.shape
+        (1602, 10)
 
     .. [1]
         https://essd.copernicus.org/preprints/essd-2021-440/
@@ -982,6 +984,8 @@ def ecoli_mekong_2016(
     --------
         >>> from ai4water.datasets import ecoli_mekong_2016
         >>> ecoli = ecoli_mekong_2016()
+        >>> ecoli.shape
+        (58, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/ZRSBM4
@@ -1036,6 +1040,8 @@ def ecoli_houay_pano(
     --------
         >>> from ai4water.datasets import ecoli_houay_pano
         >>> ecoli = ecoli_houay_pano()
+        >>> ecoli.shape
+        (413, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
@@ -1078,6 +1084,8 @@ def ecoli_mekong_laos(
     --------
         >>> from ai4water.datasets import ecoli_mekong_laos
         >>> ecoli = ecoli_mekong_laos()
+        >>> ecoli.shape
+        (1131, 10)
 
     .. url_
         https://dataverse.ird.fr/file.xhtml?fileId=9229&version=3.0
