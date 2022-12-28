@@ -82,7 +82,7 @@ class Camels(Datasets):
             stn_id: Union[str, list],
             features: Union[str, list] = None
     ):
-        """Fetches all or selected static attributes of one station.
+        """Fetches all or selected static attributes of one or more stations.
 
         Parameters
         ----------
@@ -153,7 +153,7 @@ class Camels(Datasets):
             if not os.path.exists(x):
                 os.makedirs(x)
         else:
-            assert os.path.exists(x)
+            assert os.path.exists(x), f"No data exist at {x}"
         # sanity_check(self.name, x)
         self._ds_dir = x
 
@@ -513,8 +513,6 @@ class LamaH(Camels):
 
         super().__init__(**kwargs)
 
-        #self._download()
-
         fpath = os.path.join(self.ds_dir, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
 
         _data_types = self._data_types if self.time_step == 'daily' else ['total_upstrm']
@@ -587,11 +585,19 @@ class LamaH(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list],
-            features=None
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]=None
     ) -> pd.DataFrame:
         """
         static features of LamaH
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
 
         Examples
         --------
@@ -991,19 +997,44 @@ class HYSETS(Camels):
 
     def fetch_static_features(
             self,
-            stn_id,
-            features='all',
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]="all",
             st=None,
             en=None,
             as_ts=False
     ) -> pd.DataFrame:
-        """returns static atttributes of a station
+        """returns static atttributes of one or multiple stations
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
 
         Examples
         ---------
         >>> from ai4water.datasets import HYSETS
         >>> dataset = HYSETS()
-        >>> static_features = dataset.static_features()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            14425
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (14425, 28)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('991')
+        >>> static_data.shape
+           (1, 28)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data.shape
+           (14425, 2)
         """
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
@@ -1018,6 +1049,36 @@ class CAMELS_US(Camels):
     """
     Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
     from https://ral.ucar.edu/solutions/products/camels following Newman et al., 2015 [1]_
+
+    Examples
+    --------
+    >>> from ai4water.datasets import CAMELS_US
+    >>> dataset = CAMELS_US(path=r'F:\data\CAMELS\CAMELS_US')
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (12784, 8)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    671
+    # get data by station id
+    >>> df = dataset.fetch(stations='11478500', as_dataframe=True).unstack()
+    >>> df.shape
+    (12784, 8)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['prcp(mm/day)', 'srad(W/m2)', 'tmax(C)', 'tmin(C)', 'Flow']).unstack()
+    >>> df.shape
+    (12784, 5)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (102272, 10)  # remember this is multi-indexed DataFrame
 
     .. [1]_ https://doi.org/10.5194/hess-19-209-2015
     """
@@ -1144,18 +1205,41 @@ class CAMELS_US(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list],
-            features: Union[str, list] = None
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]=None
     ):
         """
+        gets one or more static features of one or more stations
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+
         Examples
         --------
             >>> from ai4water.datasets import CAMELS_US
             >>> camels = CAMELS_US()
-            >>> camels.fetch_static_features('11532500')
+            >>> st_data = camels.fetch_static_features('11532500')
+            >>> st_data.shape
+               (1, 59)
+            get names of available static features
             >>> camels.static_features
-            >>> camels.fetch_static_features('11528700',
+            get specific features of one station
+            >>> static_data = camels.fetch_static_features('11528700',
             >>> features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+            >>> static_data.shape
+               (1, 4)
+            get names of allstations
+            >>> all_stns = camels.stations()
+            >>> len(all_stns)
+               671
+            >>> all_static_data = camels.fetch_static_features(all_stns)
+            >>> all_static_data.shape
+               (671, 59)
         """
         attributes = check_attributes(features, self.static_features)
 
@@ -1186,6 +1270,37 @@ class CAMELS_US(Camels):
 class CAMELS_BR(Camels):
     """
     Downloads and processes CAMELS dataset of Brazil
+
+    Examples
+    --------
+    >>> from ai4water.datasets import CAMELS_BR
+    >>> dataset = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS_BR')
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (14245, 12)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    593
+    # get data by station id
+    >>> df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
+    >>> df.shape
+    (14245, 12)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['precipitation_cpc', 'evapotransp_mgb', 'temperature_mean', 'streamflow_m3s']).unstack()
+    >>> df.shape
+    (14245, 4)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (170940, 10)  # remember this is multi-indexed DataFrame
+
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
 
@@ -1354,8 +1469,8 @@ class CAMELS_BR(Camels):
 
     def fetch_static_features(
             self,
-            stn_id,
-            features=None
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]=None
     ) -> pd.DataFrame:
         """
         Parameters
@@ -1491,10 +1606,44 @@ class CAMELS_GB(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: str,
-            features='all'
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]="all"
     ) -> pd.DataFrame:
-        """Fetches static attributes of one station for one or more category as dataframe."""
+        """
+        Fetches static attributes of one or more stations for one or
+        more category as dataframe.
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_GB
+        >>> dataset = CAMELS_GB()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            671
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (671, 290)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('85004')
+        >>> static_data.shape
+           (1, 290)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['area', 'elev_mean'])
+        >>> static_data.shape
+           (671, 2)
+        """
 
         attributes = check_attributes(features, self.static_features)
         static_fname = 'static_features.csv'
@@ -1530,22 +1679,33 @@ class CAMELS_AUS(Camels):
 
     Examples
     --------
-        >>> dataset = CAMELS_AUS()
-        >>> df = dataset.fetch(stations=1, as_dataframe=True)
-        >>> df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-        ... # get name of all stations as list
-        >>> dataset.stations()
-        ... # get data by station id
-        >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
-        ... # get names of available dynamic features
-        >>> dataset.dynamic_features
-        ... # get only selected dynamic features
-        >>> dataset.fetch(1, as_dataframe=True,
-        ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
-        .. # get names of available static features
-        >>> dataset.static_features
-        ... # get data of 10 random stations
-        >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> from ai4water.datasets import CAMELS_AUS
+    >>> dataset = CAMELS_AUS()
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+       (21184, 26)
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       222
+    ... # get data by station id
+    >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+    >>> df.shape
+        (21184, 26)
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+    >>> data.shape
+       (21184, 4)
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape  # remember this is a multiindexed dataframe
+       (21184, 260)
 
     .. [1] https://doi.org/10.5194/essd-13-3847-2021
 
@@ -1718,17 +1878,43 @@ class CAMELS_AUS(Camels):
 
     def fetch_static_features(
             self,
-            stn_id,
-            features='all',
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]="all",
             **kwargs
     ) -> pd.DataFrame:
-        """Fetches static attribuets of one station as dataframe.
+        """Fetches static attribuets of one or more stations as dataframe.
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
 
         Examples
         ---------
         >>> from ai4water.datasets import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
-        >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            222
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (222, 110)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('305202')
+        >>> static_data.shape
+           (1, 110)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['catchment_di', 'elev_mean'])
+        >>> static_data.shape
+           (222, 2)
+
         """
 
         return self._read_static(stn_id, features)
@@ -1750,6 +1936,36 @@ class CAMELS_CL(Camels):
     """
     Downloads and processes CAMELS dataset of Chile following the work of
     Alvarez-Garreton_ et al., 2018 .
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import CAMELS_CL
+    >>> dataset = CAMELS_CL()
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+        (38374, 12)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    516
+    # get data by station id
+    >>> df = dataset.fetch(stations='11130001', as_dataframe=True).unstack()
+    >>> df.shape
+    (38374, 12)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pet_hargreaves', 'precip_tmpa', 'tmean_cr2met', 'streamflow_m3s']).unstack()
+    >>> df.shape
+    (38374, 4)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (460488, 10)
 
     .. _Alvarez-Garreton: https://doi.org/10.5194/hess-22-5817-2018
     """
@@ -1823,7 +2039,9 @@ class CAMELS_CL(Camels):
         return df.index.to_list()
 
     def stations(self) -> list:
-        """Tells all station ids for which a data of a specific attribute is available."""
+        """
+        Tells all station ids for which a data of a specific attribute is available.
+        """
         stn_fname = os.path.join(self.ds_dir, 'stations.json')
         if not os.path.exists(stn_fname):
             _stations = {}
@@ -1890,20 +2108,45 @@ class CAMELS_CL(Camels):
 
     def fetch_static_features(
             self,
-            stn_id,
-            features=None
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]=None
     ):
         """
-        Returns static features of a station.
+        Returns static features of one or more stations.
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
 
         Examples
-        --------
-            >>> from ai4water.datasets import CAMELS_CL
-            >>> camels = CAMELS_CL()
-            >>> camels.fetch_static_features('11315001')
-            >>> camels.static_features
-            >>> camels.fetch_static_features('2110002',
-            >>> features=['slope_mean', 'q_mean', 'elev_med', 'area'])
+        ---------
+        >>> from ai4water.datasets import CAMELS_CL
+        >>> dataset = CAMELS_CL()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            516
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (516, 104)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('11315001')
+        >>> static_data.shape
+           (1, 104)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'area'])
+        >>> static_data.shape
+           (516, 2)
+        >>> data = dataset.fetch_static_features('2110002', features=['slope_mean', 'area'])
+        >>> data.shape
+           (1, 2)
 
         """
         attributes = check_attributes(features, self.static_features)
@@ -1926,21 +2169,31 @@ class HYPE(Camels):
         >>> dataset = HYPE()
         ... # get data of 5% of stations
         >>> df = dataset.fetch(stations=0.05, as_dataframe=True)  # returns a multiindex dataframe
+        >>> df.shape
+          (115047, 28)
         ... # fetch data of 5 (randomly selected) stations
         >>> df = dataset.fetch(stations=5, as_dataframe=True)
-        # fetch data of 3 selected stations
+        >>> df.shape
+           (115047, 5)
+        fetch data of 3 selected stations
         >>> df = dataset.fetch(stations=['564','563','562'], as_dataframe=True)
+        >>> df.shape
+           (115047, 3)
         ... # fetch data of a single stations
         >>> df = dataset.fetch(stations='500', as_dataframe=True)
-        ...
+           (115047, 1)
         # get only selected dynamic features
         >>> df = dataset.fetch(stations='501',
         ...    dynamic_features=['AET_mm', 'Prec_mm',  'Streamflow_mm'], as_dataframe=True)
         # fetch data between selected periods
         >>> df = dataset.fetch(stations='225', st="20010101", en="20101231", as_dataframe=True)
+        >>> df.shape
+           (32868, 1)
         ... # get data at monthly time step
         >>> dataset = HYPE(time_step="month")
         >>> df = dataset.fetch(stations='500', as_dataframe=True)
+        >>> df.shape
+           (3780, 1)
 
     .. [1] https://zenodo.org/record/4029572
 
@@ -2060,6 +2313,7 @@ class WaterBenchIowa(Camels):
 
     Examples
     --------
+    >>> from ai4water.datasets import WaterBenchIowa
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
     >>> data = ds.fetch(5)
@@ -2106,6 +2360,14 @@ class WaterBenchIowa(Camels):
             **kwargs
     ) -> pd.DataFrame:
 
+        """
+
+        Examples
+        --------
+            >>> from ai4water.datasets import WaterBenchIowa
+            >>> dataset = WaterBenchIowa()
+            >>> data = dataset.fetch_station_attributes('666')
+        """
         check_attributes(dynamic_features, self.dynamic_features)
         fname = os.path.join(self.ts_path, f"{station}_data.csv")
         df = pd.read_csv(fname)
@@ -2115,13 +2377,58 @@ class WaterBenchIowa(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list],
-            features: Union[str, list] = None
+            stn_id: Union[str, List[str]],
+            features:Union[str, List[str]]=None
     )->pd.DataFrame:
+        """
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import WaterBenchIowa
+        >>> dataset = WaterBenchIowa()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            125
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (125, 7)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('592')
+        >>> static_data.shape
+           (1, 7)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
+        >>> static_data.shape
+           (125, 2)
+        >>> data = dataset.fetch_static_features('592', features=['slope', 'area'])
+        >>> data.shape
+           (1, 2)
+
+        """
+        if not isinstance(stn_id, list):
+            stn_id = [stn_id]
+
         features = check_attributes(features, self.static_features)
-        fname = os.path.join(self.ts_path, f"{stn_id}_data.csv")
-        df = pd.read_csv(fname, nrows=2)
-        return df.iloc[0, :][features]
+
+        dfs = []
+        for stn in stn_id:
+            fname = os.path.join(self.ts_path, f"{stn}_data.csv")
+            df = pd.read_csv(fname, nrows=1)
+            dfs.append(df[features])
+
+        return pd.concat(dfs)
 
     def _read_dynamic_from_csv(
             self,
