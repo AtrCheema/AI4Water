@@ -13,6 +13,10 @@ from ai4water.utils.utils import dateandtime_now
 from ai4water.backend import easy_mpl as ep
 
 from ._swat import SWAT, jday_to_date
+from ._global_vars import RCH_COL_MAP
+
+
+RCH_COL_MAP_ = {v:k for k,v in RCH_COL_MAP.items()}
 
 
 class SWATSingleReservoir(gym.Env):
@@ -33,8 +37,12 @@ class SWATSingleReservoir(gym.Env):
         used as ``state``.
     start_day : int
         julian day to start
-    state_names :
-        names of columns from output.rch file to be used as states
+    year : int
+        simulation year
+    state_names : str/list
+        names of columns/variables from output.rch file to be used as states.
+        If you want to consider meteorological parameters as state as well,
+        consider using ``add_met_data_to_state``.
 
     Examples
     --------
@@ -75,55 +83,41 @@ class SWATSingleReservoir(gym.Env):
         self.end_day = end_day
         self.weir_num = str(weir_location).rjust(3, '0')
 
-        if isinstance(state_names, str):
-            state_names = [state_names]
-        assert isinstance(state_names, list)
-        self.num_states = len(state_names)
-        self.state_names = state_names
-
-        ext_states = []
-        for var in ['pcp', 'temp', 'solar_rad', 'wind_speed', 'rel_hum']:
-            if var in state_names:
-                state_names.remove(var)
-                ext_states.append(var)
-        self.state_names_rch = state_names
-
-        src = os.path.join(backup_path, f"00{self.weir_num}0000.day")
-        dst = os.path.join(swat_path, f"00{self.weir_num}0000.day")
-        shutil.copy(src, dst)
-
-        src = os.path.join(backup_path, "file.cio")
-        dst = os.path.join(swat_path, "file.cio")
-        shutil.copy(src, dst)
-
-        src = os.path.join(backup_path, "output.rch")
-        dst = os.path.join(swat_path, "output.rch")
-        shutil.copy(src, dst)
-
-        src = os.path.join(backup_path, "output.wql")
-        dst = os.path.join(swat_path, "output.wql")
-        shutil.copy(src, dst)
+        self.state_names = self._process_states(state_names)
+        self.num_states = len(self.state_names)
+        self.state_names_rch = state_names.copy()
+        self.use_met_states = False
 
         # initialize the class which interacts with SWAT model
         self.swat = SWAT(swat_path)
-        self.swat.change_nbyr(1)
-        self.swat.change_iyr(self.year)
-        self.swat.change_start_day(start_day - self.lookback)
+        self.swat.change_num_sim_years(1)
+        self.swat.change_sim_start_yr(year)
+        self.swat.change_start_day(start_day - lookback)
         self.swat.change_end_day(start_day + delta)
-        self.swat.write_outflow(self.reservoir_id, np.full(10, 0.0))
+        self.swat.write_outflow(weir_location, np.full(10, 0.0))
+        self.swat.customize_sub_output(1)
 
-        self.reservoir_id = weir_location
+        if "WTMPdegc" in state_names:
+            cols = [RCH_COL_MAP_[col] for col in state_names]
+        else:
+            cols = 0
+        self.swat.customize_rch_output(cols)
+        self.swat.customize_hru_output(1)
+
+        self.weir_location = weir_location
         self.year = year
         self.downstream_rch_id =  self.swat.downstream_rch_to_rch(weir_location)
         self.delta = delta
         self.lookback = lookback
         self.start_date = jday_to_date(year, start_day)
+        self.end_date = jday_to_date(year, end_day)
 
         self.action_space = Box(low=0, high=1, shape=(1,), dtype=np.float32)
         self.observation_space = Box(low=-1, high=1, shape=(self.num_states,), dtype=np.float32)
 
         self.terminal = False
 
+        # state at the start
         if self.num_states==1:
             self.state_t0 = 0
         else:
@@ -158,8 +152,90 @@ class SWATSingleReservoir(gym.Env):
             os.makedirs(self.path)
         self.save_config()
 
-    def _process_states(self):
+    @staticmethod
+    def _process_states(state_names):
+        if isinstance(state_names, str):
+            state_names = [state_names]
+        assert isinstance(state_names, list)
+        return state_names.copy()
+
+    def _copy_backup_files(self):
+        """copies .day, .cio, .rch and .wql files from backup folder to
+        swath_path"""
+        src = os.path.join(self.backup_path, f"00{self.weir_num}0000.day")
+        dst = os.path.join(self.swat_path, f"00{self.weir_num}0000.day")
+        shutil.copy(src, dst)
+
+        src = os.path.join(self.backup_path, "file.cio")
+        dst = os.path.join(self.swat_path, "file.cio")
+        shutil.copy(src, dst)
+
+        src = os.path.join(self.backup_path, "output.rch")
+        dst = os.path.join(self.swat_path, "output.rch")
+        shutil.copy(src, dst)
+
+        src = os.path.join(self.backup_path, "output.wql")
+        dst = os.path.join(self.swat_path, "output.wql")
+        shutil.copy(src, dst)
         return
+
+    def add_met_data_to_state(
+            self,
+            parameters:Union[list, str]
+    )->None:
+        """add the meteorological parameters such as precipitation, humidity,
+        wind speed, air temperature for the state.
+        This method overwrites the following class variable.
+            ``observation_space``
+             ``state_t0``
+             ``num_states``
+             ``state_names``
+             ``use_met_states``
+
+        This method creates ``met_paras`` class variable
+
+        parameters
+        -----------
+        parameters :
+            Allowed values are
+                pcp
+                min_temp
+                max_temp
+                sol_rad
+                wind_speed
+                rel_hum
+
+        """
+        allowed =  ['pcp', 'min_temp', 'max_temp', 'sol_rad', 'wind_speed', 'rel_hum']
+
+        if not isinstance(parameters, list):
+            parameters = [parameters]
+        assert all([para in allowed for para in parameters])
+
+        self.num_states += len(parameters)
+        self.observation_space = Box(low=-1, high=1, shape=(self.num_states,), dtype=np.float32)
+        self.state_t0 = [0 for _ in range(self.num_states)]
+        self.state_names += parameters
+        self.use_met_states =True
+
+        self.met_paras = self.get_met_paras()[parameters]
+
+        return
+
+    def get_met_paras(self)->pd.DataFrame:
+        # todo we are using met data for sub-basins and considering it for reach
+        pcp = self.swat.precip_for_sub(self.downstream_rch_id).loc[self.start_date:self.end_date]
+        hum = self.swat.rel_hum_for_sub(self.downstream_rch_id).loc[self.start_date:self.end_date]
+        temp = self.swat.temp_for_sub(self.downstream_rch_id).loc[self.start_date:self.end_date]
+        wind = self.swat.wind_for_sub(self.downstream_rch_id).loc[self.start_date:self.end_date]
+        sol_rad = self.swat.sol_rad_for_sub(self.downstream_rch_id).loc[self.start_date:self.end_date]
+        df = pd.concat([pcp, hum, temp, wind, sol_rad], axis=1)
+        df.columns = ['pcp', 'rel_hum', 'max_temp', 'min_temp', 'wind_speed', 'sol_rad']
+        return df
+
+    def met_state_at_t(self, time)->list:
+        """returns meteorological parameters at given time as list"""
+        return self.met_paras.loc[time].values.tolist()
 
     @staticmethod
     def get_reward(chla):
@@ -172,6 +248,10 @@ class SWATSingleReservoir(gym.Env):
 
         # feed action to SWAT
         chla, state = self.run_swat(action, self.day)
+
+        # consider meteorological data as state
+        if self.use_met_states:
+            state += self.met_state_at_t(jday_to_date(self.year, self.day))
 
         # calculate reward
         self.reward = self.get_reward(chla)
@@ -243,7 +323,7 @@ class SWATSingleReservoir(gym.Env):
             self,
             outflow:float,
             day:int,
-            constituent="ALGAE_INppm"
+            constituent:str="ALGAE_INppm"
     )->Tuple[float, list]:
         """runs the SWAT model for a single step with the outflow
         # ALGAE_INppm, CHLA_INkg
@@ -252,8 +332,8 @@ class SWATSingleReservoir(gym.Env):
         """
 
         # write outflow in .day file
-        outflow_df = self.swat.get_weir_outflow(self.reservoir_id)
-        self.swat.write_outflow(self.reservoir_id, np.full(len(outflow_df), outflow))
+        outflow_df = self.swat.get_weir_outflow(self.weir_location)
+        self.swat.write_outflow(self.weir_location, np.full(len(outflow_df), outflow))
 
         # run swat
         self.swat.change_start_day(day - self.lookback)
@@ -261,8 +341,8 @@ class SWATSingleReservoir(gym.Env):
         self.swat(executable='swat_683_silent')
 
         # read new chl-a concentration
-        rch_out = self.swat.read_rch(self.downstream_rch_id, self.year)
-        wql_out = self.swat.read_wql_output(self.downstream_rch_id)
+        rch_out = self.swat.read_rch(self.downstream_rch_id, self.year)  # from output.rch file
+        wql_out = self.swat.read_wql_output(self.downstream_rch_id)  # from output.wql
 
         chla = wql_out.loc[:, constituent].mean()
         # convert from ppm to mg/m3

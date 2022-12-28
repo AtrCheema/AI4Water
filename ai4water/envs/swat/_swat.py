@@ -6,6 +6,9 @@ from typing import Union, List
 from ai4water.backend import np, pd, plt
 from ai4water.utils.utils import dateandtime_now
 
+from ._global_vars import DEF_WQL_COLUMNS, RES_COLUMNS, DEF_RCH_COLUMNS, \
+    RCH_OUT_CODES, HRU_OUT_CODES, SUB_OUT_CODES, RCH_COL_MAP
+
 
 class SWAT(object):
     """interface to swat model
@@ -26,6 +29,8 @@ class SWAT(object):
 
         self.path = path
         self.weir_codes = weir_codes
+
+        self._rch_cols = self._output_rch_cols()  # todo
 
     def get_wq_rch(self, wq_name, rch_id):
         """get wq data for weir"""
@@ -53,16 +58,7 @@ class SWAT(object):
 
         lines = [line.split() for line in lines]
 
-        columns = [
-            'junk', 'rch_id', 'day', 'WTEMP(C)',  'ALGAE_INppm', "ALGAE_Oppm",
-            "ORGN_INppm", "ORGN_OUTppm", "NH4_INppm",  "NH4_OUTppm",   "NO2_INppm",
-            "NO2_OUTppm", "NO3_INppm", "NO3_OUTppm",  "ORGP_INppm", "ORGP_OUTppm",
-            "SOLP_INppm", "SOLP_OUTppm",  "CBOD_INppm", "CBOD_OUTppm", "SAT_OXppm",
-            "DISOX_INppm",  "DISOX_Oppm", "H20VOLUMEm3", "TRVL_TIMEhr",
-        ]
-
-        pred = pd.DataFrame(lines[1:],
-                            columns=columns)
+        pred = pd.DataFrame(lines[1:], columns=DEF_WQL_COLUMNS)
 
         pred = pred[[
             "rch_id", "day", 'WTEMP(C)', 'ALGAE_INppm', "ALGAE_Oppm", "H20VOLUMEm3",
@@ -98,7 +94,15 @@ class SWAT(object):
         return pred
 
     def read_res(self, res_id, year, skip_rows=8):
+        """reads reservoir output file (output.rsv) and returns data
+        for a particular reservoir
 
+        parameters
+        -----------
+        res_id :
+        year :
+        skip_rows :
+        """
         fname = os.path.join(self.path, "output.rsv")
 
         with open(fname, 'r') as f:
@@ -106,22 +110,8 @@ class SWAT(object):
 
         lines = [line.split() for line in lines[skip_rows:]]
 
-        columns = [
-            'junk', 'RES', 'MON', 'VOLUMEm3', 'FLOW_INcms', 'FLOW_OUTcms', 'PRECIPm3',
-            'EVAPm3', 'SEEPAGEm3', 'SED_INtons', 'SED_OUTtons', 'SED_CONCppm', 'ORGN_INkg',
-            'ORGN_OUTkg', 'RES_ORGNppm', 'ORGP_INkg', 'ORGP_OUTkg', 'RES_ORGPppm', 'NO3_INkg',
-            'NO3_OUTkg', 'RES_NO3ppm', 'NO2_INkg', 'NO2_OUTkg', 'RES_NO2ppm', 'NH3_INkg',
-            'NH3_OUTkg', 'RES_NH3ppm', 'MINP_INkg', 'MINP_OUTkg', 'RES_MINPppm', 'CHLA_INkg',
-            'CHLA_OUTkg', 'SECCHIDEPTHm',
-            'PEST_INmg',
-            'REACTPSTmg',
-            'VOLPSTmg',
-            'SETTLPSTmg', 'RESUSP_PSTmg', 'DIFFUSEPSTmg', 'REACBEDPSTmg',
-            'BURYPSTmg',
-            'PEST_OUTmg', 'PSTCNCWmg/m3', 'PSTCNCBmg/m3', 'year']
-
         res_df = pd.DataFrame(lines[1:],
-                              columns=columns)
+                              columns=RES_COLUMNS)
         res_df = res_df.iloc[:, 1:]
         res_df = res_df.astype(np.float32)
         res_df['RES'] = res_df['RES'].astype(np.int32)
@@ -136,11 +126,15 @@ class SWAT(object):
 
         return res_yr
 
-    def read_rch(self,
-                 rch_id:Union[int, list],
-                 year=None,
-                 skip_rows=8)->pd.DataFrame:
-
+    def read_rch(
+            self,
+            rch_id:Union[int, list],
+            year=None,
+            skip_rows=8
+    )->pd.DataFrame:
+        """
+        reads output.rch file and returns data for a particular reach
+        """
         fname = os.path.join(self.path, "output.rch")
 
         with open(fname, 'r') as f:
@@ -148,23 +142,10 @@ class SWAT(object):
 
         lines = [line.split() for line in lines[skip_rows:]]
 
-        columns = [
-            'RCH', 'GIS',
-            'MON', 'AREAkm2', 'FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'TLOSScms',
-            'SED_INtons', 'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg',
-            'ORGN_OUTkg', 'ORGP_INkg', 'ORGP_OUTkg', 'NO3_INkg', 'NO3_OUTkg',
-            'NH4_INkg', 'NH4_OUTkg', 'NO2_INkg', 'NO2_OUTkg', 'MINP_INkg', 'MINP_OUTkg',
-            'CHLA_INkg', 'CHLA_OUTkg', 'CBOD_INkg', 'CBOD_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg',
-            'SOLPST_INmg', 'SOLPST_OUTmg', 'SORPST_INmg', 'SORPST_OUTmg',
-            'REACTPSTmg', 'VOLPSTmg', 'SETTLPSTmg', 'RESUSP_PSTmg', 'DIFFUSEPSTmg', 'REACBEDPSTmg',
-            'BURYPSTmg', 'BED_PSTmg', 'BACTP_OUTct', 'BACTLP_OUTct', 'CMETAL#1kg', 'CMETAL#2kg',
-            'CMETAL#3kg', 'TOT_Nkg', 'TOT_Pkg', 'NO3ConcMg/l', 'WTMPdegc'
-        ]
-
         rch_df = pd.DataFrame(lines[1:])
         rch_df = rch_df.iloc[:, 1:]
 
-        rch_df.columns = columns
+        rch_df.columns = self._rch_cols
 
         rch_df = rch_df.astype(np.float32)
         rch_df['RCH'] = rch_df['RCH'].astype(np.int32)
@@ -247,7 +228,10 @@ class SWAT(object):
         assert os.path.exists(fpath), f"{fname} not found at {self.path}"
         return fpath
 
-    def tmp_files(self)->List[str]:
+    def temp_files(self)->List[str]:
+        """
+        returns names of temperature files i.e. those that have .tmp extension
+        """
         fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -260,8 +244,8 @@ class SWAT(object):
         assert len(files) == self.num_pcp_files()
         return files
 
-    def _tmp_fpath(self):
-        fname = self.tmp_files()
+    def _temp_fpath(self):
+        fname = self.temp_files()
         assert len(fname)==1
         fname = fname[0]
         return os.path.join(self.path, fname)
@@ -318,7 +302,8 @@ class SWAT(object):
         data = []
         with open(fpath, 'r') as f:
             for idx, line in enumerate(f):
-                if idx>nrows_skip:
+                # >= because python indexing starts from 0
+                if idx>=nrows_skip:
                     data_ = line[7:]
                     data.append([data_[i:i+width] for i in range(0, len(data_), width)])
                     date.append(jday_to_date(int(line[0:4]), int(line[4:7])))
@@ -328,17 +313,17 @@ class SWAT(object):
         data.index = pd.to_datetime(date)
         return data
 
-    def read_tmp(self)->pd.DataFrame:
+    def read_temp(self)->pd.DataFrame:
         """reads a temperature .tmp file """
-        tmp = self.read_ts_file(self._tmp_fpath(), 5, 3)
+        temp = self.read_ts_file(self._temp_fpath(), 5, 4)
 
-        assert tmp.shape[1] == int(self._read_cio_para('NTTOT'))*2, f"{tmp.shape} {self._read_cio_para('NTTOT')}"
+        assert temp.shape[1] == int(self._read_cio_para('NTTOT'))*2, f"{temp.shape} {self._read_cio_para('NTTOT')}"
 
-        return tmp
+        return temp
 
     def read_pcp(self)->pd.DataFrame:
         """reads a precipitation file .pcp"""
-        pcp = self.read_ts_file(self._pcp_fpath(), 5, 3)
+        pcp = self.read_ts_file(self._pcp_fpath(), 5, 4)
 
         assert pcp.shape[1] == int(self._read_cio_para('NRGFIL'))
 
@@ -433,12 +418,21 @@ class SWAT(object):
 
         return
 
-    def write_outflow(self, rich_id, outflow):
-
-        day = str(rich_id).rjust(3, '0')
+    def write_outflow(
+            self,
+            rch_id:Union[int, str],
+            outflow:np.ndarray
+    ):
+        """writes the daily outflow from a rch/weir/reservoir
+        parameters
+        ----------
+        rch_id : int/str
+        outflow :
+        """
+        day = str(rch_id).rjust(3, '0')
         fname = f'{self.path}\\00{day}0000.day'
 
-        header = f"Daily Reservoir Outflow file: .day file Subbasin:{rich_id}  created {dateandtime_now()} \n"
+        header = f"Daily Reservoir Outflow file: .day file Subbasin:{rch_id}  created {dateandtime_now()} \n"
 
         with open(fname, 'w') as f:
             f.write(header)
@@ -447,6 +441,13 @@ class SWAT(object):
         return
 
     def change_start_day(self, day:int):
+        """change simulation start day i.e. IDAF variabel in file.cio
+        parameters
+        ----------
+        day : int
+            julian day to start the simulation
+        """
+
         fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -464,6 +465,7 @@ class SWAT(object):
         return
 
     def change_end_day(self, day:int):
+        """changes the simulation end day (IDAL) in file.cio"""
         fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -479,7 +481,8 @@ class SWAT(object):
             f.writelines(new_lines)
         return
 
-    def change_nbyr(self, years):
+    def change_num_sim_years(self, years:int):
+        """changes the number of years to simulate (NBYR) in file.cio"""
         fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -495,7 +498,9 @@ class SWAT(object):
             f.writelines(new_lines)
         return
 
-    def change_iyr(self, year):
+    def change_sim_start_yr(self, year):
+        """changes simulation start year i.e. IYR variable in file.cio"""
+
         fname = os.path.join(self.path, "file.cio")
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -555,10 +560,11 @@ class SWAT(object):
     )->pd.DataFrame:
         """returns maximum and minimum temperature data for a sub-basin"""
         gage_id = self.temp_gage_for_sub(basin_id)
-        temp = self.read_tmp()
-        # +1 because python uses 0 based indexing and gage_ids start from 1
-        # +2 because 3 means upto 3rd excluding 3rd
-        return temp.iloc[:, gage_id+1: gage_id+3]
+        temp = self.read_temp()
+        # there are two columns for each gage one for min and one for max
+        # both columns for a gage are located side by side
+        st, en = gage_id*2 - 2, gage_id*2 - 1
+        return temp.iloc[:, st: en+1]
 
     def wind_for_sub(
             self,
@@ -651,6 +657,16 @@ class SWAT(object):
 
         return rch_nums
 
+    def reservoirs(self)->List[int]:
+        """returns reservoir ids (RES_NUM) being modeled."""
+        res_nums = []
+        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+            for idx, line in enumerate(fp):
+                if line.startswith('routres'):
+                    _, res_command, hyd_stor, res_num, *_ = line.split()
+                    res_nums.append(int(res_num))
+        return res_nums
+
     def downstream_rch_to_rch(self, upstream_rch_num:int)->int:
         """returns the downstream reach to a reach"""
         reaches = self.reaches()
@@ -670,6 +686,164 @@ class SWAT(object):
         val = [reaches[idx - 1] for idx, val in enumerate(reaches) if val == downstream_rch_num]
         assert len(val) == 1
         return val[0]
+
+    def customize_rch_output(
+            self,
+            parameters:Union[str, int, List[str], List[int]]):
+        """
+        define IPDVAR i.e., parameters which are to printed/written in
+        output.rch file
+
+        Examples
+        ---------
+        >>> swat = SWAT('/path/to/swat/files')
+        >>> swat.customize_rch_output(0)
+        will write following
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_rch_output(1)
+        will write following
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_rch_output([1, 2, 3])
+        will write following
+        1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_rch_output("FLOW_IN")
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_rch_output(["FLOW_IN", "FLOW_OUT", "EVAP"])
+        will write following
+        1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+        """
+        self._custom_out_files(parameters, RCH_OUT_CODES, 64)
+        # the column names must be redefined
+        self._rch_cols = self._output_rch_cols()
+        return
+
+    def customize_sub_output(
+            self,
+            parameters:Union[str, int, List[str], List[int]]):
+        """
+        define IPDVAB i.e., parameters which are to printed/written in
+        output.sub file
+
+        Examples
+        --------
+        >>> swat = SWAT('/path/to/swat/files')
+        >>> swat.customize_sub_output(0)
+        will write following
+        0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+        >>> swat.customize_sub_output(1)
+        will write following
+        1   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+        >>> swat.customize_sub_output([1, 2, 3])
+        will write following
+        1   2   3   0   0   0   0   0   0   0   0   0   0   0   0
+        >>> swat.customize_sub_output("PRECIP")
+        will write following
+        1   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+        >>> swat.customize_sub_output(["PRECIP", "SNOMELT", "PET"])
+        will write following
+        1   2   3   0   0   0   0   0   0   0   0   0   0   0   0
+        """
+        self._custom_out_files(parameters, SUB_OUT_CODES, 66, max_paras=15)
+        return
+
+    def customize_hru_output(
+            self,
+            parameters
+    ):
+        """
+        define IPDVAS i.e. parameters which are to printed/written in output.sub
+        file
+
+        Examples
+        --------
+        >>> swat = SWAT('/path/to/swat/files')
+        >>> swat.customize_hru_output(0)
+        will write following
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_hru_output(1)
+        will write following
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_hru_output([1, 2, 3])
+        will write following
+        1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_hru_output("PRECIP")
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        >>> swat.customize_hru_output(["PRECIP", "SNOFALL", "SNOMELT"])
+        will write following
+        1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        """
+        self._custom_out_files(parameters, HRU_OUT_CODES, 68)
+        return
+
+    def _custom_out_files(self, parameters, CODES,
+                          line_num:int,
+                          max_paras:int=20):
+
+        parameters = verify_paras(parameters, CODES, max_paras)
+
+        fname = os.path.join(self.path, "file.cio")
+        with open(fname, 'r') as fp:
+            lines = fp.readlines()
+
+        lines[line_num] = '   ' + '   '.join(str(val) for val in parameters) + '\n'
+
+        with open(fname, 'w') as f:
+           f.writelines(lines)
+        return
+
+    def _output_rch_cols(self):
+        """returns column names for output.rch file"""
+        fname = os.path.join(self.path, "file.cio")
+        with open(fname, 'r') as fp:
+            lines = fp.readlines()
+
+        idpvar = [int(val) for val in lines[64].split()]
+        if sum(idpvar)==0:
+            cols = DEF_RCH_COLUMNS
+        else:
+            idpvar = [RCH_COL_MAP[col] for col in idpvar]
+            cols = ['RCH', 'GIS', 'MON', 'AREAkm2'] + idpvar
+
+        return cols
+
+    def _output_wql_cols(self):
+        """returns column names for output.wql file"""
+        return
+
+
+def verify_paras(
+        parameters:Union[int, str, List[str], List[int]],
+        CODE:dict,
+        max_paras:int = 20
+)->list:
+
+    if isinstance(parameters, list):
+
+        assert len(parameters)<=max_paras
+
+        if isinstance(parameters[0], str):
+            assert all([isinstance(para, str) for para in parameters])
+            assert all([para in CODE.values() for para in parameters])
+            _CODE = {v:k for k,v in CODE.items()}
+            parameters = [_CODE[para] for para in parameters]
+
+        elif isinstance(parameters[0], int):
+            assert all([isinstance(para, int) for para in parameters])
+            assert all([para in CODE.keys() for para in parameters])
+
+    elif isinstance(parameters, int):
+        parameters = [parameters]
+
+    elif isinstance(parameters, str):
+        assert parameters in CODE.values()
+        _CODE = {v: k for k, v in CODE.items()}
+        parameters = [_CODE[parameters]]
+
+    zeros = [0 for _ in range(max_paras - len(parameters))]
+    parameters += zeros
+
+    return parameters
 
 
 def jday_to_monthday(jday:int, year=2000):
