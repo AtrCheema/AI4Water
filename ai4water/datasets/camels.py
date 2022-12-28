@@ -2059,6 +2059,7 @@ class WaterBenchIowa(Camels):
     `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
 
     Examples
+    --------
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
     >>> data = ds.fetch(5)

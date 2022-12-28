@@ -1,7 +1,7 @@
 .. _nn_funcs:
 
 functional interface for neural network architectures
-****************************************************
+******************************************************
 
 Following are functions which provide an easy and fast interface
 to build neural networks. These functions return configuration of
