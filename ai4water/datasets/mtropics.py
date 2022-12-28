@@ -83,12 +83,16 @@ class MtropicsLaos(Datasets):
     weather_station_data = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
     inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
 
-    def __init__(self, path=None, **kwargs):
+    def __init__(self,
+                 path=None,
+                 save_as_nc:bool = True,
+                 **kwargs):
 
         if xr is None:
             raise ModuleNotFoundError("xarray must be installed to use datasets sub-module")
 
         super().__init__(path=path, **kwargs)
+        self.save_as_nc = save_as_nc
         self.ds_dir = path
         self._download()
 
@@ -323,7 +327,7 @@ class MtropicsLaos(Datasets):
         """
         # todo, does nan means 0 rainfall?
         fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
-        if not os.path.exists(fname):
+        if not os.path.exists(fname) or not self.save_as_nc:
             df = self._load_rain_gauge_from_xl_files()
 
         else:  # feather file already exists so load from it
@@ -350,7 +354,8 @@ class MtropicsLaos(Datasets):
             df[col] = pd.to_numeric(df[col])
 
         df = df.reset_index(drop=True)  # index is of type Int64Index
-        df.to_xarray().to_netcdf(fname)
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(fname)
         return df
 
     def fetch_weather_station_data(
@@ -380,7 +385,7 @@ class MtropicsLaos(Datasets):
         """
 
         nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
-        if not os.path.exists(nc_fname):
+        if not os.path.exists(nc_fname) or not self.save_as_nc:
             df = self._load_weather_stn_from_xl_files()
         else:  # feather file already exists so load from it
             try:
@@ -436,7 +441,9 @@ class MtropicsLaos(Datasets):
             df[col] = pd.to_numeric(df[col])
 
         df = df.reset_index()  # index is of type Int64Index
-        df.to_xarray().to_netcdf(nc_fname)
+
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(nc_fname)
         return df
 
     def fetch_pcp(self,
@@ -468,7 +475,7 @@ class MtropicsLaos(Datasets):
 
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         # feather file does not exist
-        if not os.path.exists(fname):
+        if not os.path.exists(fname) or not self.save_as_nc:
             df = self._load_pcp_from_excel_files()
         else:  # nc file already exists so load from it
             try:
@@ -491,7 +498,8 @@ class MtropicsLaos(Datasets):
             df = pd.concat([df, _df])
 
         df = df.reset_index(drop=True)
-        df.to_xarray().to_netcdf(fname)
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(fname)
         return df
 
     def fetch_hydro(
@@ -516,7 +524,7 @@ class MtropicsLaos(Datasets):
         """
         wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
         spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
-        if not os.path.exists(wl_fname):
+        if not os.path.exists(wl_fname) or not self.save_as_nc:
             wl, spm = self._load_hydro_from_xl_files()
         else:
             try:
@@ -582,10 +590,12 @@ class MtropicsLaos(Datasets):
 
         wl.columns = ['water_level']
         # wl = wl.reset_index()
-        wl.to_xarray().to_netcdf(wl_fname)
         spm.columns = ['susp_pm']
         # spm = spm.reset_index()
-        spm.to_xarray().to_netcdf(spm_fname)
+
+        if self.save_as_nc:
+            wl.to_xarray().to_netcdf(wl_fname)
+            spm.to_xarray().to_netcdf(spm_fname)
         return wl, spm
 
     def make_classification(

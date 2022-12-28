@@ -7,9 +7,7 @@ from types import MethodType
 from pickle import PicklingError
 from typing import Union, Callable, Tuple, List
 
-import joblib  # since sklearn is required, this will automatically come in
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
-
 
 from .nn_tools import NN
 
@@ -1101,6 +1099,8 @@ class BaseModel(NN):
 
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
+        import joblib  # some modules don't have joblibe in their requires
+
         fname = os.path.join(self.w_path, self.model_name)
 
         if "tpot" not in self.model_name:
@@ -2469,6 +2469,7 @@ class BaseModel(NN):
                              f"and model path is {self.path}")
 
         if self.category == "ML":
+            import joblib # some modules don't have joblib in their requires
             self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.

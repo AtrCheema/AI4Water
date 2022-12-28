@@ -27,8 +27,6 @@ except ModuleNotFoundError:
     trees = None
 
 
-plot_tree = sklearn.tree.plot_tree
-
 RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
                      'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
                      'n_gates': 4,
@@ -702,6 +700,8 @@ class Visualize(Plots):
 
     def decision_tree(self, show=False, **kwargs):
         """Plots the decision tree"""
+
+        plot_tree = sklearn.tree.plot_tree
 
         fname = os.path.join(self.path, "decision_tree")
         if self.model.category == "ML":

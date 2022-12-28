@@ -16,14 +16,6 @@ from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.visualizations import murphy_diagram, fdc_plot, edf_plot
 
 
-try:
-    plot_roc_curve = sklearn.metrics.RocCurveDisplay.from_estimator
-    plot_precision_recall_curve = sklearn.metrics.PrecisionRecallDisplay.from_estimator
-except AttributeError:
-    plot_roc_curve = sklearn.metrics.plot_roc_curve
-    plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
-
-
 # competitive skill score plot/ bootstrap skill score plot as in MLAir
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
@@ -739,6 +731,23 @@ class ProcessPredictions(Plot):
         return true, predicted
 
 
+def plot_roc_curve(*args, **kwargs):
+    try:
+        func = sklearn.metrics.RocCurveDisplay.from_estimator
+    except AttributeError:
+        func = sklearn.metrics.plot_roc_curve
+
+    return func(*args, **kwargs)
+
+
+def plot_precision_recall_curve(*args, **kwargs):
+    try:
+        func = sklearn.metrics.PrecisionRecallDisplay.from_estimator
+    except AttributeError:
+        func = sklearn.metrics.plot_precision_recall_curve
+    return func(*args, **kwargs)
+
+
 def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
     """Adds a scatter plot on wandb."""
     data = [[x, y] for (x, y) in zip(true.reshape(-1, ), predicted.reshape(-1, ))]
@@ -748,3 +757,4 @@ def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
                                            title=name)
     })
     return
+

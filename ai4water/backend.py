@@ -22,7 +22,6 @@ from types import FunctionType
 import os
 import random
 
-import sklearn
 import easy_mpl
 import scipy
 from scipy import stats
@@ -31,6 +30,11 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+try:
+    import sklearn
+except (ModuleNotFoundError, ImportError):
+    sklearn = None
 
 
 def get_attributes(
