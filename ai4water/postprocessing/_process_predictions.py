@@ -290,12 +290,13 @@ class ProcessPredictions(Plot):
         ep.plot(x, y, 'o', show=False,
                 ax=axis[1],
                 color="darksalmon",
-                xlabel="Predicted",
-                ylabel="Residual",
                 markerfacecolor=np.array([225, 121, 144]) / 256.0,
                 markeredgecolor="black", markeredgewidth=0.5,
-                xlabel_kws={"fontsize": 14},
-                ylabel_kws={"fontsize": 14},
+                ax_kws=dict(
+                    xlabel="Predicted",
+                    ylabel="Residual",
+                    xlabel_kws={"fontsize": 14},
+                    ylabel_kws={"fontsize": 14}),
                 )
 
         # draw horizontal line on y=0
@@ -335,7 +336,7 @@ class ProcessPredictions(Plot):
 
         ep.regplot(true,
                    predicted,
-                   title="Regression Plot",
+                   ax_kws=dict(title="Regression Plot"),
                    annotation_key=annotation_key,
                    annotation_val=annotation_val,
                    show=False
@@ -505,8 +506,8 @@ class ProcessPredictions(Plot):
             'cmap': cmap,
             'xticklabels': self.classes_,
             'yticklabels': self.classes_,
-            'xlabel': "Predicted Label",
-            'ylabel': "True Label",
+            'ax_kws': {'xlabel': "Predicted Label",
+            'ylabel': "True Label"},
             'show': False,
             'annotate_kws': {'fontsize': 14, "fmt": '%.f', 'ha':"left"}
         }

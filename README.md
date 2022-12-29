@@ -188,7 +188,8 @@ model = Model(
 )
 model.optimize_hyperparameters(data=data,
                                algorithm="bayes",  # choose between 'random', 'grid' or 'atpe' 
-                               num_iterations=30
+                               num_iterations=30,
+                               refit=False,
                                )
 ```
 

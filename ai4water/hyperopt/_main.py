@@ -1082,8 +1082,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         plt.close('all')
         if original:
             ax = easy_mpl.plot(self.func_vals(), '--.',
-                 xlabel="Number of calls $n$",
-                 ylabel=r"$\min f(x)$ after $n$ calls",
+                 ax_kws=dict(xlabel="Number of calls $n$",
+                 ylabel=r"$\min f(x)$ after $n$ calls"),
                                show=False,
                                **kwargs)
         else:

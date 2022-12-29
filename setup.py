@@ -17,7 +17,7 @@ min_requirements = [
     'pandas',
     'matplotlib',
 
-    'easy_mpl>=0.20.5',
+    'easy_mpl>=0.21.1',
     'SeqMetrics>=1.3.3',
     ]
 
@@ -54,28 +54,28 @@ extra_requires = [
     'requests',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow==1.15', 'pandas',
-               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.21.1', 'tensorflow==1.15', 'pandas',
+               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3', 'AttentionLSTM']
 
-tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.5', 'tensorflow==2.7', 'pandas',
-               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
+tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.21.1', 'tensorflow==2.7', 'pandas',
+               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3', 'AttentionLSTM']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.21.1', 'tensorflow', 'pandas',
                    'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
-                   'SeqMetrics>=1.3.3']
+                   'SeqMetrics>=1.3.3', 'AttentionLSTM']
 
-torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
+torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.21.1',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
 
-torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
+torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.21.1',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                       'SeqMetrics>=1.3.3']
 
 ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.2']
+               'lightgbm', 'easy_mpl>=0.21.1', 'SeqMetrics>=1.3.2']
 
 ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.4', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
+               'lightgbm', 'easy_mpl>=0.21.1', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                    'SeqMetrics>=1.3.3']
 
 hpo_requirements = ['optuna<=2.10.1', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
@@ -89,7 +89,7 @@ exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', 'SeqMetrics>=1.3.3']
 
-eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.3']
+eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.21.1', 'SeqMetrics>=1.3.3']
 
 all_requirements = min_requirements + extra_requires
 
@@ -149,6 +149,7 @@ setup(
               'ai4water/et',
               'ai4water/experiments',
               'ai4water/eda'
+              'ai4water/envs'
               ],
 
     install_requires=min_requirements,

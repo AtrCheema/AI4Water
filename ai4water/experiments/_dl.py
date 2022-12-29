@@ -296,8 +296,9 @@ class DLClassificationExperiments(DLRegressionExperiments):
     """
     def __init__(
             self,
-            exp_name=f"DLClassificationExperiments{dateandtime_now()}",
-            *args, **kwargs):
+            exp_name=f"DLClassificationExperiments_{dateandtime_now()}",
+            *args,
+            **kwargs):
 
         super(DLClassificationExperiments, self).__init__(
             exp_name=exp_name,

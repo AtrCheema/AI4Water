@@ -849,7 +849,7 @@ def features_2D(data,
         ax, im = ep.imshow(data[idx],
                           ax=ax,
                           cmap=cmap, vmin=vmin, vmax=vmax,
-                          title=title[idx],
+                          ax_kws=dict(title=title[idx]),
                           show=False)
 
     if sup_xlabel:

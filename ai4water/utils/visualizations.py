@@ -370,9 +370,9 @@ def edf_plot(
         y_values,
         marker,
         show=False,
-        title="Empirical Distribution Function Plot",
+        ax_kws=dict(title="Empirical Distribution Function Plot",
         ylabel="Cumulative Probability",
-        xlabel=xlabel,
+        xlabel=xlabel),
         ax=ax,
         **kwargs
     )

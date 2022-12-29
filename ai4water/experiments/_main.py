@@ -1185,18 +1185,21 @@ Available cases are {self.models} and you wanted to include
                 loss_curves[_model] = df.values
                 end = end or len(df)
 
-        _kwargs = {'linestyle': '-',
+        _kws = {'linestyle': '-'}
+        if kwargs is not None:
+            _kws.update(kwargs)
+        ax_kws = {
                    'xlabel': "Epochs",
                    'ylabel': 'Loss'}
 
         if len(loss_curves) > 5:
-            _kwargs['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
+            ax_kws['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
 
         _, axis = plt.subplots(figsize=figsize)
 
         for _model, _loss in loss_curves.items():
             label = shred_model_name(_model)
-            plot(_loss[start:end], ax=axis, label=label, show=False, **_kwargs, **kwargs)
+            plot(_loss[start:end], ax=axis, label=label, show=False, **ax_kws, **_kws)
 
         if self.save:
             fname = os.path.join(self.exp_path, f'loss_comparison_{loss_name}.png')
@@ -1252,15 +1255,22 @@ Available cases are {self.models} and you wanted to include
             convergence = sort_array(list(iterations.keys()))
 
             label = shred_model_name(_model)
+
+            _kws = dict(
+                linestyle='--',
+                ax_kws = dict(xlabel='Number of iterations $n$',
+                              ylabel=r"$\min f(x)$ after $n$ calls",
+                              label=label)
+            )
+
+            if kwargs is not None:
+                _kws.update(kwargs)
+
             plot(
                 convergence,
                 ax=axis,
-                label=label,
-                linestyle='--',
-                xlabel='Number of iterations $n$',
-                ylabel=r"$\min f(x)$ after $n$ calls",
                 show=False,
-                **kwargs
+                **_kws
             )
         if self.save:
             fname = os.path.join(self.exp_path, f'{name}.png')

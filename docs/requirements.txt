@@ -15,6 +15,6 @@ plotly
 tensorflow==2.7
 protobuf==3.19.1
 seaborn
-easy_mpl
+easy_mpl>=0.21.1
 SeqMetrics
 sphinx-gallery

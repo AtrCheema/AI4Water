@@ -29,3 +29,8 @@ Quadica
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+RC4USCoast
+===========
+.. autoclass:: ai4water.datasets.RC4USCoast

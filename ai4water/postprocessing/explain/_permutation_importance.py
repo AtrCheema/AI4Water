@@ -256,10 +256,12 @@ class PermutationImportance(ExplainerMixin):
             ax=axis,
             yticklabels=ytick_labels,
             xticklabels=self.features if len(self.features) <= 14 else None,
-            ylabel="Lookack steps",
-            xlabel="Input Features",
+            ax_kws=dict(ylabel="Lookack steps",
+                xlabel="Input Features",
+                title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
+                        ),
             annotate=annotate,
-            title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
+
             show=False,
             **kwargs
         )

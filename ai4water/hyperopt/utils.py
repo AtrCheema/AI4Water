@@ -372,9 +372,9 @@ def convergence(func_vals, color=None,
     return plot(data,
          color=color,
          marker=".", markersize=12, lw=2,
-         title="Convergence plot",
+         ax_kws=dict(title="Convergence plot",
          xlabel="Number of calls $n$",
-         ylabel=r"$\min f(x)$ after $n$ calls",
+         ylabel=r"$\min f(x)$ after $n$ calls"),
          show=False,
          ax=ax)
 
@@ -958,11 +958,11 @@ def plot_convergence(func_vals, show=False, ax=None, **kwargs):
         "markersize": 12,
         "lw": 2,
         "show":show,
-        "title": 'Convergence plot',
+        "ax_kws": {"title": 'Convergence plot',
         "xlabel": 'Number of calls $n$',
         "ylabel": '$\min f(x)$ after $n$ calls',
+        'grid': True},
         'ax': ax,
-        'grid': True
     }
 
     _kwargs.update(kwargs)

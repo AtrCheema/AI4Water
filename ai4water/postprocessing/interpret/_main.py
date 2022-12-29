@@ -338,7 +338,7 @@ class Interpret(Plot):
         axis, im = ep.imshow(enc_var_selection_weights[example_index],
                           aspect="auto",
                           ylabel="lookback steps",
-                          title=example_index,
+                          ax_kws=dict(title=example_index),
                           show=False
                           )
 
