@@ -921,7 +921,7 @@ class RRLuleaSweden(Datasets):
         return check_st_en(df, st, en)
 
 
-class RRAlpileCatchments(Datasets):
+class RRAlpineCatchments(Datasets):
     """
     Modelled runoff in contrasting Alpine catchments in Austria from 1981 to 2100
     using 14 models follwoing the work of Hanus et al., 2021 [12]_ .
@@ -959,9 +959,9 @@ def mg_photodegradation(
 )->Tuple[Union[pd.DataFrame, Any], Union[Optional[LabelEncoder], Any], Optional[LabelEncoder]]:
     """
     This data is about photocatalytic degradation of melachite green dye using
-    nobel metal dobe BiFeO3. For further description of this data see [1]_ and
-    the use of this data for removal efficiency prediction see [2]_ . This dataset
-    consists of 1200 points collected during around 135 samples.
+    nobel metal dobe BiFeO3. For further description of this data see `see <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
+    the use of this data for removal efficiency prediction `see <https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction>`_ .
+    This dataset consists of 1200 points collected during around 135 samples.
 
     Parameters
     ----------
@@ -1022,8 +1022,6 @@ def mg_photodegradation(
     ... # if we want to use 2nd order k as target
     >>> mg_data_k2, _, _ = mg_photodegradation(target="k_2nd")
 
-    .. _[1]: https://doi.org/10.1016/j.jhazmat.2022.130031
-    .. _[2]: https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction
     """
 
     df = pd.read_csv(

@@ -47,7 +47,7 @@ from .mtropics import ecoli_houay_pano
 from .mtropics import ecoli_mekong_2016
 from .mtropics import ecoli_mekong
 from ._quadica import Quadica
-from ._datasets import RRAlpileCatchments
+from ._datasets import RRAlpineCatchments
 from ._datasets import RRLuleaSweden
 from ._datasets import mg_photodegradation
 from ._grqa import GRQA

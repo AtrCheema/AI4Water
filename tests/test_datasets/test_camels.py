@@ -323,9 +323,37 @@ class TestCamels(unittest.TestCase):
 
     def test_waterbenchiowa(self):
 
-        ds = WaterBenchIowa(path=r'F:\data\CAMELS\WaterBenchIowa')
-        data = ds.fetch_dynamic_features('644')
+        dataset = WaterBenchIowa(path=r'F:\data\CAMELS\WaterBenchIowa')
+
+        data = dataset.fetch(static_features=None)
+        assert len(data) == 125
+        for k, v in data.items():
+            assert v.shape == (61344, 3)
+
+        data = dataset.fetch(5, as_dataframe=True)
+        assert data.shape == (184032, 5)
+
+        data = dataset.fetch(5, static_features="all", as_dataframe=True)
+        assert data['static'].shape == (5, 7)
+        data = dataset.fetch_dynamic_features('644', as_dataframe=True)
+        assert data.unstack().shape == (61344, 3)
+
+        stns = dataset.stations()
+        assert len(stns) == 125
+
+        static_data = dataset.fetch_static_features(stns)
+        assert static_data.shape == (125, 7)
+
+        static_data = dataset.fetch_static_features('592')
+        assert static_data.shape == (1, 7)
+
+        static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
+        assert static_data.shape == (125, 2)
+
+        data = dataset.fetch_static_features('592', features=['slope', 'area'])
+        assert data.shape == (1,2)
         return
+
 
 if __name__=="__main__":
     unittest.main()

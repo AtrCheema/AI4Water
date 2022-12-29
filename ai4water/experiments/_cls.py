@@ -55,14 +55,6 @@ class MLClassificationExperiments(Experiments):
 
         self.spaces = classification_space(num_samples=num_samples,)
 
-        if catboost is None:
-            self.models.remove('model_CatBoostClassifier')
-        if lightgbm is None:
-            self.models.remove('model_LGBMClassifier')
-        if xgboost is None:
-            self.models.remove('model_XGBRFClassifier')
-            self.models.remove('model_XGBClassifier')
-
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
 
@@ -73,6 +65,14 @@ class MLClassificationExperiments(Experiments):
             monitor=monitor,
             **model_kws
         )
+
+        if catboost is None:
+            self.models.remove('model_CatBoostClassifier')
+        if lightgbm is None:
+            self.models.remove('model_LGBMClassifier')
+        if xgboost is None:
+            self.models.remove('model_XGBRFClassifier')
+            self.models.remove('model_XGBClassifier')
 
     @property
     def tpot_estimator(self):

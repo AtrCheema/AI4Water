@@ -666,7 +666,7 @@ class LamaH(Camels):
 class HYSETS(Camels):
     """
     database for hydrometeorological modeling of 14,425 North American watersheds
-    from 1950-2018 following the work of Arsenault_ et al., 2020
+    from 1950-2018 following the work of `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
     The user must manually download the files, unpack them and provide
     the `path` where these files are saved.
 
@@ -728,11 +728,19 @@ class HYSETS(Camels):
 
     Examples
     --------
+    >>> from ai4water.datasets import HYSETS
     >>> dataset = HYSETS(path="path/to/HYSETS")
-    >>> df = dataset.fetch(0.01, as_dataframe=True) # 1% of stations
+    ... # fetch data of a random station
+    >>> df = dataset.fetch(1, as_dataframe=True)
+    >>> df.shape
+    (25202, 5)
+    >>> stations = dataset.stations()
+    >>> len(stations)
+    14425
+    >>> df = dataset.fetch('999', as_dataframe=True)
+    >>> df.unstack().shape
+    (25202, 5)
 
-    .. _Arsenault:
-        https://doi.org/10.1038/s41597-020-00583-2
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
     url = "https://osf.io/rpc3w/"
@@ -825,7 +833,7 @@ class HYSETS(Camels):
         df = self.read_static_data()
         return df.columns.to_list()
 
-    def stations(self) -> list:
+    def stations(self) -> List[str]:
         """
         Returns
         -------
@@ -1674,7 +1682,8 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    Inherits from Camels class. Reads CAMELS-AUS dataset of Fowler et al., 2020 [1]_
+    Inherits from Camels class. Reads CAMELS-AUS dataset of
+    `Fowler et al., 2020 <https://doi.org/10.5194/essd-13-3847-2021>`_
     dataset.
 
     Examples
@@ -1706,9 +1715,6 @@ class CAMELS_AUS(Camels):
     >>> df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (21184, 260)
-
-    .. [1] https://doi.org/10.5194/essd-13-3847-2021
-
     """
 
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
@@ -2316,11 +2322,20 @@ class WaterBenchIowa(Camels):
     >>> from ai4water.datasets import WaterBenchIowa
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
-    >>> data = ds.fetch(5)
-    ... # fetch only dynamic features of 5 stations
-    >>> data = ds.fetch(5, static_features=None)
+    >>> data = ds.fetch(5, as_dataframe=True)
+    >>> data.shape  # it is a multi-indexed DataFrame
+    (184032, 5)
+    ... # fetch both static and dynamic features of 5 stations
+    >>> data = ds.fetch(5, static_features="all", as_dataframe=True)
+    >>> data.keys()
+    dict_keys(['dynamic', 'static'])
+    >>> data['static'].shape
+    (5, 7)
+    >>> data['dynamic']  # returns a xarray DataSet
     ... # using another method
-    >>> data = ds.fetch_dynamic_features('644')
+    >>> data = ds.fetch_dynamic_features('644', as_dataframe=True)
+    >>> data.unstack().shape
+    (61344, 3)
     """
     url = "https://zenodo.org/record/7087806#.Y6rW-BVByUk"
 
@@ -2328,6 +2343,8 @@ class WaterBenchIowa(Camels):
         super(WaterBenchIowa, self).__init__(path=path)
 
         self._download()
+
+        self._maybe_to_netcdf('WaterBenchIowa.nc')
 
     def stations(self)->List[str]:
         return [fname.split('_')[0] for fname in os.listdir(self.ts_path) if fname.endswith('.csv')]
@@ -2344,10 +2361,6 @@ class WaterBenchIowa(Camels):
     def static_features(self)->List[str]:
         return ['travel_time', 'area', 'slope', 'loam', 'silt',
                 'sandy_clay_loam', 'silty_clay_loam']
-
-    @property
-    def dyn_fname(self):
-        return os.path.join(self.ts_path, "WaterBenchIowa_dyn.nc")
 
     def fetch_station_attributes(
             self,
