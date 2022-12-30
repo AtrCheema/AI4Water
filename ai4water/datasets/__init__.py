@@ -54,6 +54,8 @@ from ._grqa import GRQA
 from ._swatch import Swatch
 from ._datasets import gw_punjab
 from ._rc4uscoast import RC4USCoast
+from ._grimedb import GRiMeDB
+from ._npctr import NPCTRCatchments
 
 
 def busan_beach(

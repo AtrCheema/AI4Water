@@ -148,7 +148,7 @@ setup(
               'ai4water/datasets',
               'ai4water/et',
               'ai4water/experiments',
-              'ai4water/eda'
+              'ai4water/eda',
               'ai4water/envs'
               ],
 

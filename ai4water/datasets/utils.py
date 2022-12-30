@@ -6,7 +6,7 @@ import glob
 import shutil
 import zipfile
 import tempfile
-from typing import Union
+from typing import Union, List
 import urllib.request as ulib
 import urllib.parse as urlparse
 
@@ -206,7 +206,7 @@ def check_attributes(attributes, check_against: list) -> list:
     return attributes
 
 
-def sanity_check(dataset_name, path):
+def sanity_check(dataset_name, path, url=None):
     if dataset_name in DATA_FILES:
         if dataset_name == 'CAMELS-GB':
             if not os.path.exists(os.path.join(path, 'data')):
@@ -216,6 +216,22 @@ def sanity_check(dataset_name, path):
                 for file in DATA_FILES[dataset_name]:
                     if not os.path.exists(os.path.join(data_path, file)):
                         raise FileNotFoundError(f"File {file} must exist inside {data_path}")
+    _maybe_not_all_files_downloaded(path, url)
+    return
+
+
+def _maybe_not_all_files_downloaded(
+        path:str,
+        url:Union[str, list, dict]
+):
+    if isinstance(url, dict):
+        available_files = os.listdir(path)
+
+        for fname, link in url.items():
+            if fname not in available_files:
+                print(f"file {fname} is not available so downloading it now.")
+                download_and_unzip(path, {fname:link})
+
     return
 
 
@@ -255,10 +271,10 @@ def unzip_all_in_dir(dir_name, ext=".gz"):
 
 
 def maybe_download(ds_dir,
-                   url,
-                   overwrite=False,
+                   url:Union[str, List[str], dict],
+                   overwrite:bool=False,
                    name=None,
-                   include=None,
+                   include:list=None,
                    **kwargs):
 
     if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
@@ -267,48 +283,57 @@ def maybe_download(ds_dir,
             shutil.rmtree(ds_dir)
             download_and_unzip(ds_dir, url=url, include=include, **kwargs)
         else:
-            sanity_check(name, ds_dir)
             print(f"""
     Not downloading the data since the directory 
     {ds_dir} already exists.
     Use overwrite=True to remove previously saved files and download again""")
+            sanity_check(name, ds_dir, url)
     else:
         download_and_unzip(ds_dir, url=url, include=include, **kwargs)
     return
 
 
-def download_and_unzip(ds_dir, url, include=None, **kwargs):
+def download_and_unzip(path,
+                       url:Union[str, List[str], dict],
+                       include=None,
+                       **kwargs):
     """
+
+    url :
+
+    include :
+        files to download. Files which are not in include will not be
+        downloaded.
     kwargs :
         any keyword arguments for download_from_zenodo function
     """
     from .download_zenodo import download_from_zenodo
 
-    if not os.path.exists(ds_dir):
-        os.makedirs(ds_dir)
+    if not os.path.exists(path):
+        os.makedirs(path)
     if isinstance(url, str):
         if 'zenodo' in url:
-            download_from_zenodo(ds_dir, doi=url, include=include, **kwargs)
+            download_from_zenodo(path, doi=url, include=include, **kwargs)
         else:
-            download(url, ds_dir)
-        _unzip(ds_dir)
+            download(url, path)
+        _unzip(path)
     elif isinstance(url, list):
         for url in url:
             if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url, include=include, **kwargs)
+                download_from_zenodo(path, url, include=include, **kwargs)
             else:
-                download(url, ds_dir)
-        _unzip(ds_dir)
+                download(url, path)
+        _unzip(path)
     elif isinstance(url, dict):
         for fname, url in url.items():
             if 'zenodo' in url:
-                download_from_zenodo(ds_dir, doi=url, include=include, **kwargs)
+                download_from_zenodo(path, doi=url, include=include, **kwargs)
             else:
-                download(url, os.path.join(ds_dir, fname))
-        _unzip(ds_dir)
+                download(url, os.path.join(path, fname))
+        _unzip(path)
 
     else:
-        raise ValueError(ds_dir)
+        raise ValueError(f"Invalid url: {path}, {url}")
 
     return
 
