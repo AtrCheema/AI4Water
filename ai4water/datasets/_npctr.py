@@ -122,7 +122,7 @@ class NPCTRCatchments(Datasets):
                 fname = f"2013-2019_Discharge{station}_{timestep}.csv"
                 df = pd.read_csv(fname)
 
-        return 
+        return
 
 
     def fetch_pcp(

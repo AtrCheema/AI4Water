@@ -267,7 +267,8 @@ class Datasets(object):
             units : str, (default=None)
                 the unit system being used
             path : str (default=None)
-                path where data is available. If not, it will be downloaded
+                path where the data is available (manually downloaded).
+                If None, it will be downloaded
         """
         if name is None:
             name = self.__class__.__name__

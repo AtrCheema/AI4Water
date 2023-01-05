@@ -76,9 +76,10 @@ class Plots(object):
                           aspect="auto",
                           interpolation=interpolation,
                           cmap=cmap,
-                          xlabel=kwargs.get('xlabel', 'inputs'),
-                          show=False,
-                          title=label)
+                          ax_kws=dict(
+                              xlabel=kwargs.get('xlabel', 'inputs'),
+                              title=label),
+                          show=False)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)

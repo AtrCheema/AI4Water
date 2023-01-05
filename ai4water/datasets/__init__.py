@@ -56,6 +56,10 @@ from ._datasets import gw_punjab
 from ._rc4uscoast import RC4USCoast
 from ._grimedb import GRiMeDB
 from ._npctr import NPCTRCatchments
+from ._hyperspectral import SoilPhosphorus
+from .water_quality import SeluneRiver
+from .water_quality import DoceRiver
+from .water_quality import RiverChemSiberia
 
 
 def busan_beach(

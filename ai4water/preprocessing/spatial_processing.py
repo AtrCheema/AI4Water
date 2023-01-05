@@ -600,7 +600,7 @@ class MakeHRUs(object):
                    labels=labels_n,
                    explode=tuple(explode),
                    autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
-                   title=title, show=show)
+                   ax_kws=dict(title=title), show=show)
 
         if name is None: name = self.hru_definition
         name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
