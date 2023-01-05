@@ -365,14 +365,20 @@ def edf_plot(
 
     ax.grid()
 
+    ax_kws = dict(title="Empirical Distribution Function Plot",
+        ylabel="Cumulative Probability",
+        xlabel=xlabel)
+
+    if 'ax_kws' in kwargs:
+        ax_kws.update(ax_kws)
+        kwargs.pop('ax_kws')
+
     ax = em.plot(
         x,
         y_values,
         marker,
         show=False,
-        ax_kws=dict(title="Empirical Distribution Function Plot",
-        ylabel="Cumulative Probability",
-        xlabel=xlabel),
+        ax_kws=ax_kws,
         ax=ax,
         **kwargs
     )

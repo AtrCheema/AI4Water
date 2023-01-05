@@ -72,7 +72,7 @@ class Plots(object):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        axis, im = ep.imshow(img,
+        im = ep.imshow(img,
                           aspect="auto",
                           interpolation=interpolation,
                           cmap=cmap,
@@ -80,6 +80,8 @@ class Plots(object):
                               xlabel=kwargs.get('xlabel', 'inputs'),
                               title=label),
                           show=False)
+
+        axis = im.axes
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
