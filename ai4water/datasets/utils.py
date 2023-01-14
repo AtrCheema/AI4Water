@@ -10,7 +10,7 @@ from typing import Union, List
 import urllib.request as ulib
 import urllib.parse as urlparse
 
-from ai4water.backend import pd
+from ai4water.backend import pd, np
 
 
 try:

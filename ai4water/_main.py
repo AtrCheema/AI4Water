@@ -623,7 +623,12 @@ class BaseModel(NN):
                 return None
             else:  # x,y is numpy array
                 if not user_defined and self.is_binary_:
-                    if y.shape[1] > self.output_shape[1]:
+                    if hasattr(self, 'output_shape'):
+                        output_shape = self.output_shape
+                    else:
+                        output_shape = self._model.output_shape
+
+                    if y.shape[1] > output_shape[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
                 x = self._transform_x(x)
