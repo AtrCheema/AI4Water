@@ -203,8 +203,6 @@ try:
 except (ModuleNotFoundError, OSError):
     shape, mapping, unary_union = None, None, None
 
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
 
 from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
@@ -213,6 +211,7 @@ from .download_pangaea import PanDataSet
 from .utils import download_all_http_directory
 from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
 from .utils import check_attributes, check_st_en
+from .utils import le_column, ohe_column, LabelEncoder, OneHotEncoder
 
 SEP = os.sep
 # TODO, add visualization
@@ -957,7 +956,9 @@ def mg_photodegradation(
         inputs: list = None,
         target: str = "Efficiency (%)",
         encoding:str = None
-)->Tuple[Union[pd.DataFrame, Any], Union[Optional[LabelEncoder], Any], Optional[LabelEncoder]]:
+)->Tuple[pd.DataFrame,
+         Union[LabelEncoder, OneHotEncoder, Any],
+         Union[LabelEncoder, OneHotEncoder, Any]]:
     """
     This data is about photocatalytic degradation of melachite green dye using
     nobel metal dobe BiFeO3. For further description of this data see `see <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
@@ -1065,11 +1066,11 @@ def mg_photodegradation(
     cat_encoder, an_encoder = None, None
     if encoding:
         if encoding == "ohe":
-            df, cols_added, cat_encoder = _ohe_column(df, "Catalyst_type")
-            df, an_added, an_encoder = _ohe_column(df, "Anions")
+            df, cols_added, cat_encoder = ohe_column(df, "Catalyst_type")
+            df, an_added, an_encoder = ohe_column(df, "Anions")
         else:
-            df, cat_encoder = _le_encoder(df, "Catalyst_type")
-            df, an_encoder = _le_encoder(df, "Anions")
+            df, cat_encoder = le_column(df, "Catalyst_type")
+            df, an_encoder = le_column(df, "Anions")
 
         # move the target to the end
         for t in target:
@@ -1156,24 +1157,3 @@ def gw_punjab(
             df = df[df['OW_ID'].isin(pak_stations)]
 
     return df
-
-
-def _ohe_column(df:pd.DataFrame, col_name:str)->tuple:
-    assert isinstance(col_name, str)
-    assert isinstance(df, pd.DataFrame)
-
-    encoder = OneHotEncoder(sparse=False)
-    ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
-    cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
-
-    df[cols_added] = ohe_cat
-
-    df.pop(col_name)
-
-    return df, cols_added, encoder
-
-
-def _le_encoder(df:pd.DataFrame, col_name):
-    encoder = LabelEncoder()
-    df[col_name] = encoder.fit_transform(df[col_name])
-    return df, encoder

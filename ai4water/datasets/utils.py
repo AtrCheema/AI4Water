@@ -364,3 +364,78 @@ def _unzip(ds_dir, dirname=None):
         shutil.unpack_archive(f, ds_dir)
 
     return
+
+
+class OneHotEncoder(object):
+    """
+    >>> data, _, _ = mg_photodegradation()
+    >>> cat_enc1 = OneHotEncoder()
+    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> _cat = cat_enc1.inverse_transform(cat_)
+    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    """
+    def fit(self, X:np.ndarray):
+        assert len(X) == X.size
+        categories, inverse = np.unique(X, return_inverse=True)
+        X = np.eye(categories.shape[0])[inverse]
+        self.categories_ = [categories]
+        return X
+
+    def transform(self, X):
+        return X
+
+    def fit_transform(self, X):
+        return self.transform(self.fit(X))
+
+    def inverse_transform(self, X):
+        return pd.DataFrame(X, columns=self.categories_[0]).idxmax(1).values
+
+
+class LabelEncoder(object):
+    """
+    >>> data, _, _ = mg_photodegradation()
+    >>> cat_enc1 = LabelEncoder()
+    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> _cat = cat_enc1.inverse_transform(cat_)
+    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    """
+    def fit(self, X):
+        assert len(X) == X.size
+        categories, inverse = np.unique(X, return_inverse=True)
+        self.categories_ = [categories]
+        labels = np.unique(inverse)
+        self.mapper_ = {category:label for category,label in zip(categories, labels)}
+        return inverse
+
+    def transform(self, X):
+        return X
+
+    def fit_transform(self, X):
+        return self.transform(self.fit(X))
+
+    def inverse_transeform(self, X):
+        return pd.Series(X).map(self.mapper_)
+
+
+def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
+    """one hot encode a column in datatrame"""
+    assert isinstance(col_name, str)
+    assert isinstance(df, pd.DataFrame)
+
+    encoder = OneHotEncoder()
+    ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
+    cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
+
+    df[cols_added] = ohe_cat
+
+    df.pop(col_name)
+
+    return df, cols_added, encoder
+
+
+def le_column(df:pd.DataFrame, col_name)->tuple:
+    """label encode a column in dataframe"""
+    encoder = LabelEncoder()
+    df[col_name] = encoder.fit_transform(df[col_name])
+    return df, encoder
+
