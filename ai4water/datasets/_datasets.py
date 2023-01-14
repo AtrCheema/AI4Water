@@ -999,9 +999,13 @@ def mg_photodegradation(
 
     Returns
     -------
-    pd.DataFrame
+    data : pd.DataFrame
         a pandas dataframe consisting of input and output features. The default
         setting will result in dataframe shape of (1200, 12)
+    cat_encoder :
+        catalyst encoder
+    an_encoder :
+        encoder for anions
 
     Examples
     --------
@@ -1012,7 +1016,7 @@ def mg_photodegradation(
     ... # the default encoding is None, but if we want to use one hot encoder
     >>> mg_data_ohe, _, _ = mg_photodegradation(encoding="ohe")
     >>> mg_data_ohe.shape
-    (1200, 33)
+    (1200, 31)
     ... # if we want to use label encoder
     >>> mg_data_le, _, _ = mg_photodegradation(encoding="le")
     >>> mg_data_le.shape
@@ -1061,11 +1065,15 @@ def mg_photodegradation(
     cat_encoder, an_encoder = None, None
     if encoding:
         if encoding == "ohe":
-            df, cols_added, cat_encoder = _ohe_encoder(df, "Catalyst_type")
-            df, an_added, an_encoder = _ohe_encoder(df, "Anions")
+            df, cols_added, cat_encoder = _ohe_column(df, "Catalyst_type")
+            df, an_added, an_encoder = _ohe_column(df, "Anions")
         else:
             df, cat_encoder = _le_encoder(df, "Catalyst_type")
             df, an_encoder = _le_encoder(df, "Anions")
+
+        # move the target to the end
+        for t in target:
+            df[t] = df.pop(t)
 
     return df, cat_encoder, an_encoder
 
@@ -1150,14 +1158,17 @@ def gw_punjab(
     return df
 
 
-def _ohe_encoder(df:pd.DataFrame, col_name:str)->tuple:
+def _ohe_column(df:pd.DataFrame, col_name:str)->tuple:
     assert isinstance(col_name, str)
+    assert isinstance(df, pd.DataFrame)
 
     encoder = OneHotEncoder(sparse=False)
     ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
     cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
 
     df[cols_added] = ohe_cat
+
+    df.pop(col_name)
 
     return df, cols_added, encoder
 

@@ -3153,7 +3153,8 @@ class BaseModel(NN):
             data=None,
             data_type="all",
             feature_name=None,
-            num_points=100,
+            num_points:int=100,
+            show:bool = True,
     ):
         """Shows partial depedence plot for a feature.
 
@@ -3173,6 +3174,8 @@ class BaseModel(NN):
                 two feature names, in which case 2d interaction plot will be plotted.
             num_points : int
                 number of points. It is used to define grid.
+            show : bool
+                whether to show the plot or not!
 
         Returns
         -------
@@ -3200,7 +3203,8 @@ class BaseModel(NN):
             self.predict,
             data=x,
             feature_names=self.input_features,
-            num_points=num_points
+            num_points=num_points,
+            show=show
         )
 
         if isinstance(feature_name, str):
