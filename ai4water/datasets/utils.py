@@ -393,6 +393,7 @@ class OneHotEncoder(object):
 
 class LabelEncoder(object):
     """
+    >>> from ai4water.datasets import mg_photodegradation
     >>> data, _, _ = mg_photodegradation()
     >>> cat_enc1 = LabelEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
@@ -404,7 +405,7 @@ class LabelEncoder(object):
         categories, inverse = np.unique(X, return_inverse=True)
         self.categories_ = [categories]
         labels = np.unique(inverse)
-        self.mapper_ = {category:label for category,label in zip(categories, labels)}
+        self.mapper_ = {label:category for category,label in zip(categories, labels)}
         return inverse
 
     def transform(self, X):
@@ -413,8 +414,24 @@ class LabelEncoder(object):
     def fit_transform(self, X):
         return self.transform(self.fit(X))
 
-    def inverse_transeform(self, X):
-        return pd.Series(X).map(self.mapper_)
+    def inverse_transform(self, X:np.ndarray):
+        assert len(X) == X.size
+        X = np.array(X).reshape(-1,)
+        return pd.Series(X).map(self.mapper_).values
+
+
+def encode_column(
+        df:pd.DataFrame,
+        col_name:str,
+        encoding:str
+)->tuple:
+    """encode a column in a dataframe according the encoding type"""
+    if encoding == "ohe":
+        return ohe_column(df, col_name)
+    elif encoding == "le":
+        return le_column(df, col_name)
+    else:
+        raise ValueError
 
 
 def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
@@ -433,9 +450,12 @@ def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
     return df, cols_added, encoder
 
 
-def le_column(df:pd.DataFrame, col_name)->tuple:
+def le_column(df:pd.DataFrame, col_name:str)->tuple:
     """label encode a column in dataframe"""
     encoder = LabelEncoder()
-    df[col_name] = encoder.fit_transform(df[col_name])
-    return df, encoder
+    index = df.columns.to_list().index(col_name)
+    encoded = encoder.fit_transform(df[col_name])
+    df.pop(col_name)
+    df.insert(index, col_name, encoded)
+    return df, None, encoder
 

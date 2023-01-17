@@ -211,7 +211,7 @@ from .download_pangaea import PanDataSet
 from .utils import download_all_http_directory
 from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
 from .utils import check_attributes, check_st_en
-from .utils import le_column, ohe_column, LabelEncoder, OneHotEncoder
+from .utils import encode_column, LabelEncoder, OneHotEncoder
 
 SEP = os.sep
 # TODO, add visualization
@@ -1065,12 +1065,8 @@ def mg_photodegradation(
     # consider encoding of categorical features
     cat_encoder, an_encoder = None, None
     if encoding:
-        if encoding == "ohe":
-            df, cols_added, cat_encoder = ohe_column(df, "Catalyst_type")
-            df, an_added, an_encoder = ohe_column(df, "Anions")
-        else:
-            df, cat_encoder = le_column(df, "Catalyst_type")
-            df, an_encoder = le_column(df, "Anions")
+        df, cols_added, cat_encoder = encode_column(df, "Catalyst_type", encoding)
+        df, an_added, an_encoder = encode_column(df, "Anions", encoding)
 
         # move the target to the end
         for t in target:
@@ -1157,3 +1153,140 @@ def gw_punjab(
             df = df[df['OW_ID'].isin(pak_stations)]
 
     return df
+
+
+def qe_biochar_ec(
+        input_features:List[str]=None,
+        encoding:str = None
+)->tuple:
+    """
+    data of adsorption capacity for removal of emerging pollutants from wastewater
+    using biochar. For more description of this data see `Jaffari et al., 2023 <>_`
+
+    Parameters
+    ----------
+    input_features :
+        By default following features are used as input
+            - `Adsorbent``
+            - `Pyrolysis temperature``
+            - `Pyrolysis time``
+            - `C``
+            - `H``
+            - `O``
+            - `N``
+            - ``(O+N)/C``
+            - ``Ash``
+            - ``H/C``
+            - ``O/C``
+            - ``Surface area``
+            - ``Pore volume``
+            - ``Average pore size``
+            - ``Pollutant``
+            - ``Adsorption time``
+            - `concentration``
+            - ``Solution pH``
+            - ``RPM``
+            - ``Volume``
+            - ``Adsorbent dosage``
+            - ``Adsorption temperature``
+            - ``Ion concentration``
+            - ``Humid acid``
+            - ``Wastewater type``
+            - ``Adsorption type``
+
+    encoding : str, default=None
+        the type of encoding to use for categorical features. If not None, it should
+        be either ``ohe`` or ``le``.
+
+    Returns
+    --------
+    tuple
+
+    Examples
+    --------
+    >>> from ai4water.datasets import qe_biochar_ec
+    >>> data, *_ = qe_biochar_ec()
+    >>> data.shape
+    (3757, 27)
+    >>> data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+    >>> data.shape
+    (3757, 27)
+    >>> ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
+    >>> pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
+    >>> wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
+    >>> adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
+    >>> data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+    >>> data.shape
+    (3757, 58)
+    >>> adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
+    >>> polt_enc.inverse_transform(data.iloc[:, 37:51].values)
+    >>> wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
+    >>> adspt_enc.inverse_transform(data.iloc[:, 55:-1].values)
+
+    """
+    fpath = os.path.join(os.path.dirname(__file__), 'qe_biochar_ec.csv')
+    url = 'https://raw.githubusercontent.com/ZeeshanHJ/Adsorption-capacity-prediction-for-ECs/main/Raw_data.csv'
+
+    if os.path.exists(fpath):
+        data = pd.read_csv(fpath)
+    else:
+        data = pd.read_csv(url)
+        # remove space in 'Pyrolysis temperature '
+        data['Pyrolysis temperature'] = data.pop('Pyrolysis temperature ')
+
+        data['Adsorbent'] = data.pop('Adsorbent')
+        data['Pollutant'] = data.pop('Pollutant')
+        data['Wastewater type'] = data.pop('Wastewater type')
+        data['Adsorption type'] = data.pop('Adsorption type')
+
+        data['Capacity'] = data.pop('Capacity')
+
+        data.to_csv(fpath, index=False)
+
+    def_inputs = [
+        'Pyrolysis temperature',
+        'Pyrolysis time',
+        'C',
+        'H',
+        'O',
+        'N',
+        '(O+N)/C',
+        'Ash',
+        'H/C',
+        'O/C',
+        'Surface area',
+        'Pore volume',
+        'Average pore size',
+        'Adsorption time',
+        'Initial concentration',
+        'Solution pH',
+        'RPM',
+        'Volume',
+        'Adsorbent dosage',
+        'Adsorption temperature',
+        'Ion concentration',
+        'Humic acid',
+        'Adsorbent',
+        'Pollutant',
+        'Wastewater type',
+        'Adsorption type',
+    ]
+
+    if input_features is not None:
+        assert isinstance(input_features, list)
+        assert all([feature in def_inputs for feature in input_features])
+    else:
+        input_features = def_inputs
+
+    data = data[input_features + ['Capacity']]
+
+    ads_enc, pol_enc, wwt_enc, adspt_enc = None, None, None, None
+    if encoding:
+        data, _, ads_enc = encode_column(data, 'Adsorbent', encoding)
+        data, _, pol_enc = encode_column(data, 'Pollutant', encoding)
+        data, _, wwt_enc = encode_column(data, 'Wastewater type', encoding)
+        data, _, adspt_enc = encode_column(data, 'Adsorption type', encoding)
+
+        data['Capacity'] = data.pop('Capacity')
+
+    return data, ads_enc, pol_enc, wwt_enc, adspt_enc

@@ -4,22 +4,27 @@ from typing import Union
 
 import pandas as pd
 
-from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
+from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin
+from ai4water.datasets import HydrometricParana, EtpPcpSamoylov, HydrocarbonsGabes
+from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope
+from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain
+from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee
+from ai4water.datasets import PrecipBerlin, RiverTempEroo
+from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
 from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada, gw_punjab
+from ai4water.datasets import qe_biochar_ec
 
 
-def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, str] = 'index'):
+def check_data(dataset, num_datasets=1,
+               min_len_data=1, index_col: Union[None, str] = 'index'):
     data = dataset.fetch(index_col=index_col)
     assert len(data) == num_datasets, f'data is of length {len(data)}'
 
     for k, v in data.items():
         assert len(v) >= min_len_data, f'{v} if length {len(v)}'
         if index_col is not None:
-            assert isinstance(v.index, pd.DatetimeIndex), f'for {k} index is of type {type(v.index)}'
+            assert isinstance(v.index, pd.DatetimeIndex), f"""
+            for {k} index is of type {type(v.index)}"""
     return
 
 
@@ -173,6 +178,25 @@ class TestPangaea(unittest.TestCase):
         df = gw_punjab(country="PAK")
         assert df == (39610, 5)
         return
+
+    def test_qe_biochar(self):
+        data, *_ = qe_biochar_ec()
+        assert data.shape == (3757, 27)
+        data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+        assert data.shape == (3757, 27)
+        assert data.sum().sum() >= 10346311.47
+        ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
+        pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
+        wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
+        adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
+        data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+        assert data.shape == (3757, 58)
+        adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
+        polt_enc.inverse_transform(data.iloc[:, 37:51].values)
+        wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
+        adspt_enc.inverse_transform(data.iloc[:, -3:-1].values)
+        return
+
 
 if __name__=="__main__":
     unittest.main()

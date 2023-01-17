@@ -39,6 +39,12 @@ from ._datasets import RiverTempSpain
 from ._datasets import RiverIsotope
 from ._datasets import EtpPcpSamoylov
 from ._datasets import SWECanada
+from ._datasets import gw_punjab
+from ._datasets import RRAlpineCatchments
+from ._datasets import RRLuleaSweden
+from ._datasets import mg_photodegradation
+from ._datasets import qe_biochar_ec
+
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand
 from .mtropics import MtropicsVietnam
@@ -46,17 +52,15 @@ from .mtropics import ecoli_mekong_laos
 from .mtropics import ecoli_houay_pano
 from .mtropics import ecoli_mekong_2016
 from .mtropics import ecoli_mekong
+
 from ._quadica import Quadica
-from ._datasets import RRAlpineCatchments
-from ._datasets import RRLuleaSweden
-from ._datasets import mg_photodegradation
 from ._grqa import GRQA
 from ._swatch import Swatch
-from ._datasets import gw_punjab
 from ._rc4uscoast import RC4USCoast
 from ._grimedb import GRiMeDB
 from ._npctr import NPCTRCatchments
 from ._hyperspectral import SoilPhosphorus
+
 from .water_quality import SeluneRiver
 from .water_quality import DoceRiver
 from .water_quality import RiverChemSiberia
@@ -116,8 +120,9 @@ def busan_beach(
 
     Returns
     -------
+    pd.DataFrame
         a pandas dataframe with inputs and target and indexed
-            with pandas.DateTimeIndex
+        with pandas.DateTimeIndex
 
     Example:
         >>> from ai4water.datasets import busan_beach
