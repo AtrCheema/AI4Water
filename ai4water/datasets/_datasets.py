@@ -1015,13 +1015,17 @@ def mg_photodegradation(
     >>> mg_data.shape
     (1200, 12)
     ... # the default encoding is None, but if we want to use one hot encoder
-    >>> mg_data_ohe, _, _ = mg_photodegradation(encoding="ohe")
+    >>> mg_data_ohe, cat_enc, an_enc = mg_photodegradation(encoding="ohe")
     >>> mg_data_ohe.shape
     (1200, 31)
+    >>> cat_enc.inverse_transform(mg_data_ohe.iloc[:, 9:24].values)
+    >>> an_enc.inverse_transform(mg_data_ohe.iloc[:, 24:30].values)
     ... # if we want to use label encoder
-    >>> mg_data_le, _, _ = mg_photodegradation(encoding="le")
+    >>> mg_data_le, cat_enc, an_enc = mg_photodegradation(encoding="le")
     >>> mg_data_le.shape
     (1200, 12)
+    >>> cat_enc.inverse_transform(mg_data_le.iloc[:, 9].values.astype(int))
+    >>> an_enc.inverse_transform(mg_data_le.iloc[:, 10].values.astype(int))
     ... # By default the target is efficiency but if we want
     ... # to use first order k as target
     >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")
@@ -1033,9 +1037,9 @@ def mg_photodegradation(
     df = pd.read_csv(
     "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
     )
-    default_inputs = ['Catalyst_type', 'Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
+    default_inputs = ['Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
                       'Light_intensity (W)', 'time (min)', 'solution_pH', 'HA (mg/L)',
-                      'Anions', 'Ci (mg/L)', 'Cf (mg/L)'
+                      'Ci (mg/L)', 'Cf (mg/L)', 'Catalyst_type', 'Anions',
                       ]
     default_targets = ['Efficiency (%)', 'k_first', 'k_2nd']
 

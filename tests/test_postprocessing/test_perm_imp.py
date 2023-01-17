@@ -2,9 +2,10 @@ import time
 import unittest
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ai4water import Model
-from ai4water.datasets import busan_beach
+from ai4water.datasets import busan_beach, mg_photodegradation
 from ai4water.postprocessing.explain import PermutationImportance
 
 
@@ -24,10 +25,10 @@ class TestPermImportance(unittest.TestCase):
             y_val.reshape(-1,),
             show=False,
             save=False)
-        fig = pimp.plot_1d_pimp()
-        assert fig.__class__.__name__ == "AxesSubplot"
-        fig = pimp.plot_1d_pimp(plot_type="bar_chart")
-        assert fig.__class__.__name__ == "AxesSubplot"
+        ax = pimp.plot_1d_pimp()
+        assert ax.__class__.__name__ == "AxesSubplot"
+        ax = pimp.plot_1d_pimp(plot_type="bar_chart")
+        assert ax.__class__.__name__ == "AxesSubplot", ax
 
         return
 
@@ -77,7 +78,8 @@ class TestPermImportance(unittest.TestCase):
 
         x1 = np.random.random((100, 5, 4))
         x2 = np.random.random((100, 5, 3))
-        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)),
+        pimp = PermutationImportance(model.predict, [x1, x2],
+                                     np.random.random((100, 1)),
                                      verbose=0,
                                      show=False,
                                      save=False
@@ -137,6 +139,25 @@ class TestPermImportance(unittest.TestCase):
         fig = pimp.plot_1d_pimp()
 
         assert fig.__class__.__name__ == "AxesSubplot"
+        return
+
+    def test_categorical(self):
+        cat_map = {'Catalyst': list(range(9, 24)), 'Anions': list(range(24, 30))}
+        mg_data, cat_enc, an_enc  = mg_photodegradation(encoding="ohe")
+        model = Model(model="XGBRegressor", verbosity=0)
+        model.fit(data=mg_data)
+        x, y = model.training_data(data=mg_data)
+        pimp = PermutationImportance(
+            model.predict, x, y,
+            show=False,
+            save=False,
+            cat_map=cat_map,
+            feature_names=model.input_features,
+            n_repeats=2)
+        pimp.plot_1d_pimp()
+        plt.close('all')
+        pimp.plot_1d_pimp("barchart")
+        plt.close('all')
         return
 
 

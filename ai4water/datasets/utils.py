@@ -368,6 +368,7 @@ def _unzip(ds_dir, dirname=None):
 
 class OneHotEncoder(object):
     """
+    >>> from ai4water.datasets import mg_photodegradation
     >>> data, _, _ = mg_photodegradation()
     >>> cat_enc1 = OneHotEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
@@ -458,4 +459,3 @@ def le_column(df:pd.DataFrame, col_name:str)->tuple:
     df.pop(col_name)
     df.insert(index, col_name, encoded)
     return df, None, encoder
-

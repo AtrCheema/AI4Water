@@ -12,7 +12,7 @@ from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee
 from ai4water.datasets import PrecipBerlin, RiverTempEroo
 from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
 from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada, gw_punjab
-from ai4water.datasets import qe_biochar_ec
+from ai4water.datasets import qe_biochar_ec, mg_photodegradation
 
 
 def check_data(dataset, num_datasets=1,
@@ -195,6 +195,21 @@ class TestPangaea(unittest.TestCase):
         polt_enc.inverse_transform(data.iloc[:, 37:51].values)
         wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
         adspt_enc.inverse_transform(data.iloc[:, -3:-1].values)
+        return
+
+    def test_mg_photodegradation(self):
+        data, *_ = mg_photodegradation()
+        assert data.shape == (1200, 12)
+        data, cat_enc, an_enc = mg_photodegradation(encoding="le")
+        assert data.shape == (1200, 12)
+        assert data.sum().sum() >= 406354.95
+        cat_enc.inverse_transform(data.iloc[:, 9].values.astype(int))
+        an_enc.inverse_transform(data.iloc[:, 10].values.astype(int))
+        data, cat_enc, an_enc = mg_photodegradation(encoding="ohe")
+        assert data.shape == (1200, 31)
+        cat_enc.inverse_transform(data.iloc[:, 9:24].values)
+        an_enc.inverse_transform(data.iloc[:, 24:30].values)
+
         return
 
 
