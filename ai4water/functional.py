@@ -83,6 +83,12 @@ class Model(BaseModel):
         return self._model.outputs
 
     @property
+    def output_shape(self)->tuple:
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.output_shape
+
+    @property
     def trainable_weights(self):
         if self.category == "ML":
             raise NotImplementedError
