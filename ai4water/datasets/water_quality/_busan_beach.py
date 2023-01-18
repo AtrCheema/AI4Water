@@ -72,7 +72,7 @@ def busan_beach(
         (1446, 15)
 
     """
-    fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
+    fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "arg_busan.csv")
     df = pd.read_csv(fpath, index_col="index")
     df.index = pd.to_datetime(df.index)
 
