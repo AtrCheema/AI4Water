@@ -936,6 +936,7 @@ class RRAlpineCatchments(Datasets):
 
         self._download()
 
+
 class ETPAgroForestGermany(Datasets):
     """
     Evapotranspiration over agroforestry sites in Germany
@@ -961,9 +962,10 @@ def mg_photodegradation(
          Union[LabelEncoder, OneHotEncoder, Any]]:
     """
     This data is about photocatalytic degradation of melachite green dye using
-    nobel metal dobe BiFeO3. For further description of this data see `see <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
-    the use of this data for removal efficiency prediction `see <https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction>`_ .
-    This dataset consists of 1200 points collected during around 135 samples.
+    nobel metal dobe BiFeO3. For further description of this data see
+    `Jafari et al., 2023 <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
+    for the use of this data for removal efficiency prediction `see <https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction>`_ .
+    This dataset consists of 1200 points collected during ~135 experiments.
 
     Parameters
     ----------
