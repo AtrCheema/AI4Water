@@ -5,7 +5,7 @@ import gc
 from SeqMetrics import RegressionMetrics
 
 from ai4water.backend import easy_mpl as ep
-from ai4water.backend import os, np, plt, torch
+from ai4water.backend import os, np, plt, torch, pd
 
 try:
     import wandb
@@ -212,7 +212,7 @@ class Learner(AttributeContainer):
                 - an instance of torch.Dataset, y will be ignored
                 - an instance of torch.DataLoader, y will be ignored
                 - a torch tensor containing input data for each example
-                - a numpy array
+                - a numpy array or pandas DataFrame
                 - a list of torch tensors or numpy arrays
             y :
                 if `x` is torch tensor, then `y` is the label/target for
@@ -623,13 +623,23 @@ class Learner(AttributeContainer):
             else:
                 dataset = to_torch_dataset(x, y)
 
-        elif isinstance(x, np.ndarray):
+        elif isinstance(x, (np.ndarray, pd.DataFrame)):
             if y is not None:
-                assert isinstance(y, np.ndarray)
+
+                # if x is numpy array or DataFrame, so should y
+                assert isinstance(y, (np.ndarray, pd.DataFrame, pd.Series))
+
+                # if it is DataFrame or Series
+                if hasattr(y, 'values'):
+                    y = y.values
+
                 if len(y.shape) == 1:
                     num_outs = 1
                 else:
                     num_outs = y.shape[-1]
+
+            if isinstance(x, pd.DataFrame):
+                x = x.values
 
             dataset = to_torch_dataset(x, y)
 

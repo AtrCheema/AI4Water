@@ -4,6 +4,7 @@ from typing import Union
 
 import pandas as pd
 
+from ai4water.datasets import busan_beach
 from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin
 from ai4water.datasets import HydrometricParana, EtpPcpSamoylov, HydrocarbonsGabes
 from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope
@@ -210,6 +211,11 @@ class TestPangaea(unittest.TestCase):
         cat_enc.inverse_transform(data.iloc[:, 9:24].values)
         an_enc.inverse_transform(data.iloc[:, 24:30].values)
 
+        return
+
+    def test_busan(self):
+        data = busan_beach()
+        assert data.shape == (1446, 14)
         return
 
 

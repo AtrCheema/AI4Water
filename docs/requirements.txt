@@ -18,3 +18,5 @@ seaborn
 easy_mpl>=0.21.2
 SeqMetrics
 sphinx-gallery
+
+torch
