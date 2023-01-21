@@ -1,5 +1,8 @@
 
 from typing import Union
+from .tensorflow import FTTransformer
+
+from .utils import _make_output_layer
 
 
 def MLP(
@@ -814,26 +817,6 @@ def TFT(
     )
 
     return {'layers': layers}
-
-
-def _make_output_layer(
-        layers:dict,
-        mode="regression",
-        output_features=1,
-        output_activation=None,
-)->dict:
-    if output_activation is None and mode == "classification":
-        # for binary it is better to use sigmoid
-        if output_features > 2:
-            output_activation = "softmax"
-        else:
-            output_activation = "sigmoid"
-            output_features = 1
-
-    layers.update({"Dense_out": {"units": output_features,
-                                 "activation": output_activation
-                                 }})
-    return layers
 
 
 def _check_length(parameter, num_layers):

@@ -413,6 +413,8 @@ class Model(MODEL, BaseModel):
 
                 first_layer = False
 
+            self.jsonize_lyr_config(lyr_config)
+
         # inputs = [] todo, indentify input layers
         # for k,v in lyr_cache.items():
         #     since the model is not build yet and we have access to only output tensors of each list, this is probably
@@ -525,14 +527,17 @@ class Model(MODEL, BaseModel):
             else:
                 _inputs = lyr_args.get('inputs', None)
 
-                # inputs have not been explicitly defined by the user so just use previous output
+                # inputs have not been explicitly defined by the user so just
+                # use previous output
                 if _inputs is None:
                     _inputs = prev_output_name
 
                 if idx == 1 and _inputs not in cache:
                     call_args, add_args = inputs, {}
                 else:
-                    call_args, add_args = get_call_args(_inputs, cache, lyr_args['call_args'], lyr)
+                    call_args, add_args = get_call_args(
+                        _inputs,
+                        cache, lyr_args['call_args'], lyr)
 
                 # call the initiated layer
                 outs = lyr_args['layer'](call_args, **add_args)
@@ -542,13 +547,7 @@ class Model(MODEL, BaseModel):
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if input_tensor:
                 input_tensor = False
@@ -618,13 +617,7 @@ class Model(MODEL, BaseModel):
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if is_input_tensor:
                 is_input_tensor = False
@@ -633,6 +626,22 @@ class Model(MODEL, BaseModel):
             prev_output_name = lyr
 
         return outs
+
+    @staticmethod
+    def _maybe_handle_multi_outs(lyr_args, cache, outs):
+        if lyr_args['named_outs'] is not None:
+            if isinstance(outs, (list, tuple)):
+                # the layer gives multiple outputs either as list/tuple
+                if len(lyr_args['named_outs']) == len(outs):
+                    for name, out_tensor in zip(lyr_args['named_outs'], outs):
+                        cache[name] = out_tensor
+                else:
+                    # even though the layer gives multiple outputs
+                    # but the user has assigned it to single variable
+                    cache[lyr_args['named_outs']] = outs
+            else:
+                cache[lyr_args['named_outs']] = outs
+        return
 
     def treat_casted_inputs(self, casted_inputs):
         if isinstance(casted_inputs, tuple) or isinstance(casted_inputs, list):
@@ -717,13 +726,7 @@ class Model(MODEL, BaseModel):
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if input_tensor:
                 input_tensor = False  # cache[_tensor.name] = _tensor
@@ -987,3 +990,4 @@ def assign_dummy_name(tensor, dummy_name):
             print(f"assigning name {dummy_name} to {tensor.name} with shape {getattr(tensor, 'shape', None)}")
         else:
             setattr(tensor, '__dummy_name', tensor.name)
+    return

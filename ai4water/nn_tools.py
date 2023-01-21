@@ -24,7 +24,8 @@ class AttributeNotSetYet:
         self.func_name = func_name
 
     def __get__(self, instance, owner):
-        raise AttributeError("run the function {} first to get {}".format(self.func_name, self.name))
+        raise AttributeError("run the function {} first to get {}".format(
+            self.func_name, self.name))
 
     def __set_name__(self, owner, name):
         self.name = name
@@ -142,7 +143,7 @@ class NN(AttributeStore):
 
         activation = None
         if "LAMBDA" not in lyr_name.upper():
-            # for lambda layers, we don't need to check activation functions and layer names.
+        # for lambda layers, we don't need to check activation functions and layer names.
             config, activation = check_act_fn(config)
 
             # get keras/tensorflow layer compatible layer name
@@ -163,7 +164,8 @@ class NN(AttributeStore):
         return layer_name
 
     def get_and_set_attrs(self, layer):
-        if layer.__class__.__name__ == "TemporalFusionTransformer":  # check the type without importing the layer
+        # check the type without importing the layer
+        if layer.__class__.__name__ == "TemporalFusionTransformer":
             # use layer name as there can be more than one layers from same class.
             setattr(self, f'{layer.name}_attentions', layer.attention_components)
         return
@@ -208,9 +210,21 @@ class NN(AttributeStore):
 
         return weights
 
+    @staticmethod
+    def jsonize_lyr_config(lyr_config:dict)->dict:
+        """some arguments in lyr_config dictionary may not be jsonizable.
+        Jsonizing them because we have already used them so now we can save them
+        in json file"""
+        if isinstance(lyr_config, dict):
+            for key, val in lyr_config.items():
+                if isinstance(val, tf.DType):
+                    lyr_config[key] = val.name
+        return lyr_config
+
 
 def check_act_fn(config: dict):
-    """ it is possible that the config file does not have activation argument or activation is None"""
+    """ it is possible that the config file does not have activation argument or
+    activation is None"""
     activation = None
     if 'activation' in config:
         activation = config['activation']
@@ -224,20 +238,25 @@ def check_act_fn(config: dict):
 def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
     """ gets the additional call arguments for a layer. It is supposed that the
     call arguments are actually tensors/layers
-    that have been created so far in the model including input layer. The call_args can be a list of inputs as well."""
+    that have been created so far in the model including input layer.
+    The call_args can be a list of inputs as well."""
     if isinstance(lyr_inputs, list):
         call_args = []
         for lyr_ins in lyr_inputs:
             if lyr_ins not in lyr_cache:
-                raise ValueError("""No layer named '{}' currently exists in the model which can be fed
-                                    as input to '{}' layer.""".format(lyr_ins, lyr_name))
+                for k,v in lyr_cache.items():
+                    print(k, v.__dict__)
+                raise ValueError("""
+                No layer named '{}' currently exists in the model which can be fed
+                as input to '{} layer.  Available layers are {}' layer.""".format(
+                    lyr_ins, lyr_name, list(lyr_cache.keys())))
             call_args.append(lyr_cache[lyr_ins])
     else:
         if lyr_inputs not in lyr_cache:
             raise ValueError(f"""
-                                No layer named '{lyr_inputs}' currently exists in the model which
-                                can be fed as input to '{lyr_name}' layer. Available layers are
-                                {list(lyr_cache.keys())}
+            No layer named '{lyr_inputs}' currently exists in the model which
+            can be fed as input to '{lyr_name}' layer. Available layers are
+            {list(lyr_cache.keys())}
 """)
         call_args = lyr_cache[lyr_inputs]
 
@@ -247,16 +266,19 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
 def get_add_call_args(add_args, lyr_cache, lyr_name):
     additional_args = {}
     if add_args is not None:
-        assert isinstance(add_args, dict), "call_args to layer '{}' must be provided as dictionary".format(lyr_name)
+        assert isinstance(add_args, dict), """
+        call_args to layer '{}' must be provided as dictionary""".format(lyr_name)
         for arg_name, arg_val in add_args.items():
             if isinstance(arg_val, str):
                 if arg_val not in lyr_cache:
-                    raise NotImplementedError("The value {} for additional call argument {} to '{}'"
-                                              " layer not understood".format(arg_val, arg_name, lyr_name))
+                    raise NotImplementedError("""
+                    The value {} for additional call argument {} to '{}'
+                    layer not understood""".format(arg_val, arg_name, lyr_name))
                 additional_args[arg_name] = lyr_cache[arg_val]
 
+            # the additional argument is a list of tensors, get all of them from lyr_cache
             elif isinstance(arg_val, list):
-                # the additional argument is a list of tensors, get all of them from lyr_cache
+
                 add_arg_val_list = []
                 for arg in arg_val:
                     assert isinstance(arg, str)
@@ -268,7 +290,8 @@ def get_add_call_args(add_args, lyr_cache, lyr_name):
                 additional_args[arg_name] = arg_val
 
             else:
-                raise NotImplementedError("The value `{}` for additional call argument {} to '{}'"
-                                          " layer not understood".format(arg_val, arg_name, lyr_name))
+                raise NotImplementedError("""
+                The value `{}` for additional call argument {} to '{}'
+                layer not understood""".format(arg_val, arg_name, lyr_name))
 
     return additional_args

@@ -353,6 +353,33 @@ lambda layer definition in the `config` as following:
 
 .. image:: imgs/lambda.png
 
+Custom Layers
+==============
+You can also use your own custom layers which inherit from tensorflow.keras.layers.Layer.
+All you need to do is to register your layer in ai4water.tf_attributes.LAYERS as shown
+in the example below
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from tensorflow.keras.layers import Dense
+    >>> # Define a custom Dense layer
+    >>> class MyDense(Dense):
+            pass
+    >>> # register your custom layer
+    >>> import ai4water.tf_attributes as attributes
+    >>> attributes.LAYERS['CustomDense'] = MyDense
+    # import Model from ai4water
+    >>> from ai4water import Model
+    # build Model using your custom layer
+    >>> layers = {"Input": {"shape": (10,)},
+                  "CustomDense": 1}
+    >>> model = Model(model={"layers": layers})
+    >>> inp = np.random.random((100, 10))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x=inp, y=y, epochs=1)
+
+
 For more examples see `examples`.
 
 Activation layers

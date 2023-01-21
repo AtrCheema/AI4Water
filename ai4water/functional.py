@@ -1,7 +1,7 @@
 
 from .backend import np, tf, keras
 from ._main import BaseModel
-from ai4water.tf_attributes import ACTIVATION_LAYERS, LAYERS,  tcn
+from ai4water.tf_attributes import ACTIVATION_LAYERS, LAYERS,  tcn, MULTI_INPUT_LAYERS
 from .nn_tools import get_add_call_args, get_call_args
 
 
@@ -313,9 +313,8 @@ class Model(BaseModel):
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                         layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
-                        # todo, following conditioning is not good
-                        # for concat layer inputs should be ([a,b,c]) instaed of (a,b,c)
-                        if isinstance(lyr_inputs, list) and lyr_name not in  ["Concatenate", "Multiply"]:
+                        # for multi-input layers inputs should be ([a,b,c]) instaed of (a,b,c)
+                        if isinstance(lyr_inputs, list) and lyr_name in MULTI_INPUT_LAYERS:
                             layer_outputs = layer_initialized(*call_args, **add_args)
                         else:
                             layer_outputs = layer_initialized(call_args, **add_args)
@@ -326,7 +325,7 @@ class Model(BaseModel):
 
             if named_outs is not None:
 
-                if isinstance(named_outs, list):
+                if isinstance(named_outs, (list, tuple)) or named_outs.__class__.__name__ in ["ListWrapper"]:
                     # this layer is returning more than one output
                     assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} " \
                                                                   "outputs but it actually returns " \
@@ -340,7 +339,7 @@ class Model(BaseModel):
             self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
             first_layer = False
 
-        #layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+            self.jsonize_lyr_config(lyr_config)
 
         inputs = []
         for k, v in lyr_cache.items():

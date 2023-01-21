@@ -40,7 +40,7 @@ HyperOpt
    .. automethod:: __getattr__
 
 .. _hpo_tutorial:
-    https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb
+    https://hyperopt-examples.readthedocs.io/en/latest/auto_examples/index.html
 
 
 fANOVA

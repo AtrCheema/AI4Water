@@ -123,7 +123,10 @@ def dateandtime_now() -> str:
     return dt
 
 
-def dict_to_file(path, config=None, errors=None, indices=None, others=None, name=''):
+def dict_to_file(
+        path,
+        config=None, errors=None,
+        indices=None, others=None, name=''):
 
     sort_keys = True
     if errors is not None:
@@ -932,7 +935,7 @@ class TrainTestSplit(object):
                 random seed for reproducibility
         """
         self.test_fraction = test_fraction
-        self.state = np.random.RandomState(seed=seed)
+        self.random_state = np.random.RandomState(seed=seed)
         self.train_indices = train_indices
         self.test_indices = test_indices
 
@@ -1002,7 +1005,7 @@ class TrainTestSplit(object):
         else:
             indices = np.arange(len(x))
 
-        indices = self.state.permutation(indices)
+        indices = self.random_state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
         train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
@@ -1032,15 +1035,21 @@ class TrainTestSplit(object):
         if array is None:
             return []
         if isinstance(array, list):
-            _data = []
+            data = []
 
             for d in array:
-                assert isinstance(d, np.ndarray)
-                _data.append(d[indices])
+                if isinstance(d, pd.DataFrame):
+                    data.append(d.iloc[indices])
+                else:
+                    assert isinstance(d, (np.ndarray, pd.DatetimeIndex))
+                    data.append(d[indices])
         else:
-            assert isinstance(array, np.ndarray) or isinstance(array, pd.DatetimeIndex)
-            _data = array[indices]
-        return _data
+            if isinstance(array, pd.DataFrame):
+                data = array.iloc[indices]
+            else:
+                assert isinstance(array, (np.ndarray, pd.DatetimeIndex))
+                data = array[indices]
+        return data
 
     @staticmethod
     def slice_arrays(arrays, start, stop=None):
@@ -1055,10 +1064,12 @@ class TrainTestSplit(object):
             y,
             n_splits,
             shuffle=True,
-            random_state=None
+            **kwargs
     ):
         from sklearn.model_selection import KFold
-        kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
+        kf = KFold(n_splits=n_splits,
+                   random_state=self.random_state,
+                   shuffle=shuffle)
         spliter = kf.split(x[0] if isinstance(x, list) else x)
         return self.yield_splits(x, y, spliter)
 

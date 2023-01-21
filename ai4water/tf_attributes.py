@@ -1,4 +1,6 @@
-__all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "LAYERS", "OPTIMIZERS", "tcn"]
+
+__all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES",
+           "LAYERS", "OPTIMIZERS", "tcn", "MULTI_INPUT_LAYERS"]
 
 # it is supposed that tf is available
 from .backend import get_attributes, tf
@@ -10,10 +12,10 @@ except ModuleNotFoundError:
 
 LOSSES = {}
 LAYERS = {}
+MULTI_INPUT_LAYERS = {}
 
 if tcn is not None:
     LAYERS.update({"TCN": tcn.TCN})
-
 
 try:
     import atten_lstm

@@ -279,7 +279,7 @@ def regression_space(
                 Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
                                             'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')],
             "x0":
-                [1000, 0.01, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']},
+                [50, 0.01, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']},
         "DecisionTreeRegressor": {
             "param_space": [
                 Categorical(["best", "random"], name='splitter'),

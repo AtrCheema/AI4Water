@@ -1056,7 +1056,8 @@ class BaseModel(NN):
                                 outputs = np.argmax(outputs, 1).reshape(-1, 1)
 
                     assert model_output_shape[0] == outputs.shape[1]
-                else:
+
+                elif len(model_output_shape) != len(outputs.shape):
                     assert model_output_shape == outputs.shape[1:], f"""
         ShapeMismatchError: Shape of model's output is {model_output_shape}
         while the prepared targets have shape {outputs.shape[1:]}."""

@@ -1,3 +1,5 @@
+.. _quick_start:
+
 quick start
 ***********
 
