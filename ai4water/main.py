@@ -985,7 +985,7 @@ def assign_dummy_name(tensor, dummy_name):
     if tf.executing_eagerly():
         setattr(tensor, '__dummy_name', dummy_name)
     else:
-        if "CAST" in tensor.name.upper() or "IteratorGetNext" in tensor.name:
+        if "CAST" in tensor.name.upper() or "IteratorGetNext" in tensor.name or len(getattr(tensor, '_consumers', [1]))==0:
             setattr(tensor, '__dummy_name', dummy_name)
             print(f"assigning name {dummy_name} to {tensor.name} with shape {getattr(tensor, 'shape', None)}")
         else:

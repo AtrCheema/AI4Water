@@ -41,3 +41,8 @@ TFT
 ===
 .. automodule:: ai4water.models
    :members: TFT
+
+FTTransformer
+==============
+.. automodule:: ai4water.models
+   :members: FTTransformer

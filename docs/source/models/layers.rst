@@ -30,3 +30,22 @@ EALSTM
 
    .. automethod:: __init__
 
+
+TransformerBlocks
+==================
+.. autoclass:: ai4water.models.tensorflow.TransformerBlocks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+Transformer
+==================
+.. autoclass:: ai4water.models.tensorflow.Transformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

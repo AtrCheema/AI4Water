@@ -1014,7 +1014,10 @@ class BaseModel(NN):
 
         if self.category == "DL":
 
-            history = self._fit(inputs, outputs, callbacks=callbacks, **kwargs)
+            history = self._fit(inputs,
+                                outputs,
+                                callbacks=callbacks,
+                                **kwargs)
 
             if self.verbosity >= 0:
                 visualizer.plot_loss(history.history)

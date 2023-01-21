@@ -32,3 +32,9 @@ jsonize
 =======
 .. automodule:: ai4water.utils.utils
    :members: jsonize
+
+
+TrainTestSplit
+===============
+.. automodule:: ai4water.utils.utils
+   :members: TrainTestSplit

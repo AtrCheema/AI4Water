@@ -1,4 +1,6 @@
 
+from typing import List
+
 from ai4water.backend import tf
 
 layers = tf.keras.layers
@@ -319,68 +321,241 @@ class EncoderLayer(tf.keras.layers.Layer):
         return out2, attn_weights
 
 
-class TransformerEncoder(tf.keras.layers.Layer):
+class TransformerBlocks(tf.keras.layers.Layer):
+    """
+    This layer stacks Transformers on top of each other.
 
-    def __init__(self, num_layers, d_model, num_heads, dff,
-                 maximum_position_encoding,
-                 rate=0.1, return_weights=False, **kwargs):
-        super(TransformerEncoder, self).__init__(**kwargs)
+    Example
+    >>> import numpy as np
+    >>> from tensorflow.keras.models import Model
+    >>> from tensorflow.keras.layers import Input
+    >>> inp = Input(shape=(10, 32))
+    >>> out = TransformerBlocks(4, 4, 32)(inp)
+    >>> out = Dense(1)(out)
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(optimizer="Adam", loss="mse")
+    >>> x = np.random.random((100, 10, 32))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x,y)
+    """
+    def __init__(
+            self,
+            num_blocks:int,
+            num_heads:int,
+            embed_dim:int,
+            **kwargs
+    ):
 
-        self.d_model = d_model
-        self.num_layers = num_layers
+        super(TransformerBlocks, self).__init__()
+        self.num_blocks = num_blocks
         self.num_heads = num_heads
-        self.dff = dff
-        self.maximum_position_encoding = maximum_position_encoding
-        self.rate = rate
-        self.return_weights = return_weights
 
-        #         self.pos_encoding = positional_encoding(self.maximum_position_encoding,
-        #                                                 self.d_model)
-        #         self.embedding = tf.keras.layers.Dense(self.d_model)
-        self.pos_emb = tf.keras.layers.Embedding(input_dim=self.maximum_position_encoding,
-                                                 output_dim=self.d_model)
+        self.blocks = []
+        for n in range(num_blocks):
+            self.blocks.append(Transformer(num_heads, embed_dim, **kwargs))
 
-        self.enc_layers = [EncoderLayer(self.d_model, self.num_heads, self.dff, self.rate)
-                           for _ in range(self.num_layers)]
+    def __call__(self, inputs, *args, **kwargs):
 
-        self.dropout = tf.keras.layers.Dropout(self.rate)
+        attn_weights_list = []
+        for transformer in self.blocks:
+            inputs, attn_weights = transformer(inputs)
+            attn_weights_list.append(tf.reduce_sum(attn_weights[:, :, 0, :]))
 
-        self.attn_weights = None
+        importances = tf.reduce_sum(tf.stack(attn_weights_list), axis=0) / (
+                self.num_blocks * self.num_heads)
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'num_layers': self.num_layers,
-            'd_model': self.d_model,
-            'num_heads': self.num_heads,
-            'dff': self.dff,
-            'maximum_position_encoding': self.maximum_position_encoding,
-            'dropout': self.dropout,
-        })
-        return config
+        return inputs, importances
 
-    # def call(self, x, training, mask=None):
-    def __call__(self, x, training=True, mask=None, *args, **kwargs):
 
-        seq_len = tf.shape(x)[1]
+class Transformer(tf.keras.layers.Layer):
+    """
+    A basic transformer block consisting of
+    LayerNormalization -> Add -> MultiheadAttention -> MLP ->
 
-        # adding embedding and position encoding.
-        #         x += self.pos_encoding[:, :seq_len, :]
-        #         x = self.embedding(x)
-        positions = tf.range(start=0, limit=seq_len, delta=1)
-        x += self.pos_emb(positions)
+    Example
+    -------
+    >>> import numpy as np
+    >>> from tensorflow.keras.models import Model
+    >>> from tensorflow.keras.layers import Input
+    >>> inp = Input(shape=(10, 32))
+    >>> out = Transformer(4, 32)(inp)
+    >>> out = Dense(1)(out)
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(optimizer="Adam", loss="mse")
+    >>> x = np.random.random((100, 10, 32))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x,y)
+    """
+    def __init__(
+            self,
+            num_heads:int,
+            embed_dim:int,
+            dropout=0.1,
+            mlp_units:int=32,
+            post_norm:bool = True,
+            *args,
+            **kwargs
+    ):
+        super(Transformer, self).__init__(*args, **kwargs)
 
-        x = self.dropout(x, training=training)
-        self.attn_weights = []
+        self.num_heads = num_heads
+        self.embed_dim = embed_dim
+        self.post_norm = post_norm
 
-        for i in range(self.num_layers):
-            x, _w = self.enc_layers[i](x, training, mask)
-            self.attn_weights.append(_w)
+        self.att = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_heads, key_dim=embed_dim,
+            dropout=dropout
+        )
+        self.skip1 = tf.keras.layers.Add()
+        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.ffn = tf.keras.Sequential(
+            [
+                Dense(mlp_units, activation=tf.keras.activations.gelu),
+                tf.keras.layers.Dropout(dropout),
+                tf.keras.layers.Dense(embed_dim),
+            ]
+        )
+        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.skip2 = tf.keras.layers.Add()
 
-        if self.return_weights:
-            return x, self.attn_weights
+    def __call__(self, inputs, *args, **kwargs):
 
-        return x  # (batch_size, input_seq_len, d_model)
+        inputs = self.layernorm1(inputs)
+        attention_output, att_weights = self.att(
+            inputs, inputs, return_attention_scores=True
+        )
+
+        attention_output = self.skip1([inputs, attention_output])
+        feedforward_output = self.ffn(attention_output)
+        outputs = self.skip2([feedforward_output, attention_output])
+
+        if self.post_norm:
+            return self.layernorm2(outputs), att_weights
+
+        return outputs, att_weights
+
+
+class NumericalEmbeddings(layers.Layer):
+
+    def __init__(
+            self,
+            num_features,
+            emb_dim,
+            *args,
+            **kwargs
+    ):
+
+        self.num_features = num_features
+        self.emb_dim = emb_dim
+        super(NumericalEmbeddings, self).__init__(*args, **kwargs)
+
+    def build(self, input_shape):
+        w_init = tf.random_normal_initializer()
+        # features, n_bins, emb_dim
+        self.linear_w = tf.Variable(
+            initial_value=w_init(
+                shape=(self.num_features, 1, self.emb_dim), dtype='float32'
+            ), trainable=True, name="NumEmbeddingWeights")
+
+        # features, n_bins, emb_dim
+        self.linear_b = tf.Variable(
+            w_init(
+                shape=(self.num_features, 1), dtype='float32'
+            ), trainable=True, name="NumEmbeddingBias")
+        return
+
+    def call(self, X, *args, **kwargs):
+        embs = tf.einsum('f n e, b f -> bfe', self.linear_w, X)
+        embs = tf.nn.relu(embs + self.linear_b)
+        return embs
+
+
+class CatEmbeddings(layers.Layer):
+    """
+    The layer to encode categorical features.
+
+    Parameters
+    -----------
+    vocabulary : dict
+    embed_dim : int
+        dimention of embedding for each categorical feature
+    lookup_kws : dict
+        keyword arguments that will go to StringLookup layer
+
+    """
+    def __init__(
+            self,
+            vocabulary:dict,
+            embed_dim:int = 32,
+            lookup_kws:dict = None,
+            *args,
+            **kwargs
+    ):
+        super(CatEmbeddings, self).__init__(*args, **kwargs)
+
+        self.embed_dim = embed_dim
+        self.lookups = {}
+        self.embedding_lyrs = {}
+        self.feature_names = []
+
+        _lookup_kws = dict(mask_token=None,
+                num_oov_indices=0,
+                output_mode="int")
+
+        if lookup_kws is not None:
+            _lookup_kws.update(lookup_kws)
+
+        for feature_name, vocab in vocabulary.items():
+
+            lookup = layers.StringLookup(
+                vocabulary=vocab,
+                **_lookup_kws
+            )
+
+            self.lookups[feature_name] = lookup
+
+            embedding = layers.Embedding(
+                input_dim=len(vocab), output_dim=embed_dim
+            )
+
+            self.embedding_lyrs[feature_name] = embedding
+
+            self.feature_names.append(feature_name)
+
+    def call(self, inputs:list):
+        """
+        The tensors in `inputs` list must be in same
+        order as in the `vocabulary` dictionary.
+
+        Parameters
+        -------------
+        inputs : list
+            a list of tensors of shape (None,)
+
+        Returns
+        -------
+            a tensor of shape (None, num_cat_features, embed_dim)
+        """
+
+        encoded_features = []
+        for feat_name, feat_input in zip(self.feature_names, inputs):
+
+            lookup = self.lookups[feat_name]
+            encoded_feature = lookup(feat_input)
+
+            embedding = self.embedding_lyrs[feat_name]
+            encoded_categorical_feature = embedding(encoded_feature)
+            encoded_features.append(encoded_categorical_feature)
+
+        cat_embeddings = tf.stack(encoded_features, axis=1)
+
+        # when the layer is called in subclassing API, then the tensors in inputs list will have
+        # shape (None,1) even if the Input layer has shape of (None,). This addition of extra
+        # dimension results in `cat_embeddings` to have sahpe of (None, len(inputs), 1, self.embed_dim)
+        # We must remove the extra 1 in this shape, therefore reshaping it.
+        cat_embeddings = tf.reshape(cat_embeddings, (-1, len(inputs), self.embed_dim))
+
+        return cat_embeddings
 
 
 class Conditionalize(tf.keras.layers.Layer):
@@ -952,9 +1127,11 @@ class PrivateLayers(object):
 
     class layers:
 
-        TransformerEncoder = TransformerEncoder
         BasicBlock = BasicBlock
         CONDRNN = ConditionalRNN
         Conditionalize = Conditionalize
         MCLSTM = MCLSTM
         EALSTM = EALSTM
+        CatEmbeddings = CatEmbeddings
+        TransformerBlocks = TransformerBlocks
+        NumericalEmbeddings = NumericalEmbeddings

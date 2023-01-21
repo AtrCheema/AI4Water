@@ -25,6 +25,7 @@ def TabTransformer(
     """
     return
 
+
 def FTTransformer(
         cat_vocabulary:dict,
         num_numeric_features:int,
@@ -94,12 +95,36 @@ def FTTransformer(
     >>> from ai4water.models import FTTransformer
     >>> from ai4water.datasets import mg_photodegradation
     >>> from ai4water.models.utils import gen_cat_vocab
-    >>> data = mg_photodegradation()
+    >>> from ai4water.utils.utils import TrainTestSplit
+    >>> # bring the data as DataFrame
+    >>> data, _, _ = mg_photodegradation()
+    ... # Define categorical and numerical features and label
+    >>> NUMERIC_FEATURES = data.columns.tolist()[0:9]
+    >>> CAT_FEATURES = ["Catalyst_type", "Anions"]
+    >>> LABEL = "Efficiency (%)"
+    ... # create vocabulary of unique values of categorical features
     >>> cat_vocab = gen_cat_vocab(data)
-    >>> model = Model(model=FTTransformer(
-    ... cat_vocabulary=cat_vocab,
-    ... num_numeric_features = 10
-    ... ))
+    ... # make sure the data types are correct
+    >>> data[NUMERIC_FEATURES] = data[NUMERIC_FEATURES].astype(float)
+    >>> data[CAT_FEATURES] = data[CAT_FEATURES].astype(str)
+    >>> data[LABEL] = data[LABEL].astype(float)
+    ... # split the data into training and test set
+    >>> splitter = TrainTestSplit(seed=313)
+    >>> train_data, test_data, _, _ = splitter.split_by_random(data)
+    ... # build the model
+    >>> model = Model(model=FTTransformer(cat_vocab, len(NUMERIC_FEATURES)))
+    ... # make a list of input arrays for training data
+    >>> train_x = [train_data[NUMERIC_FEATURES].values,
+    ...   train_data['Catalyst_type'].values,
+    ...   train_data['Anions'].values]
+
+    >>> test_x = [test_data[NUMERIC_FEATURES].values,
+    ...       test_data['Catalyst_type'].values,
+    ...       test_data['Anions'].values]
+
+    >>> h = model.fit(x=train_x, y= train_data[LABEL].values,
+    ...              validation_data=(test_x, test_data[LABEL].values),
+    ...              epochs=1)
     """
 
     layers = _make_input_lyrs(num_numeric_features, list(cat_vocabulary.keys()))
@@ -107,7 +132,7 @@ def FTTransformer(
     body = {
         "CatEmbeddings": {"config": {'vocabulary': cat_vocabulary,
                                      'embed_dim': hidden_units},
-                          "inputs": ["Adsorbent", 'Dye']},
+                          "inputs": list(cat_vocabulary.keys())},
 
         "NumericalEmbeddings": {"config": {'num_features': num_numeric_features,
                                            'emb_dim': hidden_units},

@@ -131,8 +131,9 @@ when the input is > 3d or the number of inputs are more than one.
 
 CNN -> LSTM
 ==========================
-If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed by `TimeDistributed` as shown below.
-In following, 3 `Conv1D` layers are enclosed in `TimeDistributed` layer. Similarly `Flatten` and `MaxPool1D` are also
+If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed
+by `TimeDistributed` as shown below. In following, 3 `Conv1D` layers are enclosed
+in `TimeDistributed` layer. Similarly `Flatten` and `MaxPool1D` are also
 wrapped in `TimeDistributed` layer.
 
 .. code-block:: python
@@ -187,8 +188,9 @@ LSTM based auto-encoder
 
 TCN layer
 =========
-You can use third party layers such as `tcn`_  which is currently not supported by Tensorflow. Provided you have
-installed `tcn`, the layer along with its arguments can be used as following
+You can use third party layers such as `tcn`_  which is currently not supported by
+Tensorflow. Provided you have installed `tcn`, the layer along with its arguments
+can be used as following
 
 .. code-block:: python
 
@@ -210,10 +212,12 @@ installed `tcn`, the layer along with its arguments can be used as following
 
 Multiple Inputs
 ===============
-In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
-for the layer and specify which inputs the layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
-case whose members must be the names of the layers which must have been defined earlier. The input/initializing
-arguments in the layer must be enclosed in a `config` dictionary within the layer in such cases.
+In order to build more complex models, where a layer takes more than one inputs,
+you can specify the `inputs` key for the layer and specify which inputs the
+layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
+case whose members must be the names of the layers which must have been defined
+earlier. The input/initializing arguments in the layer must be enclosed in a
+`config` dictionary within the layer in such cases.
 
 .. code-block:: python
 
@@ -258,10 +262,11 @@ from `Model` class
 
 Multiple Output Layers
 =======================
-In some cases a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
-models can be built by specifying the outputs from a layer using `outputs` key. The `value` of the `outputs` key can a
-string or a list of strings specifying the names of of outputs, the layer is returning. We can use these names as inputs
-to any other layer later in the model. 
+In some cases a layer returns more than one output and we want to use each of
+those outputs in a separate layer. Such models can be built by specifying the
+outputs from a layer using `outputs` key. The `value` of the `outputs` key can a
+string or a list of strings specifying the names of of outputs, the layer is
+returning. We can use these names as inputs to any other layer later in the model.
 
 .. code-block:: python
 
@@ -290,10 +295,12 @@ to any other layer later in the model.
 
 Additional call args
 ==========================
-We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's LSTM_ layer, we can
-provide `initial state` of an LSTM. Suppose we want to use hidden and cell state of one LSTM as initial state for next
-LSTM. In such cases we can make use of `call_args` as `key`. The value of `call_args` must a dictionary. In this way
-we can provide `keyword` arguments while calling a layer.
+We might be tempted to provide additional call arguments to a layer. For example,
+in tensorflow's LSTM_ layer, we can provide `initial state` of an LSTM. Suppose
+we want to use hidden and cell state of one LSTM as initial state for next
+LSTM. In such cases we can make use of `call_args` as `key`. The value of
+`call_args` must a dictionary. In this way we can provide `keyword` arguments
+while calling a layer.
 
 .. code-block:: python
 

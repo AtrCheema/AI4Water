@@ -244,8 +244,6 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
         call_args = []
         for lyr_ins in lyr_inputs:
             if lyr_ins not in lyr_cache:
-                for k,v in lyr_cache.items():
-                    print(k, v.__dict__)
                 raise ValueError("""
                 No layer named '{}' currently exists in the model which can be fed
                 as input to '{} layer.  Available layers are {}' layer.""".format(

@@ -12,7 +12,7 @@ in Model class. For scikit-learn, lightgbm, catboost and xgboost based models, t
 method is illustrated in :ref:`quick_start`. For neural network based models, there are two ways
 of model definition. For most basic usage cases, the user can adopt the functions
 available in :ref:`nn_funcs`. However, the user can also define models using json style
-dictionaries. Theis method definition style for tensorflow and pytorch is given below
+dictionaries. This method of definition style for tensorflow and pytorch is given below
 
 .. toctree::
    :maxdepth: 2
