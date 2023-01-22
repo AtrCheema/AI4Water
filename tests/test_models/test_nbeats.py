@@ -28,7 +28,7 @@ from tensorflow.keras.layers import Input, Flatten
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
-from ai4water.models.tensorflow import NBeats
+from ai4water.models._tensorflow import NBeats
 
 """
 tf115, subclassing and functional both working

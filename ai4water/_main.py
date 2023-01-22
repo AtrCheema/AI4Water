@@ -29,7 +29,7 @@ from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
 from .preprocessing.transformations import Transformations
 
-from .models.tensorflow.custom_training import train_step, test_step
+from .models._tensorflow.custom_training import train_step, test_step
 
 import ai4water.backend as K
 from .backend import sklearn_models
@@ -41,7 +41,7 @@ if K.BACKEND == 'tensorflow' and tf is not None:
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif K.BACKEND == 'pytorch' and torch is not None:
-    from ai4water.models.torch import LOSSES, OPTIMIZERS
+    from ai4water.models._torch import LOSSES, OPTIMIZERS
 
 
 class BaseModel(NN):

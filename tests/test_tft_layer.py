@@ -12,7 +12,7 @@ tf.compat.v1.disable_eager_execution()
 
 import numpy as np
 
-from ai4water.models.tensorflow import TemporalFusionTransformer
+from ai4water.models._tensorflow import TemporalFusionTransformer
 from ai4water.utils.utils import reset_seed
 
 tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))

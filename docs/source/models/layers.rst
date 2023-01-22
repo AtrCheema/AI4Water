@@ -3,7 +3,7 @@ Tensorflow Layers
 
 MCLSTM
 ========
-.. autoclass:: ai4water.models.tensorflow.MCLSTM
+.. autoclass:: ai4water.models._tensorflow.MCLSTM
    :members:
    :undoc-members:
    :show-inheritance:
@@ -13,7 +13,7 @@ MCLSTM
 
 Conditionalize
 ==============
-.. autoclass:: ai4water.models.tensorflow.Conditionalize
+.. autoclass:: ai4water.models._tensorflow.Conditionalize
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ Conditionalize
 
 EALSTM
 ========
-.. autoclass:: ai4water.models.tensorflow.EALSTM
+.. autoclass:: ai4water.models._tensorflow.EALSTM
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ EALSTM
 
 TransformerBlocks
 ==================
-.. autoclass:: ai4water.models.tensorflow.TransformerBlocks
+.. autoclass:: ai4water.models._tensorflow.TransformerBlocks
    :members:
    :undoc-members:
    :show-inheritance:
@@ -43,7 +43,7 @@ TransformerBlocks
 
 Transformer
 ==================
-.. autoclass:: ai4water.models.tensorflow.Transformer
+.. autoclass:: ai4water.models._tensorflow.Transformer
    :members:
    :undoc-members:
    :show-inheritance:

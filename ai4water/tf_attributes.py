@@ -29,9 +29,9 @@ if atten_lstm is not None:
 
 if tf is not None:
     import ai4water.utils.tf_losses as tf_losses
-    from ai4water.models.tensorflow import NBeats
-    import ai4water.models.tensorflow.attention_layers as attns
-    from ai4water.models.tensorflow import TemporalFusionTransformer
+    from ai4water.models._tensorflow import NBeats
+    import ai4water.models._tensorflow.attention_layers as attns
+    from ai4water.models._tensorflow import TemporalFusionTransformer
 
     keras = tf.keras
     LOSSES.update({
@@ -47,7 +47,7 @@ if tf is not None:
     LAYERS.update({"TFT": TemporalFusionTransformer})
     LAYERS.update(get_attributes(aus=tf.keras, what='layers', case_sensitive=True))
 
-    from .models.tensorflow.private_layers import PrivateLayers
+    from .models._tensorflow.private_layers import PrivateLayers
 
     # add private layers to dictionary
     LAYERS.update(get_attributes(aus=PrivateLayers, what='layers', case_sensitive=True))

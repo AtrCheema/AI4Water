@@ -8,7 +8,7 @@ from tensorflow.keras.layers import Dense, Input
 from ai4water.datasets import mg_photodegradation
 from tensorflow.keras.models import Model as KModel
 from ai4water.models import FTTransformer, TabTransformer
-from ai4water.models.tensorflow.private_layers import Transformer, TransformerBlocks
+from ai4water.models._tensorflow.private_layers import Transformer, TransformerBlocks
 
 import numpy as np
 

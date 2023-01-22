@@ -13,7 +13,7 @@ if K.BACKEND == 'tensorflow':
     from ai4water.tf_attributes import LAYERS, tf
 else:
     try:  # maybe torch is also not available.
-        from .models.torch import LAYERS
+        from .models._torch import LAYERS
     except (ModuleNotFoundError, ImportError):
         LAYERS = {}
 

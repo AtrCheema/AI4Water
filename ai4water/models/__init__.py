@@ -130,7 +130,7 @@ def TabTransformer(
         seed = seed)
 
     if backend=="tensorflow":
-        from .tensorflow import TabTransformer
+        from ._tensorflow import TabTransformer
         return TabTransformer(**kws)
     else:
         raise NotImplementedError
@@ -258,7 +258,7 @@ def FTTransformer(
         seed = seed)
 
     if backend=="tensorflow":
-        from .tensorflow import FTTransformer
+        from ._tensorflow import FTTransformer
         return FTTransformer(**kws)
     else:
         raise NotImplementedError
@@ -365,7 +365,7 @@ def MLP(
     )
 
     if backend == "tensorflow":
-        from .tensorflow import MLP
+        from ._tensorflow import MLP
         return MLP(**kws)
     else:
         raise NotImplementedError
@@ -460,7 +460,7 @@ def LSTM(
     )
 
     if backend == "tensorflow":
-        from .tensorflow import LSTM
+        from ._tensorflow import LSTM
         return LSTM(**kws)
     else:
         raise NotImplementedError
@@ -580,7 +580,7 @@ def CNN(
     )
 
     if backend == "tensorflow":
-        from .tensorflow import CNN
+        from ._tensorflow import CNN
         return CNN(**kws)
     else:
         raise NotImplementedError
@@ -684,7 +684,7 @@ def CNNLSTM(
         output_activation=output_activation
     )
     if backend == "tensorflow":
-        from .tensorflow import CNNLSTM
+        from ._tensorflow import CNNLSTM
         return CNNLSTM(**kws)
     else:
         raise NotImplementedError
@@ -769,7 +769,7 @@ def LSTMAutoEncoder(
         kwargs=kwargs
     )
     if backend == "tensorflow":
-        from .tensorflow import LSTMAutoEncoder
+        from ._tensorflow import LSTMAutoEncoder
         return LSTMAutoEncoder(**kws)
     else:
         raise NotImplementedError
@@ -848,7 +848,7 @@ def TCN(
         kwargs=kwargs
     )
     if backend == "tensorflow":
-        from .tensorflow import TCN
+        from ._tensorflow import TCN
         return TCN(**kws)
     else:
         raise NotImplementedError
@@ -924,7 +924,7 @@ def TFT(
         output_activation=output_activation
     )
     if backend == "tensorflow":
-        from .tensorflow import TFT
+        from ._tensorflow import TFT
         return TFT(**kws)
     else:
         raise NotImplementedError
@@ -939,7 +939,7 @@ def check_backend(model:str, backend:str="tf")->None:
             Importing tensorflow raised following error \n{e}""")
     elif backend == "torch":
         try:
-            import torch
+            import _torch
         except Exception as e:
             raise Exception(f"""You must have install PyTorch to use {model} model. 
             Importing torch raised following error \n{e}""")
