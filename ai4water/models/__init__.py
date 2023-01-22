@@ -1,8 +1,267 @@
 
-from typing import Union
-from .tensorflow import FTTransformer
+from typing import Union, List
+
 
 from .utils import _make_output_layer
+
+
+def TabTransformer(
+        cat_vocabulary: dict,
+        num_numeric_features: int,
+        hidden_units=32,
+        num_heads: int = 4,
+        depth: int = 4,
+        dropout: float = 0.1,
+        num_dense_lyrs: int = 1,
+        prenorm_mlp:bool = True,
+        post_norm: bool = True,
+        final_mlp_units: Union[int, List[int]] = 16,
+        num_outputs: int = 1,
+        mode: str = "regression",
+        output_activation: str = None,
+        seed:int = 313,
+        backend:str = "tensorflow"
+)->dict:
+    """
+    Tab Transformer following the work of `Huang et al., 2021 <https://arxiv.org/abs/2012.06678>_`
+
+    Parameters
+    ----------
+    cat_vocabulary : dict
+        a dictionary whose keys are names of categorical features and values
+        are lists which consist of unique values of categorical features.
+        You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
+        own data. The length of dictionary should be equal to number of
+        categorical features.
+    num_numeric_features : int
+        number of numeric features to be used as input.
+    hidden_units : int, optional (default=32)
+        number of hidden units
+    num_heads : int, optional (default=4)
+        number of attention heads
+    depth : int (default=4)
+        number of transformer blocks to be stacked on top of each other
+    dropout : int, optional (default=0.1)
+        droput rate in transformer
+    post_norm : bool (default=True)
+    prenorm_mlp : bool (default=True)
+    num_dense_lyrs : int (default=2)
+        number of dense layers in MLP block
+    final_mlp_units : int (default=16)
+        number of units/neurons in final MLP layer i.e. the MLP layer
+        after Transformer block
+    num_outputs : int, optional (default=1)
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode : str, optional (default="regression")
+        either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given and the mode is clsasification
+        then the activation of output layer is decided based upon ``num_outputs``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the num_outputs are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
+    seed : int
+    backend : str
+        either ``tensorflow`` or ``pytorch``
+
+    Returns
+    -------
+    dict :
+        a dictionary with ``layers`` as key
+
+    Examples
+    ----------
+    >>> from ai4water import Model
+    >>> from ai4water.models import TabTransformer
+    >>> from ai4water.utils.utils import TrainTestSplit
+    >>> from ai4water.models.utils import gen_cat_vocab
+    >>> from ai4water.datasets import mg_photodegradation
+    ...
+    ... # bring the data as DataFrame
+    >>> data, _, _ = mg_photodegradation()
+    ... # Define categorical and numerical features and label
+    >>> NUMERIC_FEATURES = data.columns.tolist()[0:9]
+    >>> CAT_FEATURES = ["Catalyst_type", "Anions"]
+    >>> LABEL = "Efficiency (%)"
+    ... # create vocabulary of unique values of categorical features
+    >>> cat_vocab = gen_cat_vocab(data)
+    ... # make sure the data types are correct
+    >>> data[NUMERIC_FEATURES] = data[NUMERIC_FEATURES].astype(float)
+    >>> data[CAT_FEATURES] = data[CAT_FEATURES].astype(str)
+    >>> data[LABEL] = data[LABEL].astype(float)
+    >>> # split the data into training and test set
+    >>> splitter = TrainTestSplit(seed=313)
+    >>> train_data, test_data, _, _ = splitter.split_by_random(data)
+    ...
+    ... # build the model
+    >>> model = Model(model=TabTransformer(
+    ...     cat_vocabulary=cat_vocab,num_numeric_features=len(NUMERIC_FEATURES),
+    ...     hidden_units=16, final_mlp_units=[84, 42]))
+    ... # make a list of input arrays for training data
+    >>> train_x = [train_data[NUMERIC_FEATURES].values, train_data['Catalyst_type'].values,
+    ...            train_data['Anions'].values]
+    >>> test_x = [test_data[NUMERIC_FEATURES].values, test_data['Catalyst_type'].values,
+    ...           test_data['Anions'].values]
+    ...
+    >>> h = model.fit(x=train_x, y= train_data[LABEL].values,
+    ...               validation_data=(test_x, test_data[LABEL].values), epochs=1)
+    """
+
+    kws = dict(
+        cat_vocabulary=cat_vocabulary,
+        num_numeric_features=num_numeric_features,
+        hidden_units=hidden_units,
+        num_heads = num_heads,
+        depth = depth,
+        dropout = dropout,
+        num_dense_lyrs = num_dense_lyrs,
+        prenorm_mlp = prenorm_mlp,
+        post_norm = post_norm,
+        final_mlp_units = final_mlp_units,
+        num_outputs = num_outputs,
+        mode = mode,
+        output_activation = output_activation,
+        seed = seed)
+
+    if backend=="tensorflow":
+        from .tensorflow import TabTransformer
+        return TabTransformer(**kws)
+    else:
+        raise NotImplementedError
+
+
+def FTTransformer(
+        cat_vocabulary:dict,
+        num_numeric_features:int,
+        hidden_units = 32,
+        num_heads: int = 4,
+        depth:int = 4,
+        dropout: float = 0.1,
+        num_dense_lyrs:int = 2,
+        post_norm:bool = True,
+        final_mlp_units:int = 16,
+        num_outputs: int = 1,
+        mode: str = "regression",
+        output_activation: str = None,
+        seed: int = 313,
+        backend:str = "tensorflow"
+)->dict:
+    """
+    FT Transformer following the work of `Gorishniy et al., 2021 <https://arxiv.org/pdf/2106.11959v2.pdf>`_
+
+    Parameters
+    ----------
+    cat_vocabulary : dict
+        a dictionary whose keys are names of categorical features and values
+        are lists which consist of unique values of categorical features.
+        You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
+        own data. The length of dictionary should be equal to number of
+        categorical features.
+    num_numeric_features : int
+        number of numeric features to be used as input.
+    hidden_units : int, optional (default=32)
+        number of hidden units
+    num_heads : int, optional (default=4)
+        number of attention heads
+    depth : int (default=4)
+        number of transformer blocks to be stacked on top of each other
+    dropout : int, optional (default=0.1)
+        droput rate in transformer
+    post_norm : bool (default=True)
+    num_dense_lyrs : int (default=2)
+        number of dense layers in MLP block
+    final_mlp_units : int (default=16)
+        number of units/neurons in final MLP layer i.e. the MLP layer
+        after Transformer block
+    num_outputs : int, optional (default=1)
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode : str, optional (default="regression")
+        either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given and the mode is clsasification
+        then the activation of output layer is decided based upon ``num_outputs``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the num_outputs are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
+    seed : int
+    backend : str
+        either ``tensorflow`` or ``pytorch``
+
+    Returns
+    -------
+    dict :
+        a dictionary with ``layers`` as key
+
+    Examples
+    ----------
+    >>> from ai4water import Model
+    >>> from ai4water.models import FTTransformer
+    >>> from ai4water.datasets import mg_photodegradation
+    >>> from ai4water.models.utils import gen_cat_vocab
+    >>> from ai4water.utils.utils import TrainTestSplit
+    >>> # bring the data as DataFrame
+    >>> data, _, _ = mg_photodegradation()
+    ... # Define categorical and numerical features and label
+    >>> NUMERIC_FEATURES = data.columns.tolist()[0:9]
+    >>> CAT_FEATURES = ["Catalyst_type", "Anions"]
+    >>> LABEL = "Efficiency (%)"
+    ... # create vocabulary of unique values of categorical features
+    >>> cat_vocab = gen_cat_vocab(data)
+    ... # make sure the data types are correct
+    >>> data[NUMERIC_FEATURES] = data[NUMERIC_FEATURES].astype(float)
+    >>> data[CAT_FEATURES] = data[CAT_FEATURES].astype(str)
+    >>> data[LABEL] = data[LABEL].astype(float)
+    ... # split the data into training and test set
+    >>> splitter = TrainTestSplit(seed=313)
+    >>> train_data, test_data, _, _ = splitter.split_by_random(data)
+    ... # build the model
+    >>> model = Model(model=FTTransformer(cat_vocab, len(NUMERIC_FEATURES)))
+    ... # make a list of input arrays for training data
+    >>> train_x = [train_data[NUMERIC_FEATURES].values,
+    ...   train_data['Catalyst_type'].values,
+    ...   train_data['Anions'].values]
+    ...
+    >>> test_x = [test_data[NUMERIC_FEATURES].values,
+    ...       test_data['Catalyst_type'].values,
+    ...       test_data['Anions'].values]
+    ... # train the model
+    >>> h = model.fit(x=train_x, y= train_data[LABEL].values,
+    ...              validation_data=(test_x, test_data[LABEL].values),
+    ...              epochs=1)
+    """
+
+    kws = dict(
+        cat_vocabulary=cat_vocabulary,
+        num_numeric_features=num_numeric_features,
+        hidden_units=hidden_units,
+        num_heads = num_heads,
+        depth = depth,
+        dropout = dropout,
+        num_dense_lyrs = num_dense_lyrs,
+        post_norm = post_norm,
+        final_mlp_units = final_mlp_units,
+        num_outputs = num_outputs,
+        mode = mode,
+        output_activation = output_activation,
+        seed = seed)
+
+    if backend=="tensorflow":
+        from .tensorflow import FTTransformer
+        return FTTransformer(**kws)
+    else:
+        raise NotImplementedError
 
 
 def MLP(

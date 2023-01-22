@@ -38,7 +38,6 @@ considered.
 
 .. image:: imgs/hierarchy.png
     :align: center
-    :height: 500
 
 
 Module linkage

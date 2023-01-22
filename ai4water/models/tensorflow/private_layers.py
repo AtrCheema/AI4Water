@@ -326,6 +326,7 @@ class TransformerBlocks(tf.keras.layers.Layer):
     This layer stacks Transformers on top of each other.
 
     Example
+    -------
     >>> import numpy as np
     >>> from tensorflow.keras.models import Model
     >>> from tensorflow.keras.layers import Input
@@ -372,6 +373,21 @@ class Transformer(tf.keras.layers.Layer):
     A basic transformer block consisting of
     LayerNormalization -> Add -> MultiheadAttention -> MLP ->
 
+    Parameters
+    -----------
+    num_heads : int
+        number of attention heads
+    embed_dim : int
+        embedding dimension. This value is also used for units/neurons in MLP blocl
+    dropout : float
+        dropout rate in MLP blocl
+    post_norm : bool (default=True)
+        whether to apply LayerNormalization on the outputs or not.
+    prenorm_mlp : bool
+        whether to apply LayerNormalization on inputs of MLP or not
+    num_dense_lyrs : int
+        number of Dense layers in MLP block.
+
     Example
     -------
     >>> import numpy as np
@@ -388,11 +404,13 @@ class Transformer(tf.keras.layers.Layer):
     """
     def __init__(
             self,
-            num_heads:int,
-            embed_dim:int,
+            num_heads:int = 4,
+            embed_dim:int=32,
             dropout=0.1,
-            mlp_units:int=32,
             post_norm:bool = True,
+            prenorm_mlp:bool = False,
+            num_dense_lyrs:int = 1,
+            seed:int = 313,
             *args,
             **kwargs
     ):
@@ -400,7 +418,13 @@ class Transformer(tf.keras.layers.Layer):
 
         self.num_heads = num_heads
         self.embed_dim = embed_dim
+        self.dropout = dropout
         self.post_norm = post_norm
+        self.prenorm_mlp = prenorm_mlp
+        self.seed = seed
+
+        assert num_dense_lyrs <= 2
+        self.num_dense_lyrs = num_dense_lyrs
 
         self.att = tf.keras.layers.MultiHeadAttention(
             num_heads=num_heads, key_dim=embed_dim,
@@ -408,15 +432,27 @@ class Transformer(tf.keras.layers.Layer):
         )
         self.skip1 = tf.keras.layers.Add()
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.ffn = tf.keras.Sequential(
-            [
-                Dense(mlp_units, activation=tf.keras.activations.gelu),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Dense(embed_dim),
-            ]
-        )
-        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.ffn = self._make_mlp()
+
         self.skip2 = tf.keras.layers.Add()
+        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+
+    def _make_mlp(self):
+        lyrs = []
+
+        if self.prenorm_mlp:
+            lyrs += [tf.keras.layers.LayerNormalization(epsilon=1e-6)]
+
+
+        lyrs += [
+            Dense(self.embed_dim, activation=tf.keras.activations.gelu),
+            tf.keras.layers.Dropout(self.dropout, seed=self.seed),
+        ]
+
+        if self.num_dense_lyrs>1:
+            lyrs += [tf.keras.layers.Dense(self.embed_dim)]
+
+        return tf.keras.Sequential(lyrs)
 
     def __call__(self, inputs, *args, **kwargs):
 
