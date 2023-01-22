@@ -10,9 +10,12 @@ if tf is not None:
     from .private_layers import EALSTM
     from .private_layers import NumericalEmbeddings
     from .private_layers import CatEmbeddings
+    from .private_layers import Transformer
     from .private_layers import TransformerBlocks
+
     from .nbeats_keras import NBeats
     from .tft_layer import TemporalFusionTransformer
+
     from ._functions import MLP
     from ._functions import LSTM
     from ._functions import CNN

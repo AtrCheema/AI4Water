@@ -211,10 +211,13 @@ class NN(AttributeStore):
         return weights
 
     @staticmethod
-    def jsonize_lyr_config(lyr_config:dict)->dict:
+    def jsonize_lyr_config(lyr_config:dict):
         """some arguments in lyr_config dictionary may not be jsonizable.
         Jsonizing them because we have already used them so now we can save them
         in json file"""
+        if tf is None:
+            return
+
         if isinstance(lyr_config, dict):
             for key, val in lyr_config.items():
                 if isinstance(val, tf.DType):

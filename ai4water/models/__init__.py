@@ -20,7 +20,7 @@ def TabTransformer(
         mode: str = "regression",
         output_activation: str = None,
         seed:int = 313,
-        backend:str = "tensorflow"
+        backend:str = "tf"
 )->dict:
     """
     Tab Transformer following the work of `Huang et al., 2021 <https://arxiv.org/abs/2012.06678>_`
@@ -61,14 +61,14 @@ def TabTransformer(
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     seed : int
     backend : str
-        either ``tensorflow`` or ``pytorch``
+        either ``tf`` or ``pytorch``
 
     Returns
     -------
@@ -129,7 +129,7 @@ def TabTransformer(
         output_activation = output_activation,
         seed = seed)
 
-    if backend=="tensorflow":
+    if backend=="tf":
         from ._tensorflow import TabTransformer
         return TabTransformer(**kws)
     else:
@@ -150,7 +150,7 @@ def FTTransformer(
         mode: str = "regression",
         output_activation: str = None,
         seed: int = 313,
-        backend:str = "tensorflow"
+        backend:str = "tf"
 )->dict:
     """
     FT Transformer following the work of `Gorishniy et al., 2021 <https://arxiv.org/pdf/2106.11959v2.pdf>`_
@@ -190,14 +190,14 @@ def FTTransformer(
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     seed : int
     backend : str
-        either ``tensorflow`` or ``pytorch``
+        either ``tf`` or ``pytorch``
 
     Returns
     -------
@@ -257,7 +257,7 @@ def FTTransformer(
         output_activation = output_activation,
         seed = seed)
 
-    if backend=="tensorflow":
+    if backend=="tf":
         from ._tensorflow import FTTransformer
         return FTTransformer(**kws)
     else:
@@ -268,12 +268,12 @@ def MLP(
         units: Union[int, list] = 32,
         num_layers:int = 1,
         input_shape: tuple = None,
-        output_features:int = 1,
+        num_outputs:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode:str = "regression",
         output_activation:str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
         **kwargs
 )->dict:
     """helper function to make multi layer perceptron model.
@@ -292,7 +292,7 @@ def MLP(
         for example if model takes inputs (num_examples, num_features) then
         we should define the shape as (num_features,). The batch_size dimension
         is always None.
-    output_features : int, (default=1)
+    num_outputs : int, (default=1)
         number of output features from the network
     activation : Union[str, list], optional (default=None)
         activation function to use.
@@ -302,16 +302,17 @@ def MLP(
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
-    backend : str
+    backend : str (default='tf')
+        either ``tf`` or ``pytorch``
     **kwargs :
         any additional keyword arguments for Dense_ layer
 
@@ -343,6 +344,14 @@ def MLP(
     >>>               output_features=output_features)
     >>> model.fit(data=data)
 
+    similary for pytorch as backend we can build the model as below
+
+    >>> model = Model(model=MLP(32, 2, (13,), backend="torch"),
+    ...           backend="pytorch",
+    ...           input_features = input_features,
+    ...           output_features = output_features)
+    >>> model.fit(data=data)
+
     .. _Dense:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
 
@@ -350,13 +359,13 @@ def MLP(
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout
 
     """
-    check_backend("MLP")
+    check_backend("MLP", backend=backend)
 
     kws = dict(
         units = units,
         num_layers = num_layers,
         input_shape = input_shape,
-        output_features = output_features,
+        num_outputs = num_outputs,
         activation = activation,
         dropout = dropout,
         mode = mode,
@@ -364,23 +373,24 @@ def MLP(
         kwargs=kwargs
     )
 
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import MLP
         return MLP(**kws)
     else:
-        raise NotImplementedError
+        from ._torch import MLP
+        return MLP(**kws)
 
 
 def LSTM(
         units: Union[int, list] = 32,
         num_layers:int = 1,
         input_shape: tuple = None,
-        output_features:int = 1,
+        num_outputs:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode:str = "regression",
         output_activation:str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
         **kwargs
 ):
     """helper function to make LSTM Model
@@ -396,7 +406,7 @@ def LSTM(
         for example if model takes inputs (num_examples, lookback, num_features) then
         we should define the shape as (lookback, num_features). The batch_size dimension
         is always None.
-    output_features : int, optinoal (default=1)
+    num_outputs : int, optinoal (default=1)
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     activation : Union[str, list], optional
@@ -407,14 +417,14 @@ def LSTM(
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
 
@@ -446,12 +456,12 @@ def LSTM(
     .. _LSTM:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
     """
-    check_backend("LSTM")
+    check_backend("LSTM", backend=backend)
     kws = dict(
         units = units,
         num_layers = num_layers,
         input_shape = input_shape,
-        output_features = output_features,
+        num_outputs = num_outputs,
         activation = activation,
         dropout = dropout,
         mode = mode,
@@ -459,7 +469,7 @@ def LSTM(
         kwargs=kwargs
     )
 
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import LSTM
         return LSTM(**kws)
     else:
@@ -479,10 +489,10 @@ def CNN(
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         input_shape: tuple = None,
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode: str = "regression",
         output_activation:str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
         **kwargs
 )->dict:
     """helper function to make convolution neural network based model.
@@ -519,24 +529,24 @@ def CNN(
         for example if model takes inputs (num_examples, lookback, num_features) then
         we should define the shape as (lookback, num_features). The batch_size dimension
         is always None.
-    output_features : int, optional, (default=1)
+    num_outputs : int, optional, (default=1)
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     mode : str, optional
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
-        either "tensorflow" or "pytorch"
+        either "tf" or "pytorch"
     **kwargs :
         any keyword argument for Convolution_ layer
 
@@ -558,7 +568,7 @@ def CNN(
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization
 
     """
-    check_backend("CNN")
+    check_backend("CNN", backend=backend)
 
     kws = dict(
         filters=filters,
@@ -573,13 +583,13 @@ def CNN(
         activation=activation,
         dropout=dropout,
         input_shape=input_shape,
-        output_features=output_features,
+        num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation,
         kwargs=kwargs
     )
 
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import CNN
         return CNN(**kws)
     else:
@@ -595,10 +605,10 @@ def CNNLSTM(
         kernel_size: Union[int, tuple, list]=3,
         max_pool:bool=False,
         units: Union[int, tuple, list] = 32,
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode:str = "regression",
         output_activation:str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
 )->dict:
     """
     helper function to make CNNLSTM model. It adds one or more 1D convolutional
@@ -626,21 +636,21 @@ def CNNLSTM(
         whether to use max_pool after every cnn layer or not
     units : Union[int, list], optional (default=32)
         number of units in (each) lstm layer
-    output_features : int, optional (default=1)
+    num_outputs : int, optional (default=1)
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
 
@@ -663,12 +673,12 @@ def CNNLSTM(
     >>> model_config = CNNLSTM(input_shape=(lookback_steps, len(inputs)), sub_sequences=3)
     ... # build the model
     >>> model = Model(model=model_config, input_features=inputs,
-    ...    output_features=outputs, ts_args={"lookback": lookback_steps})
+    ...    num_outputs=outputs, ts_args={"lookback": lookback_steps})
     ... # train the model
     >>> model.fit(data=data)
 
     """
-    check_backend("CNNLSTM")
+    check_backend("CNNLSTM", backend=backend)
 
     kws = dict(
         input_shape=input_shape,
@@ -679,11 +689,11 @@ def CNNLSTM(
         kernel_size=kernel_size,
         max_pool=max_pool,
         units=units,
-        output_features=output_features,
+        num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation
     )
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import CNNLSTM
         return CNNLSTM(**kws)
     else:
@@ -696,11 +706,11 @@ def LSTMAutoEncoder(
         decoder_layers:int = 1,
         encoder_units: Union[int, list]=32,
         decoder_units: Union[int, list]=32,
-        output_features: int = 1,
+        num_outputs: int = 1,
         prediction_mode: bool = True,
         mode:str = "regression",
         output_activation: str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
         **kwargs
 )->dict:
     """
@@ -723,21 +733,21 @@ def LSTMAutoEncoder(
         number of units in (each) decoder LSTM
     prediction_mode : bool, optional (default="prediction")
         either "prediction" or "reconstruction"
-    output_features : int, optional
+    num_outputs : int, optional
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
     **kwargs
@@ -754,7 +764,7 @@ def LSTMAutoEncoder(
     >>> LSTMAutoEncoder((5, 10), 2, 2, [64, 32], [32, 64])
     """
 
-    check_backend("LSTMAutoEncoder")
+    check_backend("LSTMAutoEncoder", backend=backend)
 
     kws = dict(
         input_shape=input_shape,
@@ -762,13 +772,13 @@ def LSTMAutoEncoder(
         decoder_layers=decoder_layers,
         encoder_units=encoder_units,
         decoder_units=decoder_units,
-        output_features=output_features,
+        num_outputs=num_outputs,
         prediction_mode=prediction_mode,
         mode=mode,
         output_activation=output_activation,
         kwargs=kwargs
     )
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import LSTMAutoEncoder
         return LSTMAutoEncoder(**kws)
     else:
@@ -781,10 +791,10 @@ def TCN(
         kernel_size: int = 2,
         nb_stacks: int = 1,
         dilations = [1, 2, 4, 8, 16, 32],
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode="regression",
         output_activation: str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
         **kwargs
 )->dict:
     """helper function for building temporal convolution network
@@ -804,21 +814,21 @@ def TCN(
         number of stacks of tcn layer
     dilations :
         dilation rate
-    output_features : int, optional
+    num_outputs : int, optional
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
     **kwargs
@@ -834,7 +844,7 @@ def TCN(
     >>> TCN((5, 10), 32)
 
     """
-    check_backend("TCN")
+    check_backend("TCN", backend=backend)
 
     kws = dict(
         input_shape=input_shape,
@@ -842,12 +852,12 @@ def TCN(
         kernel_size=kernel_size,
         nb_stacks=nb_stacks,
         dilations=dilations,
-        output_features=output_features,
+        num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation,
         kwargs=kwargs
     )
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import TCN
         return TCN(**kws)
     else:
@@ -859,11 +869,11 @@ def TFT(
         hidden_units: int = 32,
         num_heads: int = 3,
         dropout:float = 0.1,
-        output_features:int = 1,
+        num_outputs:int = 1,
         use_cudnn:bool = False,
         mode:str="regression",
         output_activation:str = None,
-        backend:str = "tensorflow",
+        backend:str = "tf",
 )->dict:
     """helper function for temporal fusion transformer based model
 
@@ -880,7 +890,7 @@ def TFT(
         number of attention heads
     dropout : int, optional (default=0.1)
         droput rate
-    output_features : int, optional (default=1)
+    num_outputs : int, optional (default=1)
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
     use_cudnn : bool, optional (default=False)
@@ -889,14 +899,14 @@ def TFT(
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
         activation of the output layer. If not given and the mode is clsasification
-        then the activation of output layer is decided based upon ``output_features``
+        then the activation of output layer is decided based upon ``num_outputs``
         argument. In such a case, for binary classification, sigmoid with 1 output
-        neuron is preferred. Therefore, even if the output_features are 2,
+        neuron is preferred. Therefore, even if the num_outputs are 2,
         the last layer will have 1 neuron and activation function is ``sigmoid``.
-        Although the user can set ``softmax`` for 2 output_features as well
+        Although the user can set ``softmax`` for 2 num_outputs as well
         (binary classification) but this seems superfluous and is slightly
         more expensive.
-        For multiclass, the last layer will have neurons equal to output_features
+        For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
     Returns
@@ -919,11 +929,11 @@ def TFT(
         num_heads=num_heads,
         dropout=dropout,
         use_cudnn=use_cudnn,
-        output_features=output_features,
+        num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation
     )
-    if backend == "tensorflow":
+    if backend == "tf":
         from ._tensorflow import TFT
         return TFT(**kws)
     else:
@@ -935,12 +945,14 @@ def check_backend(model:str, backend:str="tf")->None:
         try:
             import tensorflow as tf
         except Exception as e:
-            raise Exception(f"""You must have install tensorflow to use {model} model. 
+            raise Exception(f"""
+            You must have installed tensorflow to use {model} model. 
             Importing tensorflow raised following error \n{e}""")
-    elif backend == "torch":
+    elif backend == "pytorch":
         try:
             import _torch
         except Exception as e:
-            raise Exception(f"""You must have install PyTorch to use {model} model. 
-            Importing torch raised following error \n{e}""")
+            raise Exception(f"""
+            You must have installed PyTorch to use {model} model. 
+            Importing pytorch raised following error \n{e}""")
     return

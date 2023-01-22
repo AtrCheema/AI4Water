@@ -5,18 +5,11 @@ from ai4water.backend import tf
 from ..utils import _make_output_layer
 
 
-
-
-
-
-
-
-
 def MLP(
         units: Union[int, list] = 32,
         num_layers: int = 1,
         input_shape: tuple = None,
-        output_features: int = 1,
+        num_outputs: int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode: str = "regression",
@@ -55,7 +48,7 @@ def MLP(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
 
@@ -66,7 +59,7 @@ def LSTM(
         units: Union[int, list] = 32,
         num_layers:int = 1,
         input_shape: tuple = None,
-        output_features:int = 1,
+        num_outputs:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode:str = "regression",
@@ -112,7 +105,7 @@ def LSTM(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
 
@@ -132,7 +125,7 @@ def CNN(
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         input_shape: tuple = None,
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode: str = "regression",
         output_activation:str = None,
         **kwargs
@@ -198,7 +191,7 @@ def CNN(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
 
@@ -215,7 +208,7 @@ def CNNLSTM(
         kernel_size: Union[int, tuple, list]=3,
         max_pool:bool=False,
         units: Union[int, tuple, list] = 32,
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode:str = "regression",
         output_activation:str = None,
 )->dict:
@@ -271,7 +264,7 @@ def CNNLSTM(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
 
@@ -284,7 +277,7 @@ def LSTMAutoEncoder(
         decoder_layers:int = 1,
         encoder_units: Union[int, list]=32,
         decoder_units: Union[int, list]=32,
-        output_features: int = 1,
+        num_outputs: int = 1,
         prediction_mode: bool = True,
         mode:str = "regression",
         output_activation: str = None,
@@ -328,7 +321,7 @@ def LSTMAutoEncoder(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
     return {'layers': layers}
@@ -340,7 +333,7 @@ def TCN(
         kernel_size: int = 2,
         nb_stacks: int = 1,
         dilations = [1, 2, 4, 8, 16, 32],
-        output_features:int = 1,
+        num_outputs:int = 1,
         mode="regression",
         output_activation: str = None,
         **kwargs
@@ -368,7 +361,7 @@ def TCN(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
     return {'layers': layers}
@@ -381,7 +374,7 @@ def TFT(
         hidden_units: int = 32,
         num_heads: int = 3,
         dropout:float = 0.1,
-        output_features:int = 1,
+        num_outputs:int = 1,
         use_cudnn:bool = False,
         mode:str="regression",
         output_activation:str = None,
@@ -418,7 +411,7 @@ def TFT(
     layers = _make_output_layer(
         layers,
         mode,
-        output_features,
+        num_outputs,
         output_activation
     )
 
