@@ -46,3 +46,9 @@ FTTransformer
 ==============
 .. automodule:: ai4water.models
    :members: FTTransformer
+
+
+TabTransformer
+==============
+.. automodule:: ai4water.models
+   :members: TabTransformer

@@ -346,6 +346,15 @@ class TransformerBlocks(tf.keras.layers.Layer):
             embed_dim:int,
             **kwargs
     ):
+        """
+        Parameters
+        -----------
+        num_blocks : int
+        num_heads : int
+        embed_dim :
+        **kwargs :
+            additional keyword arguments for :class:`ai4water.models.tensorflow.Transformer`
+        """
 
         super(TransformerBlocks, self).__init__()
         self.num_blocks = num_blocks
@@ -373,21 +382,6 @@ class Transformer(tf.keras.layers.Layer):
     A basic transformer block consisting of
     LayerNormalization -> Add -> MultiheadAttention -> MLP ->
 
-    Parameters
-    -----------
-    num_heads : int
-        number of attention heads
-    embed_dim : int
-        embedding dimension. This value is also used for units/neurons in MLP blocl
-    dropout : float
-        dropout rate in MLP blocl
-    post_norm : bool (default=True)
-        whether to apply LayerNormalization on the outputs or not.
-    prenorm_mlp : bool
-        whether to apply LayerNormalization on inputs of MLP or not
-    num_dense_lyrs : int
-        number of Dense layers in MLP block.
-
     Example
     -------
     >>> import numpy as np
@@ -414,6 +408,23 @@ class Transformer(tf.keras.layers.Layer):
             *args,
             **kwargs
     ):
+        """
+
+        Parameters
+        -----------
+        num_heads : int
+            number of attention heads
+        embed_dim : int
+            embedding dimension. This value is also used for units/neurons in MLP blocl
+        dropout : float
+            dropout rate in MLP blocl
+        post_norm : bool (default=True)
+            whether to apply LayerNormalization on the outputs or not.
+        prenorm_mlp : bool
+            whether to apply LayerNormalization on inputs of MLP or not
+        num_dense_lyrs : int
+            number of Dense layers in MLP block.
+        """
         super(Transformer, self).__init__(*args, **kwargs)
 
         self.num_heads = num_heads

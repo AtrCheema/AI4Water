@@ -273,6 +273,7 @@ def MLP(
         dropout: Union[float, list] = None,
         mode:str = "regression",
         output_activation:str = None,
+        backend:str = "tensorflow",
         **kwargs
 )->dict:
     """helper function to make multi layer perceptron model.
@@ -310,6 +311,7 @@ def MLP(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
     **kwargs :
         any additional keyword arguments for Dense_ layer
 
@@ -350,42 +352,23 @@ def MLP(
     """
     check_backend("MLP")
 
-    assert num_layers>=1
-
-    units = _check_length(units, num_layers)
-    dropout = _check_length(dropout, num_layers)
-    activation = _check_length(activation, num_layers)
-
-    if input_shape is None:
-        layers = {}
-    else:
-        layers =   {"Input": {"shape": input_shape}}
-
-    for idx, lyr in enumerate(range(num_layers)):
-
-        config = {"units": units[idx],
-                  "activation": activation[idx],
-                  }
-        config.update(kwargs)
-
-        _lyr = {f"Dense_{lyr}": config}
-        layers.update(_lyr)
-
-        _dropout = dropout[idx]
-
-        if  _dropout and _dropout > 0.0:
-            layers.update({"Dropout": {"rate": _dropout}})
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        units = units,
+        num_layers = num_layers,
+        input_shape = input_shape,
+        output_features = output_features,
+        activation = activation,
+        dropout = dropout,
+        mode = mode,
+        output_activation = output_activation,
+        kwargs=kwargs
     )
 
-    return {'layers': layers}
+    if backend == "tensorflow":
+        from .tensorflow import MLP
+        return MLP(**kws)
+    else:
+        raise NotImplementedError
 
 
 def LSTM(
@@ -397,6 +380,7 @@ def LSTM(
         dropout: Union[float, list] = None,
         mode:str = "regression",
         output_activation:str = None,
+        backend:str = "tensorflow",
         **kwargs
 ):
     """helper function to make LSTM Model
@@ -432,6 +416,8 @@ def LSTM(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
+
     **kwargs :
         any keyword argument for LSTM_ layer
 
@@ -461,48 +447,23 @@ def LSTM(
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
     """
     check_backend("LSTM")
-
-    assert num_layers>=1
-
-    if input_shape is None:
-        layers = {}
-    else:
-        layers = {"Input": {"shape": input_shape}}
-        assert len(input_shape)>=2
-
-    units = _check_length(units, num_layers)
-    dropout = _check_length(dropout, num_layers)
-    activation = _check_length(activation, num_layers)
-
-    for idx, lyr in enumerate(range(num_layers)):
-
-        return_sequences = False
-        if idx+1 != num_layers:
-            return_sequences = True
-
-        config = {"units": units[idx],
-                  "activation": activation[idx],
-                  "return_sequences": return_sequences,
-                                }
-        config.update(kwargs)
-
-        _lyr = {f"LSTM_{lyr}": config}
-        layers.update(_lyr)
-
-        _dropout = dropout[idx]
-        if  _dropout and _dropout > 0.0:
-            layers.update({"Dropout": {"rate": _dropout}})
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        units = units,
+        num_layers = num_layers,
+        input_shape = input_shape,
+        output_features = output_features,
+        activation = activation,
+        dropout = dropout,
+        mode = mode,
+        output_activation = output_activation,
+        kwargs=kwargs
     )
 
-    return {'layers': layers}
+    if backend == "tensorflow":
+        from .tensorflow import LSTM
+        return LSTM(**kws)
+    else:
+        raise NotImplementedError
 
 
 def CNN(
@@ -521,6 +482,7 @@ def CNN(
         output_features:int = 1,
         mode: str = "regression",
         output_activation:str = None,
+        backend:str = "tensorflow",
         **kwargs
 )->dict:
     """helper function to make convolution neural network based model.
@@ -573,6 +535,8 @@ def CNN(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
+        either "tensorflow" or "pytorch"
     **kwargs :
         any keyword argument for Convolution_ layer
 
@@ -596,68 +560,30 @@ def CNN(
     """
     check_backend("CNN")
 
-    assert num_layers>=1
-
-    assert convolution_type in ("1D", "2D", "3D")
-    assert pooling_type in ("MaxPool", "AveragePooling", None)
-
-    filters = _check_length(filters, num_layers)
-    activation = _check_length(activation, num_layers)
-    padding = _check_length(padding, num_layers)
-    strides = _check_length(strides, num_layers)
-    pooling_type = _check_length(pooling_type, num_layers)
-    pool_size = _check_length(pool_size, num_layers)
-    kernel_size = _check_length(kernel_size, num_layers)
-    batch_normalization = _check_length(batch_normalization, num_layers)
-    dropout = _check_length(dropout, num_layers)
-
-    if input_shape is None:
-        layers = {}
-    else:
-        assert len(input_shape) >= 2
-        layers =   {"Input": {"shape": input_shape}}
-
-    for idx, lyr in enumerate(range(num_layers)):
-
-        pool_type = pooling_type[idx]
-        batch_norm = batch_normalization[idx]
-
-        config = {
-            "filters": filters[idx],
-            "kernel_size": kernel_size[idx],
-            "activation": activation[idx],
-            "strides": strides[idx],
-            "padding": padding[idx]
-        }
-
-        config.update(kwargs)
-
-        _lyr = {f"Conv{convolution_type}_{lyr}": config}
-
-        layers.update(_lyr)
-
-        if pool_type:
-            pool_lyr = f"{pool_type}{convolution_type}"
-            _lyr = {pool_lyr: {"pool_size": pool_size[idx]}}
-            layers.update(_lyr)
-
-        if batch_norm:
-            layers.update({"BatchNormalization": {}})
-
-        _dropout = dropout[idx]
-        if  _dropout and _dropout > 0.0:
-            layers.update({"Dropout": {"rate": _dropout}})
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        filters=filters,
+        kernel_size=kernel_size,
+        convolution_type=convolution_type,
+        num_layers=num_layers,
+        padding=padding,
+        strides=strides,
+        pooling_type=pooling_type,
+        pool_size=pool_size,
+        batch_normalization=batch_normalization,
+        activation=activation,
+        dropout=dropout,
+        input_shape=input_shape,
+        output_features=output_features,
+        mode=mode,
+        output_activation=output_activation,
+        kwargs=kwargs
     )
 
-    return {'layers': layers}
+    if backend == "tensorflow":
+        from .tensorflow import CNN
+        return CNN(**kws)
+    else:
+        raise NotImplementedError
 
 
 def CNNLSTM(
@@ -672,6 +598,7 @@ def CNNLSTM(
         output_features:int = 1,
         mode:str = "regression",
         output_activation:str = None,
+        backend:str = "tensorflow",
 )->dict:
     """
     helper function to make CNNLSTM model. It adds one or more 1D convolutional
@@ -715,6 +642,7 @@ def CNNLSTM(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
 
     Returns
     -------
@@ -742,58 +670,24 @@ def CNNLSTM(
     """
     check_backend("CNNLSTM")
 
-    assert len(input_shape) == 2
-    layers =   {"Input": {"shape": input_shape}}
-    lookback = input_shape[-2]
-    input_features = input_shape[-1]
-    time_steps = lookback // sub_sequences
-    new_shape = sub_sequences, time_steps, input_features
-
-    layers.update({"Reshape": {"target_shape": new_shape}})
-
-    filters = _check_length(filters, cnn_layers)
-    kernel_size = _check_length(kernel_size, cnn_layers)
-
-    units = _check_length(units, lstm_layers)
-
-    for idx, cnn_lyr in enumerate(range(cnn_layers)):
-
-        layers.update({f"TimeDistributed_{idx}": {}})
-
-        config = {"filters": filters[idx],
-                  "kernel_size": kernel_size[idx],
-                  "padding": "same"}
-        layers.update({f"Conv1D_{idx}": config})
-
-        if max_pool:
-            layers.update({f"TimeDistributed_mp{idx}": {}})
-
-            layers.update({f"MaxPool1D_{idx}": {}})
-
-    layers.update({"TimeDistributed_e": {}})
-    layers.update({'Flatten': {}})
-
-    for lstm_lyr in range(lstm_layers):
-
-        return_sequences = False
-        if lstm_lyr+1 != lstm_layers:
-            return_sequences = True
-
-        config = {"units": units[lstm_lyr],
-                  "return_sequences": return_sequences
-                  }
-        layers.update({f"LSTM_{lstm_lyr}": config})
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        input_shape=input_shape,
+        sub_sequences=sub_sequences,
+        cnn_layers=cnn_layers,
+        lstm_layers=lstm_layers,
+        filters=filters,
+        kernel_size=kernel_size,
+        max_pool=max_pool,
+        units=units,
+        output_features=output_features,
+        mode=mode,
+        output_activation=output_activation
     )
-
-    return {"layers": layers}
+    if backend == "tensorflow":
+        from .tensorflow import CNNLSTM
+        return CNNLSTM(**kws)
+    else:
+        raise NotImplementedError
 
 
 def LSTMAutoEncoder(
@@ -806,6 +700,7 @@ def LSTMAutoEncoder(
         prediction_mode: bool = True,
         mode:str = "regression",
         output_activation: str = None,
+        backend:str = "tensorflow",
         **kwargs
 )->dict:
     """
@@ -844,6 +739,7 @@ def LSTMAutoEncoder(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
     **kwargs
 
     Returns
@@ -860,44 +756,23 @@ def LSTMAutoEncoder(
 
     check_backend("LSTMAutoEncoder")
 
-    assert len(input_shape)>=2
-    assert encoder_layers >= 1
-    assert decoder_layers >= 1
-
-    lookback = input_shape[-2]
-
-    encoder_units = _check_length(encoder_units, encoder_layers)
-    decoder_units = _check_length(decoder_units, decoder_layers)
-
-    layers =   {"Input": {"shape": input_shape}}
-
-    for idx, enc_lyr in enumerate(range(encoder_layers)):
-
-        config = {
-            "units": encoder_units[idx]
-        }
-        lyr = {f"LSTM_e{idx}": config}
-        layers.update(lyr)
-
-    layers.update({'RepeatVector': lookback})
-
-    for idx, dec_lyr in enumerate(range(decoder_layers)):
-
-        config = {
-            "units": decoder_units[idx]
-        }
-        lyr = {f"LSTM_d{idx}": config}
-        layers.update(lyr)
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        input_shape=input_shape,
+        encoder_layers=encoder_layers,
+        decoder_layers=decoder_layers,
+        encoder_units=encoder_units,
+        decoder_units=decoder_units,
+        output_features=output_features,
+        prediction_mode=prediction_mode,
+        mode=mode,
+        output_activation=output_activation,
+        kwargs=kwargs
     )
-    return {'layers': layers}
+    if backend == "tensorflow":
+        from .tensorflow import LSTMAutoEncoder
+        return LSTMAutoEncoder(**kws)
+    else:
+        raise NotImplementedError
 
 
 def TCN(
@@ -909,6 +784,7 @@ def TCN(
         output_features:int = 1,
         mode="regression",
         output_activation: str = None,
+        backend:str = "tensorflow",
         **kwargs
 )->dict:
     """helper function for building temporal convolution network
@@ -944,6 +820,7 @@ def TCN(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
     **kwargs
         any additional keyword argument
 
@@ -959,29 +836,22 @@ def TCN(
     """
     check_backend("TCN")
 
-    layers = {"Input": {"shape": input_shape}}
-
-    config = {'nb_filters': filters,
-              'kernel_size': kernel_size,
-              'nb_stacks': nb_stacks,
-              'dilations': dilations,
-              'padding': 'causal',
-              'use_skip_connections': True,
-              'return_sequences': False,
-              'dropout_rate': 0.0}
-
-    config.update(kwargs)
-    layers.update({"TCN": config})
-
-    layers.update({"Flatten": {}})
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        input_shape=input_shape,
+        filters=filters,
+        kernel_size=kernel_size,
+        nb_stacks=nb_stacks,
+        dilations=dilations,
+        output_features=output_features,
+        mode=mode,
+        output_activation=output_activation,
+        kwargs=kwargs
     )
-    return {'layers': layers}
+    if backend == "tensorflow":
+        from .tensorflow import TCN
+        return TCN(**kws)
+    else:
+        raise NotImplementedError
 
 
 def TFT(
@@ -993,6 +863,7 @@ def TFT(
         use_cudnn:bool = False,
         mode:str="regression",
         output_activation:str = None,
+        backend:str = "tensorflow",
 )->dict:
     """helper function for temporal fusion transformer based model
 
@@ -1027,6 +898,7 @@ def TFT(
         more expensive.
         For multiclass, the last layer will have neurons equal to output_features
         and ``softmax`` as activation.
+    backend : str
     Returns
     -------
     dict :
@@ -1040,52 +912,22 @@ def TFT(
     >>> model = Model(model=TFT(input_shape=(14, 13)),
     ...                   ts_args={"lookback": 14})
     """
-    import tensorflow as tf
 
-    num_encoder_steps = input_shape[-2]
-    input_features = input_shape[-1]
-
-    params = {
-        'total_time_steps': num_encoder_steps,
-        'num_encoder_steps': num_encoder_steps,
-        'num_inputs': input_features,
-        'category_counts': [],
-        'input_obs_loc': [],  # leave empty if not available
-        'static_input_loc': [],  # if not static inputs, leave this empty
-        'known_regular_inputs': list(range(input_features)),
-        'known_categorical_inputs': [],  # leave empty if not applicable
-        'hidden_units': hidden_units,
-        'dropout_rate': dropout,
-        'num_heads': num_heads,
-        'use_cudnn': use_cudnn,
-        'future_inputs': False,
-        'return_sequences': True,
-    }
-
-    layers = {
-        "Input": {"config": {"shape": (params['total_time_steps'], input_features)}},
-        "TemporalFusionTransformer": {"config": params},
-        "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
-    }
-
-    layers = _make_output_layer(
-        layers,
-        mode,
-        output_features,
-        output_activation
+    kws = dict(
+        input_shape=input_shape,
+        hidden_units=hidden_units,
+        num_heads=num_heads,
+        dropout=dropout,
+        use_cudnn=use_cudnn,
+        output_features=output_features,
+        mode=mode,
+        output_activation=output_activation
     )
-
-    return {'layers': layers}
-
-
-def _check_length(parameter, num_layers):
-
-    if not isinstance(parameter, list):
-        parameter = [parameter for _ in range(num_layers)]
+    if backend == "tensorflow":
+        from .tensorflow import TFT
+        return TFT(**kws)
     else:
-        assert len(parameter)==num_layers
-
-    return parameter
+        raise NotImplementedError
 
 
 def check_backend(model:str, backend:str="tf")->None:
