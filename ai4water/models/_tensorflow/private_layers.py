@@ -344,6 +344,7 @@ class TransformerBlocks(tf.keras.layers.Layer):
             num_blocks:int,
             num_heads:int,
             embed_dim:int,
+            name:str = "TransformerBlocks",
             **kwargs
     ):
         """
@@ -356,7 +357,7 @@ class TransformerBlocks(tf.keras.layers.Layer):
             additional keyword arguments for :class:`ai4water.models.tensorflow.Transformer`
         """
 
-        super(TransformerBlocks, self).__init__()
+        super(TransformerBlocks, self).__init__(name=name)
         self.num_blocks = num_blocks
         self.num_heads = num_heads
 

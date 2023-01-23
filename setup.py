@@ -133,8 +133,8 @@ setup(
 
     packages=['ai4water',
               'ai4water/models',
-              'ai4water/models/tensorflow',
-              'ai4water/models/torch',
+              'ai4water/models/_tensorflow',
+              'ai4water/models/_torch',
               'ai4water/hyperopt',
               'ai4water/utils',
               'ai4water/preprocessing',

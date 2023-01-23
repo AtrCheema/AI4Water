@@ -17,6 +17,8 @@ else:
     except (ModuleNotFoundError, ImportError):
         LAYERS = {}
 
+np = K.np
+
 
 class AttributeNotSetYet:
     def __init__(self, func_name):
@@ -183,6 +185,27 @@ class NN(AttributeStore):
         This function should be called only when AttentionLSTM layer is used.
         """
         return self.get_intermediate_output("self_attention", inputs, keep=1, **kwargs)
+
+    def get_fttransformer_weights(self, inputs, **kwargs):
+        """
+        Returns attention weights for FTTransformer model which have shape of
+        (num_samples, num_input_features)
+        """
+        weights = self.get_intermediate_output('multi_head_attention', inputs, **kwargs)
+
+        if self.verbosity>0:
+            print(f"found {len(weights)} layers with multi-head-attention weights named {weights.keys()}")
+
+        importances = []
+        for k, v in weights.items():
+            out, importance = v
+            importance = importance[:, :, 0, :]
+            importances.append(np.sum(importance, axis=1))
+
+        depth = self.config['model']['layers']['TransformerBlocks']['config']['num_blocks']
+        heads = self.config['model']['layers']['TransformerBlocks']['config']['num_heads']
+
+        return np.sum(np.stack(importances), axis=0) / (depth * heads)
 
     def get_intermediate_output(self, layer_name, inputs, keep=None, **kwargs)->dict:
         """keep is only useful when the intermediate layer returns more than 1 output"""

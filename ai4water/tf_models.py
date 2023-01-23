@@ -1,7 +1,5 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel"]
 
-import warnings
-
 from easy_mpl import imshow
 
 from .backend import tf, plt, np, os
@@ -9,12 +7,9 @@ from .backend import keras
 from .functional import Model as FModel
 from ai4water.utils.utils import print_something
 from .utils.utils import DataNotFound
-from ai4water.utils.utils import maybe_three_outputs
-from ai4water.utils.utils import dateandtime_now
 from ai4water.nn_tools import check_act_fn
 from ai4water.preprocessing import DataSet
-from ai4water.preprocessing.dataset._main import _DataSet
-from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
+from ai4water.models._tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
 
 layers = keras.layers
