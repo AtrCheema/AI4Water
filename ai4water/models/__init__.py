@@ -286,7 +286,7 @@ def MLP(
     units : Union[int, list], default=32
         number of units in Dense layer
     num_layers : int, optional, (default, 1)
-        number of Dense_ layers to use as hidden layers, excluding output layer.
+        number of Dense_ or Linear_ layers to use as hidden layers, excluding output layer.
     input_shape : tuple, optional (default=None)
         shape of input tensor to the model. If specified, it should exclude batch_size
         for example if model takes inputs (num_examples, num_features) then
@@ -346,7 +346,7 @@ def MLP(
 
     similary for pytorch as backend we can build the model as below
 
-    >>> model = Model(model=MLP(32, 2, (13,), backend="torch"),
+    >>> model = Model(model=MLP(32, 2, (13,), backend="pytorch"),
     ...           backend="pytorch",
     ...           input_features = input_features,
     ...           output_features = output_features)
@@ -354,6 +354,9 @@ def MLP(
 
     .. _Dense:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
+
+    .. _Linear:
+        https://pytorch.org/docs/stable/generated/torch.nn.Linear.html
 
     .. _Dropout:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout
@@ -370,7 +373,7 @@ def MLP(
         dropout = dropout,
         mode = mode,
         output_activation = output_activation,
-        kwargs=kwargs
+        **kwargs
     )
 
     if backend == "tf":
@@ -466,7 +469,7 @@ def LSTM(
         dropout = dropout,
         mode = mode,
         output_activation = output_activation,
-        kwargs=kwargs
+        **kwargs
     )
 
     if backend == "tf":
@@ -586,7 +589,7 @@ def CNN(
         num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation,
-        kwargs=kwargs
+        **kwargs
     )
 
     if backend == "tf":
@@ -776,7 +779,7 @@ def LSTMAutoEncoder(
         prediction_mode=prediction_mode,
         mode=mode,
         output_activation=output_activation,
-        kwargs=kwargs
+        **kwargs
     )
     if backend == "tf":
         from ._tensorflow import LSTMAutoEncoder
@@ -855,7 +858,7 @@ def TCN(
         num_outputs=num_outputs,
         mode=mode,
         output_activation=output_activation,
-        kwargs=kwargs
+        **kwargs
     )
     if backend == "tf":
         from ._tensorflow import TCN
