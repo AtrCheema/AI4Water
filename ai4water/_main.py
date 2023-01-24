@@ -3241,6 +3241,8 @@ class BaseModel(NN):
             figsize: tuple = None,
             annotate:bool = True,
             annotate_kws:dict = None,
+            cmap="YlGn",
+            border=False,
             show:bool=True,
             save_metadata:bool=True
     )->plt.Axes:
@@ -3299,6 +3301,8 @@ class BaseModel(NN):
                         format string for annotation.
                     annotate_fontsize : int, optinoal (default=7)
                         fontsize for annotation
+            cmap :
+            border :
             show : bool, optional (default=True)
                 whether to show the  plot or not
             save_metadata : bool, optional, default=True
@@ -3401,6 +3405,8 @@ class BaseModel(NN):
                 ncols=ncols,
                 figsize=figsize,
                 annotate=annotate,
+                cmap=cmap,
+                border=border,
                 **_annotate_kws,
             )
 

@@ -25,6 +25,8 @@ def feature_interaction(
         which_classes=None,
         predict_kwds={},
         ncols=2,
+        cmap="YlGn",
+        border=False,
         figsize=None,
         annotate=False,
         annotate_counts=True,
@@ -127,8 +129,9 @@ def feature_interaction(
         row_labels=df.index,
         col_labels=df.columns,
         ax=axes,
-        cmap="YlGn",
-        cbarlabel="Median Prediction"
+        cmap=cmap,
+        cbarlabel="Median Prediction",
+        border=border
     )
     axes.set_ylabel(features[0])
     axes.set_xlabel(features[1])
@@ -270,10 +273,16 @@ def prediction_distribution_plot(
     return ax, summary_df
 
 
-def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={}, cbarlabel="",
-            xlabel_on_top=True,
-            **kwargs):
+def heatmap(
+        data,
+        row_labels,
+        col_labels,
+        ax=None,
+        cbar_kw={},
+        cbarlabel="",
+        xlabel_on_top=True,
+        border:bool = False,
+        **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
     Parameters
@@ -291,6 +300,8 @@ def heatmap(data, row_labels, col_labels, ax=None,
         A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
     cbarlabel
         The label for the colorbar.  Optional.
+    border :
+    xlabel_on_top
     **kwargs
         All other arguments are forwarded to `imshow`.
     """
@@ -328,13 +339,14 @@ def heatmap(data, row_labels, col_labels, ax=None,
     plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
              rotation_mode="anchor")
 
-    # Turn spines off and create white grid.
-    # in older versions ax.spines is dict and in newer versions it is list
-    if isinstance(ax.spines, dict):
-        for v in ax.spines.values():
-            v.set_visible(False)
-    else:
-        ax.spines[:].set_visible(False)
+    if not border:
+        # Turn spines off and create white grid.
+        # in older versions ax.spines is dict and in newer versions it is list
+        if isinstance(ax.spines, dict):
+            for v in ax.spines.values():
+                v.set_visible(False)
+        else:
+            ax.spines[:].set_visible(False)
 
     if xlabel_on_top:
         ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
