@@ -510,7 +510,7 @@ class Model(MODEL, BaseModel):
                 # this must be an input layer
                 # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
-                    assert all([is_input(_input) for _input in inputs])
+                    assert all([is_input(_input) for _input in inputs]), inputs
                 if isinstance(inputs, tuple):
                     if not run_call:
                         assert all([is_input(_input) for _input in inputs])

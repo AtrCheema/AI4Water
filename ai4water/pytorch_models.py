@@ -132,7 +132,7 @@ class IMVModel(HARHNModel):
                ax=ax,
                xticklabels=xticklabels,
                yticklabels=list(all_cols),
-               title="Importance of features and timesteps",
+               ax_kws=dict(title="Importance of features and timesteps"),
                annotate=annotate,
                show=False)
 

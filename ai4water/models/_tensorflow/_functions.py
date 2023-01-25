@@ -2,7 +2,7 @@
 from typing import Union, List
 
 from ai4water.backend import tf
-from ..utils import _make_output_layer
+from ..utils import _make_output_layer, _check_length
 
 
 def MLP(
@@ -534,13 +534,3 @@ def _make_input_lyrs(
     }
 
     return lyrs
-
-
-def _check_length(parameter, num_layers):
-
-    if not isinstance(parameter, list):
-        parameter = [parameter for _ in range(num_layers)]
-    else:
-        assert len(parameter)==num_layers
-
-    return parameter

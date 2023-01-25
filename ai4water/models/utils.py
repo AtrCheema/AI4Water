@@ -49,3 +49,13 @@ def _make_output_layer(
             {"Dense_out": {"units": num_outputs,
                            "activation": output_activation}})
     return layers
+
+
+def _check_length(parameter, num_layers):
+
+    if not isinstance(parameter, list):
+        parameter = [parameter for _ in range(num_layers)]
+    else:
+        assert len(parameter)==num_layers
+
+    return parameter

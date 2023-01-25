@@ -82,5 +82,6 @@ class TestLayers(unittest.TestCase):
                       validation_data=(test_x, test_data[LABEL].values), epochs=1)
         return
 
+
 if __name__ == "__main__":
     unittest.main()

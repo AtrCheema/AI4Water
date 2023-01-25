@@ -602,12 +602,14 @@ class CatEmbeddings(layers.Layer):
 
 class TabTransformer(layers.Layer):
     """
-    tensorflow/keras layer which implements logic of FTTransformer model.
+    tensorflow/keras layer which implements logic of TabTransformer model.
+
+    It is available only in tensorflow >= 2.6
     """
     def __init__(
             self,
-            cat_vocabulary: dict,
             num_numeric_features: int,
+            cat_vocabulary: dict,
             hidden_units=32,
             lookup_kws:dict=None,
             num_heads: int = 4,
@@ -621,7 +623,33 @@ class TabTransformer(layers.Layer):
             seed: int = 313,
             *args, **kwargs
     ):
-
+        """
+        Parameters
+        ----------
+        num_numeric_features : int
+            number of numeric features to be used as input.
+        cat_vocabulary : dict
+            a dictionary whose keys are names of categorical features and values
+            are lists which consist of unique values of categorical features.
+            You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
+            own data. The length of dictionary should be equal to number of
+            categorical features.
+        hidden_units : int, optional (default=32)
+            number of hidden units
+        num_heads : int, optional (default=4)
+            number of attention heads
+        depth : int (default=4)
+            number of transformer blocks to be stacked on top of each other
+        dropout : int, optional (default=0.1)
+            droput rate in transformer
+        post_norm : bool (default=True)
+        prenorm_mlp : bool (default=True)
+        num_dense_lyrs : int (default=2)
+            number of dense layers in MLP block
+        final_mlp_units : int (default=16)
+            number of units/neurons in final MLP layer i.e. the MLP layer
+            after Transformer block
+        """
         super(TabTransformer, self).__init__(*args, **kwargs)
 
         self.cat_vocabulary = cat_vocabulary
@@ -660,7 +688,7 @@ class TabTransformer(layers.Layer):
         self.concat = layers.Concatenate()
 
         self.mlp = self.create_mlp(
-            activation=tf.keras.activations.selu,
+            activation=self.final_mpl_activation,
             normalization_layer=layers.BatchNormalization(),
             name="MLP",
         )
@@ -712,8 +740,8 @@ class FTTransformer(layers.Layer):
     """
     def __init__(
             self,
-            cat_vocabulary: dict,
             num_numeric_features: int,
+            cat_vocabulary: dict,
             hidden_units=32,
             num_heads: int = 4,
             depth: int = 4,
@@ -722,10 +750,42 @@ class FTTransformer(layers.Layer):
             num_dense_lyrs: int = 2,
             post_norm: bool = True,
             final_mlp_units: int = 16,
+            with_cls_token:bool = False,
             seed: int = 313,
-            *args, **kwargs
+            *args,
+            **kwargs
     ):
-
+        """
+        Parameters
+        ----------
+        num_numeric_features : int
+            number of numeric features to be used as input.
+        cat_vocabulary : dict
+            a dictionary whose keys are names of categorical features and values
+            are lists which consist of unique values of categorical features.
+            You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
+            own data. The length of dictionary should be equal to number of
+            categorical features.
+        hidden_units : int, optional (default=32)
+            number of hidden units
+        num_heads : int, optional (default=4)
+            number of attention heads
+        depth : int (default=4)
+            number of transformer blocks to be stacked on top of each other
+        dropout : float, optional (default=0.1)
+            droput rate in transformer
+        lookup_kws : dict
+        post_norm : bool (default=True)
+        num_dense_lyrs : int (default=2)
+            number of dense layers in MLP block
+        final_mlp_units : int (default=16)
+            number of units/neurons in final MLP layer i.e. the MLP layer
+            after Transformer block
+        with_cls_token : bool (default=False)
+            whether to use cls token or not
+        seed : int
+            seed for reproducibility
+        """
         super(FTTransformer, self).__init__(*args, **kwargs)
 
         self.cat_vocabulary = cat_vocabulary
@@ -735,6 +795,7 @@ class FTTransformer(layers.Layer):
         self.depth = depth
         self.dropout = dropout
         self.final_mlp_units = final_mlp_units
+        self.with_cls_token = with_cls_token
         self.seed = seed
 
         self.cat_embs = CatEmbeddings(
@@ -765,14 +826,28 @@ class FTTransformer(layers.Layer):
         self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)
         self.mlp = layers.Dense(final_mlp_units)
 
+    def build(self, input_shape):
+        if self.with_cls_token:
+            # CLS token
+            w_init = tf.random_normal_initializer()
+            self.cls_weights = tf.Variable(
+                initial_value=w_init(shape=(1, self.hidden_units), dtype="float32"),
+                trainable=True,
+            )
+        return
+
     def __call__(self, inputs:list, *args, **kwargs):
         """
         inputs :
             list of 2. The first tensor is numerical inputs and second
             tensor is categorical inputs
         """
+
         num_inputs = inputs[0]
         cat_inputs = inputs[1]
+
+        # cls_tokens = tf.repeat(self.cls_weights, repeats=tf.shape(inputs[self.numerical[0]])[0], axis=0)
+        # cls_tokens = tf.expand_dims(cls_tokens, axis=1)
 
         num_embs = self.num_embs(num_inputs)
         cat_embs = self.cat_embs(cat_inputs)

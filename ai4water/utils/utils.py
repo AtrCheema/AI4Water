@@ -1661,15 +1661,17 @@ def plot_activations_along_inputs(
             ax2.plot(obs, '.', label='Observed')
             ax2.legend()
             ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-            axis, im = imshow(activations[:, :, idx].transpose(),
-                              vmin=vmin,
-                              vmax=vmax,
-                              aspect="auto",
-                              ax = ax3,
-                              xlabel="Examples",
-                              ylabel="lookback steps",
-                              show=False,
-                              yticklabels=ytick_labels)
+            im = imshow(
+                activations[:, :, idx].transpose(),
+                  vmin=vmin,
+                  vmax=vmax,
+                  aspect="auto",
+                  ax = ax3,
+                  ax_kws=dict(xlabel="Examples",
+                              ylabel="lookback steps"),
+                show=False,
+                yticklabels=ytick_labels
+            )
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attn_weights_{out_name}_{name}_'

@@ -20,6 +20,8 @@ dictionaries. This method of definition style for tensorflow and pytorch is give
    declarative_def_tf
    declarative_def_torch
 
+   subclassing_vs_functional
+
 
 Module Structure
 =================

@@ -202,8 +202,8 @@ class NN(AttributeStore):
             importance = importance[:, :, 0, :]
             importances.append(np.sum(importance, axis=1))
 
-        depth = self.config['model']['layers']['TransformerBlocks']['config']['num_blocks']
-        heads = self.config['model']['layers']['TransformerBlocks']['config']['num_heads']
+        depth = self.config['model']['layers']['FTTransformer']['config']['depth']
+        heads = self.config['model']['layers']['FTTransformer']['config']['num_heads']
 
         return np.sum(np.stack(importances), axis=0) / (depth * heads)
 

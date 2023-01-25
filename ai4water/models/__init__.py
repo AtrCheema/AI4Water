@@ -67,6 +67,7 @@ def TabTransformer(
         For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     seed : int
+        seed for reproducibility
     backend : str
         either ``tf`` or ``pytorch``
 
@@ -426,9 +427,10 @@ def LSTM(
         For multiclass, the last layer will have neurons equal to num_outputs
         and ``softmax`` as activation.
     backend : str
-
+        the type of backend to use. Allowed vlaues are ``tf`` or ``pytorch``.
     **kwargs :
-        any keyword argument for LSTM_ layer
+        any keyword argument for LSTM layer of `tensorflow <https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM>`_
+        or `pytorch <https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html>`_ layer
 
     Returns
     -------
@@ -452,8 +454,15 @@ def LSTM(
     >>>               output_features=output_features, ts_args={"lookback": 5})
     >>> model.fit(data=data)
 
-    .. _LSTM:
-        https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
+    Similary for pytorch as backend the interface will be same
+    except that we need to explicitly tell the backend as below
+
+    >>> model = Model(model=LSTM(32, 2, (5, 13), backend="pytorch"),
+    ...           backend="pytorch",
+    ...               input_features = input_features,
+    ...               output_features = output_features,
+    ...           ts_args={'lookback':5})
+    >>> model.fit(data=data)
     """
     check_backend("LSTM", backend=backend)
     kws = dict(
@@ -472,7 +481,8 @@ def LSTM(
         from ._tensorflow import LSTM
         return LSTM(**kws)
     else:
-        raise NotImplementedError
+        from ._torch import LSTM
+        return LSTM(**kws)
 
 
 def CNN(
@@ -556,10 +566,23 @@ def CNN(
 
     Examples
     --------
-    >>> CNN(32, 2, "1D", input_shape=(5, 10))
-
-    >>> CNN(32, 2, "1D", pooling_type="MaxPool", input_shape=(5, 10))
-
+    >>> from ai4water import Model
+    >>> from ai4water.models import CNN
+    >>> from ai4water.datasets import busan_beach
+    ...
+    >>> data = busan_beach()
+    >>> input_features = data.columns.tolist()[0:-1]
+    >>> output_features = data.columns.tolist()[-1:]
+    >>> model_config = CNN(32, 2, "1D", input_shape=(5, 10))
+    >>> model = Model(model=model_config, ts_args={"lookback": 5}, backend="pytorch",
+    ...         input_features=input_features, output_features=output_features)
+    ...
+    >>> model.fit(data=data)
+    >>> model_config = CNN(32, 2, "1D", pooling_type="MaxPool", input_shape=(5, 10))
+    >>> model = Model(model=model_config, ts_args={"lookback": 5}, backend="pytorch",
+    ...         input_features=input_features, output_features=output_features)
+    ...
+    >>> model.fit(data=data)
 
     .. _Convolution:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv1D
@@ -592,7 +615,12 @@ def CNN(
         from ._tensorflow import CNN
         return CNN(**kws)
     else:
-        raise NotImplementedError
+
+        for arg in ['strides', 'kernel_size']:
+            kws.pop(arg)
+
+        from ._torch import CNN
+        return CNN(**kws)
 
 
 def CNNLSTM(
@@ -940,6 +968,7 @@ def TFT(
 
 
 def check_backend(model:str, backend:str="tf")->None:
+
     if backend=="tf":
         try:
             import tensorflow as tf
@@ -947,11 +976,13 @@ def check_backend(model:str, backend:str="tf")->None:
             raise Exception(f"""
             You must have installed tensorflow to use {model} model. 
             Importing tensorflow raised following error \n{e}""")
+
     elif backend == "pytorch":
         try:
-            import _torch
+            import torch
         except Exception as e:
             raise Exception(f"""
             You must have installed PyTorch to use {model} model. 
             Importing pytorch raised following error \n{e}""")
+
     return
