@@ -49,3 +49,23 @@ Transformer
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+TabTransformer
+==================
+.. autoclass:: ai4water.models._tensorflow.TabTransformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+FTTransformer
+==================
+.. autoclass:: ai4water.models._tensorflow.FTTransformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

@@ -31,12 +31,10 @@ train_data, test_data, _, _ = splitter.split_by_random(data)
 
 # make a list of input arrays for training data
 train_x = [train_data[NUMERIC_FEATURES].values,
-           train_data['Catalyst_type'].values,
-           train_data['Anions'].values]
+           train_data[CAT_FEATURES].values]
 
 test_x = [test_data[NUMERIC_FEATURES].values,
-          test_data['Catalyst_type'].values,
-          test_data['Anions'].values]
+          test_data[CAT_FEATURES].values]
 
 
 class TestLayers(unittest.TestCase):
@@ -63,7 +61,7 @@ class TestLayers(unittest.TestCase):
     def test_fttransformer(self):
         # build the model
         model = Model(model=FTTransformer(
-            cat_vocab, len(NUMERIC_FEATURES), hidden_units=16, num_heads=8),
+            len(NUMERIC_FEATURES),cat_vocab, hidden_units=16, num_heads=8),
                       verbosity=0)
 
         assert model.count_params() == 37610, model.count_params()
@@ -75,7 +73,7 @@ class TestLayers(unittest.TestCase):
     def test_tabtransformer(self):
         # build the model
         model = Model(model=TabTransformer(
-            cat_vocabulary=cat_vocab, num_numeric_features=len(NUMERIC_FEATURES),
+            num_numeric_features=len(NUMERIC_FEATURES),cat_vocabulary=cat_vocab,
             hidden_units=16, final_mlp_units=[84, 42]), verbosity=0)
 
         assert model.count_params() == 26347

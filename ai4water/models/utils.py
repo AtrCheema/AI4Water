@@ -29,6 +29,7 @@ def _make_output_layer(
         mode:str="regression",
         num_outputs:int=1,
         output_activation:str=None,
+        inputs:str = None,
 )->dict:
     if output_activation is None and mode == "classification":
         # for binary it is better to use sigmoid
@@ -38,7 +39,13 @@ def _make_output_layer(
             output_activation = "sigmoid"
             num_outputs = 1
 
-    layers.update(
-        {"Dense_out": {"units": num_outputs,
-                       "activation": output_activation}})
+    if inputs:
+        layers.update(
+            {"Dense_out": {"config":{"units": num_outputs, "activation": output_activation},
+                           "inputs": inputs}
+             })
+    else:
+        layers.update(
+            {"Dense_out": {"units": num_outputs,
+                           "activation": output_activation}})
     return layers

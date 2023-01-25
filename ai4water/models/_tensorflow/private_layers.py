@@ -570,7 +570,7 @@ class CatEmbeddings(layers.Layer):
 
             self.feature_names.append(feature_name)
 
-    def call(self, inputs:list):
+    def call(self, inputs, *args, **kwargs):
         """
         The tensors in `inputs` list must be in same
         order as in the `vocabulary` dictionary.
@@ -586,8 +586,8 @@ class CatEmbeddings(layers.Layer):
         """
 
         encoded_features = []
-        for feat_name, feat_input in zip(self.feature_names, inputs):
-
+        for idx, feat_name in enumerate(self.feature_names):
+            feat_input = inputs[:, idx]
             lookup = self.lookups[feat_name]
             encoded_feature = lookup(feat_input)
 
@@ -597,13 +597,195 @@ class CatEmbeddings(layers.Layer):
 
         cat_embeddings = tf.stack(encoded_features, axis=1)
 
-        # when the layer is called in subclassing API, then the tensors in inputs list will have
-        # shape (None,1) even if the Input layer has shape of (None,). This addition of extra
-        # dimension results in `cat_embeddings` to have sahpe of (None, len(inputs), 1, self.embed_dim)
-        # We must remove the extra 1 in this shape, therefore reshaping it.
-        cat_embeddings = tf.reshape(cat_embeddings, (-1, len(inputs), self.embed_dim))
-
         return cat_embeddings
+
+
+class TabTransformer(layers.Layer):
+    """
+    tensorflow/keras layer which implements logic of FTTransformer model.
+    """
+    def __init__(
+            self,
+            cat_vocabulary: dict,
+            num_numeric_features: int,
+            hidden_units=32,
+            lookup_kws:dict=None,
+            num_heads: int = 4,
+            depth: int = 4,
+            dropout: float = 0.1,
+            num_dense_lyrs: int = 2,
+            prenorm_mlp: bool = True,
+            post_norm: bool = True,
+            final_mlp_units = 16,
+            final_mpl_activation:str = "selu",
+            seed: int = 313,
+            *args, **kwargs
+    ):
+
+        super(TabTransformer, self).__init__(*args, **kwargs)
+
+        self.cat_vocabulary = cat_vocabulary
+        self.num_numeric_inputs = num_numeric_features
+        self.hidden_units = hidden_units
+        self.lookup_kws = lookup_kws
+        self.num_heads = num_heads
+        self.depth = depth
+        self.dropout = dropout
+        self.final_mlp_units = final_mlp_units
+        self.final_mpl_activation = final_mpl_activation
+        self.seed = seed
+
+        self.cat_embs = CatEmbeddings(
+            vocabulary=cat_vocabulary,
+            embed_dim=hidden_units,
+            lookup_kws=lookup_kws
+        )
+
+        # layer normalization of numerical features
+        self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)
+
+        self.transformers = TransformerBlocks(
+            embed_dim=hidden_units,
+            num_heads=num_heads,
+            num_blocks=depth,
+            num_dense_lyrs=num_dense_lyrs,
+            post_norm=post_norm,
+            prenorm_mlp=prenorm_mlp,
+            dropout=dropout,
+            seed=seed
+        )
+
+        self.flatten = layers.Flatten()
+
+        self.concat = layers.Concatenate()
+
+        self.mlp = self.create_mlp(
+            activation=tf.keras.activations.selu,
+            normalization_layer=layers.BatchNormalization(),
+            name="MLP",
+        )
+
+    # Implement an MLP block
+    def create_mlp(
+            self,
+            activation,
+            normalization_layer,
+            name=None
+    ):
+        if isinstance(self.final_mlp_units, int):
+            hidden_units = [self.final_mlp_units]
+        else:
+            assert isinstance(self.final_mlp_units, list)
+            hidden_units = self.final_mlp_units
+
+        mlp_layers = []
+        for units in hidden_units:
+            mlp_layers.append(normalization_layer),
+            mlp_layers.append(layers.Dense(units, activation=activation))
+            mlp_layers.append(layers.Dropout(self.dropout, seed=self.seed))
+
+        return tf.keras.Sequential(mlp_layers, name=name)
+
+    def __call__(self, inputs:list, *args, **kwargs):
+        """
+        inputs :
+            list of 2. The first tensor is numerical inputs and second
+            tensor is categorical inputs
+        """
+        num_inputs = inputs[0]
+        cat_inputs = inputs[1]
+
+        cat_embs = self.cat_embs(cat_inputs)
+        transformer_outputs, imp = self.transformers(cat_embs)
+        flat_transformer_outputs = self.flatten(transformer_outputs)
+
+        num_embs = self.lyr_norm(num_inputs)
+
+        x = self.concat([num_embs, flat_transformer_outputs])
+
+        return self.mlp(x), imp
+
+
+class FTTransformer(layers.Layer):
+    """
+    tensorflow/keras layer which implements logic of FTTransformer model.
+    """
+    def __init__(
+            self,
+            cat_vocabulary: dict,
+            num_numeric_features: int,
+            hidden_units=32,
+            num_heads: int = 4,
+            depth: int = 4,
+            dropout: float = 0.1,
+            lookup_kws:dict = None,
+            num_dense_lyrs: int = 2,
+            post_norm: bool = True,
+            final_mlp_units: int = 16,
+            seed: int = 313,
+            *args, **kwargs
+    ):
+
+        super(FTTransformer, self).__init__(*args, **kwargs)
+
+        self.cat_vocabulary = cat_vocabulary
+        self.num_numeric_inputs = num_numeric_features
+        self.hidden_units = hidden_units
+        self.num_heads = num_heads
+        self.depth = depth
+        self.dropout = dropout
+        self.final_mlp_units = final_mlp_units
+        self.seed = seed
+
+        self.cat_embs = CatEmbeddings(
+            vocabulary=cat_vocabulary,
+            embed_dim=hidden_units,
+            lookup_kws=lookup_kws
+        )
+
+        self.num_embs = NumericalEmbeddings(
+            num_features=num_numeric_features,
+            emb_dim=hidden_units
+        )
+
+        self.concat =  layers.Concatenate(axis=1)
+
+        self.transformers = TransformerBlocks(
+            embed_dim=hidden_units,
+            num_heads=num_heads,
+            num_blocks=depth,
+            num_dense_lyrs=num_dense_lyrs,
+            post_norm=post_norm,
+            dropout=dropout,
+            seed=seed
+        )
+
+        self.lmbda = tf.keras.layers.Lambda(lambda x: x[:, 0, :])
+
+        self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)
+        self.mlp = layers.Dense(final_mlp_units)
+
+    def __call__(self, inputs:list, *args, **kwargs):
+        """
+        inputs :
+            list of 2. The first tensor is numerical inputs and second
+            tensor is categorical inputs
+        """
+        num_inputs = inputs[0]
+        cat_inputs = inputs[1]
+
+        num_embs = self.num_embs(num_inputs)
+        cat_embs = self.cat_embs(cat_inputs)
+
+        embs = self.concat([num_embs, cat_embs])
+
+        x, imp = self.transformers(embs)
+
+        x = self.lmbda(x)
+
+        x = self.lyr_norm(x)
+
+        return self.mlp(x), imp
 
 
 class Conditionalize(tf.keras.layers.Layer):
@@ -612,7 +794,7 @@ class Conditionalize(tf.keras.layers.Layer):
 
     Example
     --------
-    >>> from ai4water.models.tensorflow import Conditionalize
+    >>> from ai4water.models._tensorflow import Conditionalize
     >>> from tensorflow.keras.layers import Input, LSTM
     >>> i = Input(shape=(10, 3))
     >>> raw_conditions = Input(shape=(14,))
@@ -927,7 +1109,7 @@ class EALSTM(Layer):
 
     Examples
     --------
-    >>> from ai4water.models.tensorflow import EALSTM
+    >>> from ai4water.models._tensorflow import EALSTM
     >>> import tensorflow as tf
     >>> batch_size, lookback, num_dyn_inputs, num_static_inputs, units = 10, 5, 3, 2, 8
     >>> inputs = tf.range(batch_size*lookback*num_dyn_inputs, dtype=tf.float32)
@@ -1183,3 +1365,5 @@ class PrivateLayers(object):
         CatEmbeddings = CatEmbeddings
         TransformerBlocks = TransformerBlocks
         NumericalEmbeddings = NumericalEmbeddings
+        TabTransformer = TabTransformer
+        FTTransformer = FTTransformer

@@ -3,7 +3,6 @@ from typing import Callable, Union
 from ai4water.backend import np, plt, pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
 from easy_mpl import bar_chart
 from easy_mpl.utils import make_cols_from_cmap
 

@@ -6,8 +6,8 @@ from .utils import _make_output_layer
 
 
 def TabTransformer(
-        cat_vocabulary: dict,
         num_numeric_features: int,
+        cat_vocabulary: dict,
         hidden_units=32,
         num_heads: int = 4,
         depth: int = 4,
@@ -27,14 +27,14 @@ def TabTransformer(
 
     Parameters
     ----------
+    num_numeric_features : int
+        number of numeric features to be used as input.
     cat_vocabulary : dict
         a dictionary whose keys are names of categorical features and values
         are lists which consist of unique values of categorical features.
         You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
         own data. The length of dictionary should be equal to number of
         categorical features.
-    num_numeric_features : int
-        number of numeric features to be used as input.
     hidden_units : int, optional (default=32)
         number of hidden units
     num_heads : int, optional (default=4)
@@ -101,13 +101,11 @@ def TabTransformer(
     ...
     ... # build the model
     >>> model = Model(model=TabTransformer(
-    ...     cat_vocabulary=cat_vocab,num_numeric_features=len(NUMERIC_FEATURES),
+    ...     num_numeric_features=len(NUMERIC_FEATURES), cat_vocabulary=cat_vocab,
     ...     hidden_units=16, final_mlp_units=[84, 42]))
     ... # make a list of input arrays for training data
-    >>> train_x = [train_data[NUMERIC_FEATURES].values, train_data['Catalyst_type'].values,
-    ...            train_data['Anions'].values]
-    >>> test_x = [test_data[NUMERIC_FEATURES].values, test_data['Catalyst_type'].values,
-    ...           test_data['Anions'].values]
+    >>> train_x = [train_data[NUMERIC_FEATURES].values, train_data[CAT_FEATURES]]
+    >>> test_x = [test_data[NUMERIC_FEATURES].values, test_data[CAT_FEATURES].values]
     ...
     >>> h = model.fit(x=train_x, y= train_data[LABEL].values,
     ...               validation_data=(test_x, test_data[LABEL].values), epochs=1)
@@ -137,8 +135,8 @@ def TabTransformer(
 
 
 def FTTransformer(
-        cat_vocabulary:dict,
         num_numeric_features:int,
+        cat_vocabulary:dict,
         hidden_units = 32,
         num_heads: int = 4,
         depth:int = 4,
@@ -157,14 +155,14 @@ def FTTransformer(
 
     Parameters
     ----------
+    num_numeric_features : int
+        number of numeric features to be used as input.
     cat_vocabulary : dict
         a dictionary whose keys are names of categorical features and values
         are lists which consist of unique values of categorical features.
         You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
         own data. The length of dictionary should be equal to number of
         categorical features.
-    num_numeric_features : int
-        number of numeric features to be used as input.
     hidden_units : int, optional (default=32)
         number of hidden units
     num_heads : int, optional (default=4)
@@ -227,15 +225,13 @@ def FTTransformer(
     >>> splitter = TrainTestSplit(seed=313)
     >>> train_data, test_data, _, _ = splitter.split_by_random(data)
     ... # build the model
-    >>> model = Model(model=FTTransformer(cat_vocab, len(NUMERIC_FEATURES)))
+    >>> model = Model(model=FTTransformer(len(NUMERIC_FEATURES), cat_vocab))
     ... # make a list of input arrays for training data
     >>> train_x = [train_data[NUMERIC_FEATURES].values,
-    ...   train_data['Catalyst_type'].values,
-    ...   train_data['Anions'].values]
+    ...   train_data[CAT_FEATURES].values]
     ...
     >>> test_x = [test_data[NUMERIC_FEATURES].values,
-    ...       test_data['Catalyst_type'].values,
-    ...       test_data['Anions'].values]
+    ...       test_data[CAT_FEATURES].values]
     ... # train the model
     >>> h = model.fit(x=train_x, y= train_data[LABEL].values,
     ...              validation_data=(test_x, test_data[LABEL].values),
