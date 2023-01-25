@@ -540,6 +540,7 @@ class MakeHRUs(object):
                  title:bool=False,
                  name:str=None,
                  show:bool = True,
+                 save:bool = False,
                  **kwargs):
         """
         todo draw nested pie chart for all years
@@ -555,8 +556,9 @@ class MakeHRUs(object):
             n_merge :
                 number of hrus to merge
             title :
-            name :
-            show :
+            name : str
+            show : bool
+            save : bool
             kwargs :
                 Following keyword arguments are allowed
                 shadow
@@ -605,7 +607,8 @@ class MakeHRUs(object):
         if name is None: name = self.hru_definition
         name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
 
-        plt.savefig(name, dpi=300)
+        if save:
+            plt.savefig(name, dpi=300)
 
         if show:
             plt.show()

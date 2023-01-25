@@ -2903,13 +2903,13 @@ class BaseModel(NN):
 
         from .postprocessing.explain import PermutationImportance
         pm = PermutationImportance(
-            self.predict,
-            x,
-            y,
-            scoring,
-            n_repeats,
-            noise,
-            use_noise_only,
+            model=self.predict,
+            inputs=x,
+            target=y,
+            scoring=scoring,
+            n_repeats=n_repeats,
+            noise=noise,
+            use_noise_only=use_noise_only,
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,

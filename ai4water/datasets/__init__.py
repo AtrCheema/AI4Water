@@ -1,7 +1,6 @@
 from typing import Union
 
-import os
-import ai4water.backend as pd
+from ai4water.backend import pd, os
 
 from .camels import Camels
 from .camels import CAMELS_AUS

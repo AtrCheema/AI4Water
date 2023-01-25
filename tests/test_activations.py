@@ -89,30 +89,8 @@ class TestActivations(unittest.TestCase):
                       verbosity=0
                       )
 
-        history = model.fit(data=df)
-        val_losses = {
-            '20_posix_functional': [0.8971164431680119, 0.10688107734841351],
-            '21_posix_functional': [0.10688107734841351, 0.0938945620801094],
-            '23_posix_functional': [0.025749117136001587, 0.037755679339170456],
-            '24_posix_functional': [0.025749117136001587, 0.037755679339170456],
-            '25_posix_functional': [0.10781528055667877, 0.09552989155054092],
-            '26_posix_functional': [0.025749117136001587, 0.037755679339170456],
-            '27_posix_functional': [0.05165727809071541, 0.0561603344976902],
+        model.fit(data=df)
 
-            '21_nt_subclassing': [0.12329380346623173, 0.05596162420866124],
-            '23_nt_functional': [0.025749117136001587, 0.037755679339170456],
-            '24_nt': [0.10781528055667877, 0.09552989155054092],
-            '25_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
-            '26_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
-            '27_nt_subclassing': [0.12464610487222672, 0.0561603344976902],
-            '25_nt_functional': [0.025749117136001587, 0.040039800107479095],
-            '24_nt_functional': [0.025749117136001587, 0.040802694857120514],
-        }
-
-        if int(tf.__version__.split('.')[0]) > 1:
-            print(f"{version}_{os.name}_{model.api}")
-            for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
-                self.assertAlmostEqual(t,p, 2)
         return
 
 

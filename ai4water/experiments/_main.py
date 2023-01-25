@@ -953,15 +953,15 @@ Available cases are {self.models} and you wanted to include
         improvement['start'] = baseline
 
         if plot_type == "dumbbell":
-            ax = dumbbell_plot(
+            dumbbell_plot(
                 improvement['start'],
                 improvement['end'],
                 improvement.index.tolist(),
-                xlabel=ERROR_LABELS.get(metric_name, metric_name),
+                ax_kws=dict(xlabel=ERROR_LABELS.get(metric_name, metric_name)),
                 show=False,
                 **kwargs
             )
-            ax.set_xlabel(ERROR_LABELS.get(metric_name, metric_name))
+            #ax.set_xlabel(ERROR_LABELS.get(metric_name, metric_name))
         else:
 
             colors = {

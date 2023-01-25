@@ -72,7 +72,7 @@ class TestModels(unittest.TestCase):
     def test_mlp_for_cls_binary(self):
         model = Model(model=MLP(32,
                                 mode="classification",
-                                output_features=2),
+                                num_outputs=2),
                       input_features=input_features_cls,
                       output_features=output_features_cls,
                       epochs=2,
@@ -85,7 +85,7 @@ class TestModels(unittest.TestCase):
     def test_mlp_for_cls_binary_softmax(self):
         model = Model(model=MLP(32,
                                 mode="classification",
-                                output_features=2,
+                                num_outputs=2,
                                 output_activation="softmax",
                                 ),
                       input_features=input_features_cls,
@@ -100,7 +100,7 @@ class TestModels(unittest.TestCase):
 
     def test_mlp_for_cls_multicls(self):
         model = Model(model=MLP(32, mode="classification",
-                                output_features=4),
+                                num_outputs=4),
                       input_features=multi_cls_inp,
                       output_features=multi_cls_out,
                       epochs=2,

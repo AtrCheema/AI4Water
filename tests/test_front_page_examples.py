@@ -43,7 +43,8 @@ class TestFrontPage(unittest.TestCase):
     def test_example2(self):
         batch_size = 16
         lookback = 15
-        inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
+        # just dummy names for plotting and saving results.
+        inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']
         outputs=['DummyTarget']
 
         model = Model(
@@ -91,7 +92,8 @@ class TestFrontPage(unittest.TestCase):
         )
         model.optimize_hyperparameters(data=data,
                                        algorithm="bayes",  # choose between 'random', 'grid' or 'atpe'
-                                       num_iterations=30
+                                       num_iterations=30,
+                                       refit=False
                                        )
         return
 

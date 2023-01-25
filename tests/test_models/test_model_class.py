@@ -296,7 +296,7 @@ class TestShapValues(unittest.TestCase):
         return
 
     def test_lookback(self):
-        time.sleep(1)
+        time.sleep(1) # todo
         model = FModel(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
                       verbosity=0)

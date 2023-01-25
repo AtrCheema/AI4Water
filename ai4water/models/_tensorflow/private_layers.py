@@ -875,6 +875,27 @@ class Conditionalize(tf.keras.layers.Layer):
     >>> raw_conditions = Input(shape=(14,))
     >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
     >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
+
+    This layer can also be used in ai4water model when defining the model
+    using declarative model definition style
+
+    >>> from ai4water import Model
+    >>> import numpy as np
+    >>> model = Model(model={"layers": {
+    ...    "Input": {"shape": (10, 3)},
+    ...    "Input_cat": {"shape": (10,)},
+    ...    "Conditionalize": {"config": {"units": 32, "name": "h_state"},
+    ...                       "inputs": "Input_cat"},
+    ...    "LSTM": {"config": {"units": 32},
+    ...             "inputs": "Input",
+    ...                   'call_args': {'initial_state': ['h_state', 'h_state']}},
+    ...    "Dense": {"units": 1}}},
+    ...    ts_args={"lookback": 10}, verbosity=0, epochs=1)
+    ... # define the input and call the .fit method
+    >>> x1 = np.random.random((100, 10, 3))
+    >>> x2 = np.random.random((100, 10))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x=[x1, x2], y=y)
     """
     def __init__(self, units,
                  max_num_cond=10,
@@ -902,7 +923,7 @@ class Conditionalize(tf.keras.layers.Layer):
     @staticmethod
     def _standardize_condition(initial_cond):
 
-        assert len(initial_cond.shape) == 2
+        assert len(initial_cond.shape) == 2, initial_cond.shape
 
         return initial_cond
 
@@ -911,10 +932,10 @@ class Conditionalize(tf.keras.layers.Layer):
         if args or kwargs:
             raise ValueError(f"Unrecognized input arguments\n args: {args} \nkwargs: {kwargs}")
 
-        if inputs.__class__.__name__ == "Tensor":
+        if inputs.__class__.__name__ in ("Tensor", "KerasTensor"):
             inputs = [inputs]
 
-        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
+        assert isinstance(inputs, (list, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
 
         cond = inputs
         if len(cond) > 1:  # multiple conditions.
