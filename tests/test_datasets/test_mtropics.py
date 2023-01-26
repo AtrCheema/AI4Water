@@ -30,10 +30,11 @@ class TestMtropicsLaos(unittest.TestCase):
 
     def test_fetch_hydro(self):
         wl, spm = laos.fetch_hydro()
-        assert wl.shape == (454696, 1), f"{wl.shape}"
+        assert wl.shape == (454694, 1), f"{wl.shape}"
         assert isinstance(wl.index, pd.DatetimeIndex)
         assert spm.shape == (6428, 1)
         assert isinstance(spm.index, pd.DatetimeIndex)
+        return
 
     def test_fetch_ecoli(self):
         ecoli = laos.fetch_ecoli()
@@ -104,6 +105,11 @@ class TestMtropicsLaos(unittest.TestCase):
     def test_ecoli_mekong(self):
         ecoli = ecoli_mekong()
         assert isinstance(ecoli, pd.DataFrame)
+        return
+
+    def test_ecoli_source(self):
+        source = laos.fetch_source()
+        assert source.shape == (252, 19)
         return
 
 

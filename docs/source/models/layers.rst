@@ -53,7 +53,7 @@ Transformer
 
 TabTransformer
 ==================
-.. autoclass:: ai4water.models._tensorflow.TabTransformer
+.. autoclass:: ai4water.models._tensorflow.private_layers.TabTransformer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -63,7 +63,7 @@ TabTransformer
 
 FTTransformer
 ==================
-.. autoclass:: ai4water.models._tensorflow.FTTransformer
+.. autoclass:: ai4water.models._tensorflow.private_layers.FTTransformer
    :members:
    :undoc-members:
    :show-inheritance:
