@@ -571,6 +571,7 @@ class DualAttentionModel(FModel):
 
         return x, y, prefix, key, user_defined_x
 
+
 class InputAttentionModel(DualAttentionModel):
     """
     InputAttentionModel is same as DualAttentionModel with output attention/decoder part
@@ -662,12 +663,20 @@ class InputAttentionModel(DualAttentionModel):
     def _fit_transform_x(self, x):
         """transforms x and puts the transformer in config witht he key name
         for conformity we need to add feature names of initial states and their transformations
-        will always be None."""
-        feature_names = [
-            self.input_features,
-            [f"{i}" for i in range(self.enc_config['n_s'])],
-            [f"{i}" for i in range(self.enc_config['n_h'])]
-        ]
-        transformation = [self.config['x_transformation'], None, None]
-        return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
+        will always be None.
+        """
+        # x can be array when the user does not provide input conditions!
+        if isinstance(x, list):
+            assert len(x) == 3
+            feature_names = [
+                self.input_features,
+                [f"{i}" for i in range(self.enc_config['n_s'])],
+                [f"{i}" for i in range(self.enc_config['n_h'])]
+            ]
+            transformation = [self.config['x_transformation'], None, None]
+            return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
+        else:
+            transformation = self.config['x_transformation']
+            return self._fit_transform(x, 'x_transformer_', transformation,
+                                       self.input_features)
 

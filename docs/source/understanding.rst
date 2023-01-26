@@ -19,10 +19,11 @@ dictionaries. This method of definition style for tensorflow and pytorch is give
 
    declarative_def_tf
    declarative_def_torch
-
+   declarative_def_ml
 
 Subclassing vs Functional API
 ===============================
+The :ref:`dec_def_ml` article describes the difference between model subclassing API and functional API in ai4water
 
 .. toctree::
    :maxdepth: 2
