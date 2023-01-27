@@ -1812,6 +1812,15 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1852,6 +1861,15 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1895,6 +1913,15 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1942,6 +1969,16 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
+
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -2646,6 +2683,7 @@ class BaseModel(NN):
             if self.category == "ML":
                 self.build_ml_model()
                 if isinstance(data, (list, tuple)):
+                    assert len(data)==2
                     x, y = data
                     self.fit_on_all_training_data(x=x, y=y)
                 else:

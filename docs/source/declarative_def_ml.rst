@@ -19,7 +19,7 @@ are available by default and can be used by giving their names to the `model` ar
 
 catboost, lgbm and xgboost based models
 =========================================
-If catboost_, lgbm_ and xgboost_ libraries are installed, then the models from these
+If catboost_, lightgbm_ and xgboost_ libraries are installed, then the models from these
 libraries can also be used seamlessly. This is true for both regressors and classifiers
 from these libraries.
 
@@ -71,8 +71,8 @@ as well as for catboost, lgbm and xgboost based models.
 custom models
 ===============
 
-We can also have our own model as far as it implements `.fit` , `.predict` and `.evaluate`
-methods.
+We can also have our own model as far as it implements ``.fit`` , ``.predict`` and ``.evaluate``
+methods. Consider that we have our model named `MyRF` as defined below
 
 .. code-block:: python
 
@@ -80,11 +80,14 @@ methods.
     >>>     pass
 
 
-However, we must specify the `mode` either as `regression` or as `classification` when
+We can use this `MyRF` mdoel with `Model` class of ai4water.
+However, we must specify the ``mode`` either as `regression` or as `classification` when
 we are using our own custom models.
 
 .. code-block:: python
 
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
     >>> model = Model(model=MyRF, mode="regression")
     >>> model.fit(data=data)
 
@@ -94,6 +97,8 @@ defined for the sklearn based models.
 
 .. code-block:: python
 
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
     >>>  model = Model(model={MyRF: {"n_estimators": 10}},
     >>>               ts_args={'lookback': 1},
     >>>               verbosity=0,
@@ -105,6 +110,8 @@ We can also use the initialized model
 
 .. code-block:: python
 
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
     >>> model = Model(model=MyRF(), mode="regression", verbosity=0)
     >>> model.fit(data=data)
 

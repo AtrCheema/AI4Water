@@ -1097,7 +1097,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return ax
 
-    def process_results(self):
+    def process_results(self, show=False):
         """post processing of results"""
         self.save_iterations_as_xy()
 
@@ -1105,17 +1105,24 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         # deep learning related results
         if self.objective_fn_is_dl:
-            plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
-            plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
+            plot_convergences(
+                self.opt_path,
+                what='val_loss',
+                ylabel='Validation MSE')
+            plot_convergences(
+                self.opt_path,
+                what='loss',
+                ylabel='MSE',
+                leg_pos="upper right")
 
         self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
-        self._plot_distributions(show=False)
+        self._plot_distributions(show=show)
 
         # convergence plot,
         #if sr.x_iters is not None and self.backend != "skopt": # todo
-        self._plot_convergence()
+        self._plot_convergence(show=show)
 
         # plot of hyperparameter space as explored by the optimizer
         if self.backend != 'skopt' and len(self.space()) < 20 and skopt is not None:
@@ -1123,18 +1130,22 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if len(self.best_paras(True))>1:
             plt.close('all')
-            self.plot_importance()
-            plt.close('all')
-            self.plot_importance(plot_type="bar")
+            try:
+                self.plot_importance()
+                plt.close('all')
+                self.plot_importance(plot_type="bar", show=show)
+            except (RuntimeError, AttributeError):
+                warnings.warn(f"Error encountered during fanova calculation")
 
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
                            save=True,
                            fname=os.path.join(self.opt_path, "loss_histogram.png")
                            )
-            plot_hyperparameters(self.trials,
-                                 fname=os.path.join(self.opt_path, "hyperparameters.png"),
-                                 save=True)
+            plot_hyperparameters(
+                self.trials,
+                fname=os.path.join(self.opt_path, "hyperparameters.png"),
+                save=True)
 
         if plotly is not None:
 
@@ -1146,11 +1157,19 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, save=True,
-                        show:bool=False,
-                        plot_type="box",
-                        **tree_kws)->plt.Axes:
+    def plot_importance(
+            self,
+            save=True,
+            show:bool=False,
+            plot_type="box",
+            with_optuna:bool = False,
+            **tree_kws
+    )->plt.Axes:
         """plots hyperparameter importance using fANOVA"""
+
+        if with_optuna:
+            return self._calc_importance_with_optuna(plot_type, save=save, show=show)
+
         X = pd.DataFrame([list(iter_xy['x'].values()) for iter_xy in self.xy_of_iterations().values()])
         Y = np.array([iter_xy['y'] for iter_xy in self.xy_of_iterations().values()])
         X.columns = list(self.xy_of_iterations()[0]['x'].keys())
@@ -1164,28 +1183,71 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if plot_type == "bar":
             try:
                 importance = fANOVA(**kws).feature_importance()
-            except RuntimeError:
-                warnings.warn(f"RuntimeError encountered during fANOVA")
-                return
+            except (AttributeError, RuntimeError):
+                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
 
-            df = pd.DataFrame.from_dict(importance, orient='index')
-            ax = bar_chart(df, orient='h', show=False,
-                           ax_kws={'title': "fANOVA hyperparameter importance",
-                                   'xlabel': "Relative Importance"})
-            if save:
-                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
-                            bbox_inches="tight", dpi=300)
-            fname = "fanova_importances.json"
+            ax = self._plot_importance_as_barchart(importance, save=save)
+
         else:
 
             try:
                 mean, std = fANOVA(**kws).feature_importance(return_raw=True)
-            except RuntimeError:
-                warnings.warn(f"RuntimeError encountered during fANOVA")
-                return
+            except (AttributeError, RuntimeError):
+                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
 
-            df = pd.DataFrame([mean, std])
-            plt.close('all')
+            ax = self._plot_importance_as_boxplot(mean, std, save)
+
+        if show:
+            plt.show()
+
+        return ax
+
+    def _plot_importance_as_boxplot(self, mean, std, save:bool=False):
+        df = pd.DataFrame([mean, std])
+        plt.close('all')
+        ax = df.boxplot(rot=70, return_type="axes")
+        ax.set_ylabel("Relative Importance")
+        if save:
+            plt.savefig(os.path.join(
+                self.opt_path,
+                "fanova_importance_hist.png"),
+                dpi=300,
+                bbox_inches='tight')
+        fname = "fanova_importances_raw.json"
+
+        with open(os.path.join(self.opt_path, fname), 'w') as fp:
+            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+
+        return ax
+
+    def _plot_importance_as_barchart(self, importance, save=False):
+        df = pd.DataFrame.from_dict(importance, orient='index')
+        ax = bar_chart(df, orient='h', show=False,
+                       ax_kws={'title': "fANOVA hyperparameter importance",
+                               'xlabel': "Relative Importance"})
+
+        fname = "fanova_importances.json"
+
+        if save:
+            plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+                        bbox_inches="tight", dpi=300)
+
+        with open(os.path.join(self.opt_path, fname), 'w') as fp:
+            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+        return ax
+
+    def _calc_importance_with_optuna(self, plot_type="bar", save=False, show=True):
+
+        from ._optuna_fanova import plot_param_importances
+
+        importances, importance_paras, ax = plot_param_importances(self.optuna_study())
+
+        if plot_type == "bar":
+            if save:
+                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+                            bbox_inches="tight", dpi=300)
+        else:
+            df = pd.DataFrame.from_dict(importance_paras)
             ax = df.boxplot(rot=70, return_type="axes")
             ax.set_ylabel("Relative Importance")
             if save:
@@ -1194,15 +1256,99 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     "fanova_importance_hist.png"),
                     dpi=300,
                     bbox_inches='tight')
-            fname = "fanova_importances_raw.json"
 
-        with open(os.path.join(self.opt_path, fname), 'w') as fp:
-            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+        with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
+            json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
+
+        with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
+            json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
 
         if show:
             plt.show()
 
         return ax
+
+    def optuna_study(self):
+        """
+        Attempts to create an optuna Study instance so that
+        optuna based plots can be generated.
+
+        Returns
+        None, if not possible else Study
+        """
+        from optuna.study import Study
+        from optuna.trial import TrialState
+
+        if self.backend == 'optuna':
+            return self.study
+
+        class _Trial:
+            state = TrialState.COMPLETE
+            def __init__(self,
+                         number:int,
+                         values:Union[list, int, float],
+                         params:dict,
+                         distributions:dict):
+
+                values = jsonize(values)
+                self._number = number
+                self._values = values
+                if isinstance(values, list):
+                    assert len(values) == 1
+                    self.value = values[0]
+                elif isinstance(values, float) or isinstance(values, int):
+                    self.value = values
+                else:
+                    try:  # try to convert it to float if possible
+                        self.value = float(values)
+                    except Exception as e:
+                        raise NotImplementedError(f"""
+                        values must be convertible to list but it is {values} of type
+                         {values.__class__.__name__} Actual error message was {e}""")
+                self.params = params
+                self._distributions = distributions
+                self.distributions = distributions
+
+        XY_OF_ITERATIONS = self.xy_of_iterations()
+        SPACE = self.space()
+        BEST_PARAS = self.best_paras()
+
+        class _Study(Study):
+
+            trials = []
+            idx = 0
+
+            distributions = {sn: s.to_optuna() for sn, s in SPACE.items()}
+
+            for xy in XY_OF_ITERATIONS.values():
+                _x, _y = xy['x'], xy['y']
+                assert isinstance(_x, dict), f"""
+                params must of type dict but provided params are of type 
+                {_x.__class__.__name__}"""
+
+                trials.append(_Trial(number=idx,
+                                     values=_y,
+                                     params=_x,
+                                     distributions=distributions
+                                     ))
+                idx += 1
+            best_params = BEST_PARAS
+            best_trial = None
+            best_value = None
+            _study_id = 0
+            _distributions = distributions
+
+            def __init__(self):
+                pass
+
+            def _is_multi_objective(self):
+                return False
+
+        study = _Study()
+
+        setattr(self, 'study', study)
+
+        return study
 
     def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""

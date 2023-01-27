@@ -157,40 +157,67 @@ from ai4water.datasets import busan_beach
 data = busan_beach()  # path for data file
 
 model = Model(
-        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
-        output_features = ['tetx_coppml'],  
-        val_fraction=0.0,
+    # columns in data to be used as input
+    input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'rel_hum', 'pcp_mm'],
+    output_features = ['tetx_coppml'], # columns in data file to be used as input
+    seed=1872,
+    val_fraction=0.0,
+    split_random=True,
         #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-        model={"RandomForestRegressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+        model={"RandomForestRegressor": {}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
               )
 
 history = model.fit(data=data)
 
-preds = model.predict(data=data)
+model.predict_on_test_data(data=data)
 ```
 
 # Hyperparameter optimization
 For hyperparameter optimization, replace the actual values of hyperparameters
 with the space.
 ```python
+
 from ai4water import Model
 from ai4water.datasets import busan_beach
-from ai4water.hyperopt import Integer, Real
+from ai4water.hyperopt import Categorical, Integer, Real
+
 data = busan_beach()
+
 model = Model(
-        model = {'layers': {"LSTM": Integer(low=30, high=100,name="units"),
-                            'Dense': 1}},
-        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
-        output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-        ts_args={'lookback': Integer(low=5, high=15, name="lookback")},
-        lr=Real(low=0.00001, high=0.001, name="lr")
+    model={"XGBRegressor": {
+        "iterations": Integer(low=10, high=50, name='iterations', num_samples=10),
+        "learning_rate": Real(low=0.001, high=0.3, prior='log', name='learning_rate', num_samples=10),
+        "l2_leaf_reg": Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=10),
+        "model_size_reg": Real(low=0.01, high=10, name='model_size_reg', num_samples=10),
+        "rsm": Real(low=0.1, high=0.8, name='rsm', num_samples=10),
+        "border_count": Integer(low=32, high=50, name='border_count', num_samples=10),
+        "feature_border_type": Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
+                                                       'MaxLogSum', 'MinEntropy', 'GreedyLogSum'],
+                                           name='feature_border_type'),
+        "n_jobs": 0,
+    }},
+    split_random=True,
+    seed=3244,
+    cross_validator={"KFold": {"n_splits": 10}},
+    input_features=data.columns.tolist()[0:-1],
+    output_features=data.columns.tolist()[-1:],
+    verbosity=-1,
 )
-model.optimize_hyperparameters(data=data,
-                               algorithm="bayes",  # choose between 'random', 'grid' or 'atpe' 
-                               num_iterations=30,
-                               refit=False,
-                               )
+
+# First check the performance on test data with default parameters
+model.fit_on_all_training_data(data=data)
+print(model.evaluate_on_test_data(data=data, metrics="r2_score"))
+
+# optimize the hyperparameters
+optimizer = model.optimize_hyperparameters(
+   algorithm = "bayes",  # you can choose between `random`, `grid` or `tpe`
+    data=data,
+    num_iterations=100,
+)
+
+# Now check the performance on test data with default parameters
+print(model.evaluate_on_test_data(data=data, metrics="r2_score"))
 ```
 
 

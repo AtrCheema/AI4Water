@@ -4,7 +4,7 @@ import json
 import pprint
 import datetime
 import warnings
-from typing import Union
+from typing import Union, Any
 from shutil import rmtree
 from types import FunctionType
 from typing import Tuple, List
@@ -984,7 +984,7 @@ class TrainTestSplit(object):
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
             y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
-    ):
+    )->Tuple[Any, Any, Any, Any]:
         """
         splits the x and y by random splitting.
         Arguments:
@@ -1008,7 +1008,8 @@ class TrainTestSplit(object):
         indices = self.random_state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
-        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
+        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at),
+                                       self.slice_arrays(indices, split_at))
 
         train_x = self.slice_with_indices(x, train_indices)
         train_y = self.slice_with_indices(y, train_indices)
@@ -1038,13 +1039,13 @@ class TrainTestSplit(object):
             data = []
 
             for d in array:
-                if isinstance(d, pd.DataFrame):
+                if isinstance(d, (pd.Series, pd.DataFrame)):
                     data.append(d.iloc[indices])
                 else:
                     assert isinstance(d, (np.ndarray, pd.DatetimeIndex))
                     data.append(d[indices])
         else:
-            if isinstance(array, pd.DataFrame):
+            if isinstance(array, (pd.DataFrame, pd.Series)):
                 data = array.iloc[indices]
             else:
                 assert isinstance(array, (np.ndarray, pd.DatetimeIndex))

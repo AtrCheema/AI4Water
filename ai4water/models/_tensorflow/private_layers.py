@@ -645,7 +645,7 @@ class TabTransformer(layers.Layer):
         post_norm : bool (default=True)
         prenorm_mlp : bool (default=True)
         num_dense_lyrs : int (default=2)
-            number of dense layers in MLP block
+            number of dense layers in MLP block inside the Transformer
         final_mlp_units : int (default=16)
             number of units/neurons in final MLP layer i.e. the MLP layer
             after Transformer block
@@ -775,9 +775,10 @@ class FTTransformer(layers.Layer):
         dropout : float, optional (default=0.1)
             droput rate in transformer
         lookup_kws : dict
+            keyword arguments for lookup layer
         post_norm : bool (default=True)
         num_dense_lyrs : int (default=2)
-            number of dense layers in MLP block
+            number of dense layers in MLP block inside the Transformer
         final_mlp_units : int (default=16)
             number of units/neurons in final MLP layer i.e. the MLP layer
             after Transformer block

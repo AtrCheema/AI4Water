@@ -117,7 +117,8 @@ class ProcessPredictions(Plot):
         self.dpi = dpi
 
         if plots is None:
-            plots = ['regression', 'prediction']
+            if mode == "regression":
+                plots = ['regression', 'prediction', "residual", "errors", "edf"]
         elif not isinstance(plots, list):
             plots = [plots]
 
@@ -247,7 +248,16 @@ class ProcessPredictions(Plot):
         raise NotImplementedError
 
     def edf_plot(self, true, predicted, prefix, where, **kwargs):
-        """cumulative distribution function of absolute error between true and predicted."""
+        """cumulative distribution function of absolute error between true and
+        predicted.
+
+        Parameters
+        -----------
+        true :
+        predicted :
+        prefix :
+        where :
+        """
 
         if isinstance(true, (pd.DataFrame, pd.Series)):
             true = true.values
@@ -278,14 +288,43 @@ class ProcessPredictions(Plot):
         return self.save_or_show(fname=f"{prefix}_fdc",
                                  where=where)
 
-    def residual_plot(self, true, predicted, prefix, where, **kwargs):
+    def residual_plot(
+            self,
+            true,
+            predicted,
+            prefix,
+            where,
+            hist_kws:dict = None,
+            **kwargs
+    ):
+        """
+        Makes residual plot
+
+        Parameters
+        ----------
+        true :
+            array like
+        predicted :
+            array like
+        prefix :
+        where :
+        hist_kws :
+
+        """
 
         fig, axis = plt.subplots(2, sharex="all")
 
         x = predicted.values
         y = true.values - predicted.values
 
-        ep.hist(y, show=False, ax=axis[0])
+        _hist_kws = dict(bins=20, linewidth=0.5,
+                edgecolor="k", grid=False, color='khaki')
+
+        if hist_kws is not None:
+            _hist_kws.update(hist_kws)
+
+        ep.hist(y, show=False, ax=axis[0], **_hist_kws)
+        axis[0].set_xticks([])
 
         ep.plot(x, y, 'o', show=False,
                 ax=axis[1],
@@ -334,12 +373,21 @@ class ProcessPredictions(Plot):
 
         annotation_key = metric_names.get(annotate_with, annotate_with)
 
+        RIDGE_LINE_KWS = {'color': 'firebrick', 'lw': 1.0}
+
         ep.regplot(true,
                    predicted,
-                   ax_kws=dict(title="Regression Plot"),
                    annotation_key=annotation_key,
                    annotation_val=annotation_val,
-                   show=False
+                   marker_color='crimson',
+                   line_color='k',
+                   scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
+                   show=False,
+                   marginals=True,
+                   marginal_ax_pad=0.25,
+                   marginal_ax_size=0.7,
+                   ridge_line_kws=RIDGE_LINE_KWS,
+                   hist=False,
                    )
 
         return self.save_or_show(fname=f"{target_name}_regression",
@@ -362,7 +410,8 @@ class ProcessPredictions(Plot):
             datetime_axis = True
         else:
             if np.isnan(true.values).sum() > 0:
-                style = '.'  # For Nan values we should be using this style otherwise nothing is plotted.
+                # For Nan values we should be using this style otherwise nothing is plotted.
+                style = '.'
             else:
                 style = '-'
                 true = true.values
@@ -370,7 +419,8 @@ class ProcessPredictions(Plot):
 
         ms = 4 if style == '.' else 2
 
-        if len(true) > 1000:  # because the data is very large, so better to use small marker size
+        # because the data is very large, so better to use small marker size
+        if len(true) > 1000:
             ms = 2
 
         axis.plot(predicted, style, color='r', label='Prediction')
