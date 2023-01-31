@@ -94,9 +94,12 @@ data = busan_beach()
 model = Model(
         model = {'layers': {"LSTM": 64,
                             'Dense': 1}},
-        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
-        output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-        ts_args={'lookback': 12}  # how much historical data we want to feed to model
+        # columns in data file to be used as input
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'rel_hum', 'pcp_mm'],  
+       # columns in csv file to be used as output
+        output_features = ['tetx_coppml'],    
+       # how much historical data we want to feed to model
+        ts_args={'lookback': 12}  
 )
 ```
 

@@ -12,7 +12,7 @@ except ModuleNotFoundError:
 
 LOSSES = {}
 LAYERS = {}
-MULTI_INPUT_LAYERS = {}
+MULTI_INPUT_LAYERS = {"EALSTM"}
 
 if tcn is not None:
     LAYERS.update({"TCN": tcn.TCN})

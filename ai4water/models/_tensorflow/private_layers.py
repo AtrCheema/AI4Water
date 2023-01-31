@@ -1,6 +1,4 @@
 
-from typing import List
-
 from ai4water.backend import tf
 
 layers = tf.keras.layers
@@ -1078,6 +1076,8 @@ class MCLSTM(Layer):
 
     Examples
     --------
+    >>> from ai4water.models._tensorflow import MCLSTM
+    >>> import tensorflow as tf
     >>> inputs = tf.range(150, dtype=tf.float32)
     >>> inputs = tf.reshape(inputs, (10, 5, 3))
     >>> mc = MCLSTM(1, 2, 8, 1)
@@ -1221,7 +1221,7 @@ class EALSTM(Layer):
     >>> h_n = lstm(inputs, stat_inputs)  # -> (batch, lookback, units)
     ...
     ... # with return sequences and return_state
-    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True)
+    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True, return_state=True)
     >>> h_n, [c_n, y_hat] = lstm(inputs, stat_inputs)  # -> (batch, lookback, units), [(), ()]
     ...
     ... # end to end Keras model

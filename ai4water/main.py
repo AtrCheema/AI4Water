@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 
 from ._main import BaseModel
-from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn
+from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, MULTI_INPUT_LAYERS
 from .nn_tools import get_call_args
 from .backend import tf, torch, np, os
 import ai4water.backend as K
@@ -540,7 +540,10 @@ class Model(MODEL, BaseModel):
                         cache, lyr_args['call_args'], lyr)
 
                 # call the initiated layer
-                outs = lyr_args['layer'](call_args, **add_args)
+                if lyr in MULTI_INPUT_LAYERS:
+                    outs = lyr_args['layer'](*call_args, **add_args)
+                else:
+                    outs = lyr_args['layer'](call_args, **add_args)
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign

@@ -147,6 +147,11 @@ class Model(BaseModel):
     def predict_fn(self):
         return self._model.predict
 
+    def count_params(self):
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.count_params()
+
     def _get_dummy_input_shape(self):
         shape = ()
         if self.config['backend'] == 'tensorflow' and self.category == "DL":
