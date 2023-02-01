@@ -124,7 +124,8 @@ class ProcessPredictions(Plot):
         elif not isinstance(plots, list):
             plots = [plots]
 
-        assert all([plot in self.available_plots for plot in plots])
+        assert all([plot in self.available_plots for plot in plots]), f"""
+        {plots}"""
         self.plots = plots
 
         super().__init__(path, save=save)
@@ -256,7 +257,9 @@ class ProcessPredictions(Plot):
         Parameters
         -----------
         true :
+            array like
         predicted :
+            array like
         prefix :
         where :
         """
@@ -377,13 +380,17 @@ class ProcessPredictions(Plot):
 
         RIDGE_LINE_KWS = {'color': 'firebrick', 'lw': 1.0}
 
+        marginals = True
+        if np.isnan(np.array(true)).any() or np.isnan(np.array(predicted)).any():
+            marginals = False
+
         ep.regplot(true,
                    predicted,
                    marker_color='crimson',
                    line_color='k',
                    scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
                    show=False,
-                   marginals=True,
+                   marginals=marginals,
                    marginal_ax_pad=0.25,
                    marginal_ax_size=0.7,
                    ridge_line_kws=RIDGE_LINE_KWS,

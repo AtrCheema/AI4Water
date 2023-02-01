@@ -13,6 +13,8 @@ from ai4water.postprocessing import ProcessPredictions
 
 t = np.random.random(100)
 p = np.random.random(100)
+t_nan = t
+t_nan[20] = np.nan
 t_cls = np.random.randint(0, 2, (100, 1))
 p_cls = np.random.randint(0, 2, (100, 1))
 t_m_cls = np.random.randint(0, 4, (100, 1))
@@ -37,6 +39,18 @@ class TestProcessPrediction(unittest.TestCase):
                                 )
 
         pp(t, p,  inputs=x)
+        return
+
+    def test_rgr_1_output_nan(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                output_features=['a'],
+                                plots=["regression", "residual", "murphy"],
+                                show=self.show,
+                                save=False,
+                                )
+
+        pp(t_nan, p,  inputs=x)
         return
 
     def test_rgr_1_output_errors(self):
