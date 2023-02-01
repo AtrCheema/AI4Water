@@ -120,7 +120,7 @@ class ProcessPredictions(Plot):
             if mode == "regression":
                 plots = ['regression', 'prediction', "residual", "errors", "edf"]
             else:
-                plots = ["confusion_matrx"]
+                plots = []
         elif not isinstance(plots, list):
             plots = [plots]
 
@@ -544,7 +544,7 @@ class ProcessPredictions(Plot):
         self.save_or_show(fname=f"{prefix}_roc")
         return
 
-    def confusion_matrx(self, true, predicted, prefix=None, cmap="Blues", **kwargs):
+    def confusion_matrix(self, true, predicted, prefix=None, cmap="Blues", **kwargs):
         """plots confusion matrix.
 
         cmap :
@@ -714,7 +714,7 @@ class ProcessPredictions(Plot):
         if self.output_features is None:
             self.output_features = [f'feature_{i}' for i in range(self.n_classes(true))]
 
-        self.confusion_matrx(true, predicted, prefix=prefix)
+        self.confusion_matrix(true, predicted, prefix=prefix)
 
         fname = os.path.join(self.path, f"{prefix}_prediction.csv")
         pd.DataFrame(np.concatenate([true, predicted], axis=1),
@@ -747,7 +747,7 @@ class ProcessPredictions(Plot):
         elif true.size != len(true):
             true = np.argmax(true, axis=1).reshape(-1, 1)
 
-        self.confusion_matrx(true, predicted, prefix=prefix)
+        self.confusion_matrix(true, predicted, prefix=prefix)
 
         fpath = os.path.join(self.path, prefix)
         if not os.path.exists(fpath):
