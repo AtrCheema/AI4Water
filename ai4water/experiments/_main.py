@@ -1006,6 +1006,7 @@ Available cases are {self.models} and you wanted to include
             sort_by: str = 'test',
             ignore_nans: bool = True,
             name: str = 'ErrorComparison',
+            figsize:tuple = None,
             **kwargs
     ) -> pd.DataFrame:
         """
@@ -1040,16 +1041,12 @@ Available cases are {self.models} and you wanted to include
                 default True, if True, then performance matrics with nans are ignored
                 otherwise nans/empty bars will be shown to depict which models have
                 resulted in nans for the given performance matric.
-            name:
+            name : str
                 name of the saved file.
-
-            kwargs :
-
-                - fig_height :
-                - fig_width :
-                - title_fs :
-                - xlabel_fs :
-                - color :
+            figsize : tuple
+                figure size as (width, height)
+            **kwargs :
+                any keyword argument that goes to `easy_mpl.bar_chart`
 
         returns
         -------
@@ -1079,34 +1076,32 @@ Available cases are {self.models} and you wanted to include
                                             ignore_nans, sort_by)
 
         plt.close('all')
-        fig, axis = plt.subplots(1, 2, sharey='all')
-        fig.set_figheight(kwargs.get('fig_height', 8))
-        fig.set_figwidth(kwargs.get('fig_width', 8))
+        fig, axis = plt.subplots(1, 2, sharey='all', figsize=figsize)
 
         labels = [model.split('model_')[1] for model in models.index.tolist()]
         models.index = labels
 
+        if kwargs is not None:
+            for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws']:
+                assert arg not in kwargs, f"{arg} not allowed in kwargs"
+
         bar_chart(ax=axis[0],
                   labels=labels,
                   values=models['train'],
-                  color=kwargs.get('color', None),
                   ax_kws={'title':"Train",
-                  'xlabel':ERROR_LABELS.get(matric_name, matric_name),
-                  'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
-                  'title_kws':{'fontsize': kwargs.get('title_fs', 20)}},
+                  'xlabel':ERROR_LABELS.get(matric_name, matric_name)},
                   show=False,
+                  **kwargs,
                   )
 
         bar_chart(ax=axis[1],
                   labels=labels,
                   values=models.iloc[:, 1],
-                  color=kwargs.get('color', None),
                   ax_kws={'title': models.columns.tolist()[1],
                           'xlabel':ERROR_LABELS.get(matric_name, matric_name),
-                          'xlabel_kws':{'fontsize': kwargs.get('xlabel_fs', 16)},
-                          'title_kws':{'fontsize': kwargs.get('title_fs', 20)},
                           'show_yaxis':False},
-                  show=False
+                  show=False,
+                  **kwargs
                   )
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"
@@ -1114,7 +1109,7 @@ Available cases are {self.models} and you wanted to include
             fname = os.path.join(
                 os.getcwd(),
                 f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
-            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+            plt.savefig(fname, dpi=100, bbox_inches='tight')
 
         if self.show:
             plt.show()

@@ -902,9 +902,10 @@ def to_skopt_as_dict(algorithm:str, backend:str, original_space)->dict:
                     s = space_from_list(v, k)
                 elif isinstance(v, Dimension):
                     s = v
-                elif isinstance(v, tuple) or isinstance(v, list):
+                elif isinstance(v, (tuple, list)):
                     s = Categorical(v, name=k)
-                elif  v.__class__.__name__ == "Apply" or 'rv_frozen' in v.__class__.__name__:
+                elif v.__class__.__name__ in ["Apply",
+                                                  'rv_continuous_frozen'] or 'rv_frozen' in v.__class__.__name__:
                     if algorithm == 'random':
                         s = Real(v.kwds['loc'], v.kwds['loc'] + v.kwds['scale'], name=k, prior=v.dist.name)
                     else:

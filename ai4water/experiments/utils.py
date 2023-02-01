@@ -720,7 +720,7 @@ def classification_space(num_samples:int, verbosity=0):
         "CatBoostClassifier": {
             "param_space": [
                 # maximum number of trees that can be built
-                Integer(low=50, high=5000, name='iterations', num_samples=num_samples),
+                Integer(low=20, high=100, name='iterations', num_samples=num_samples),
                 # Used for reducing the gradient step.
                 Real(low=0.0001, high=0.5, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 # depth

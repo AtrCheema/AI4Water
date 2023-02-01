@@ -377,8 +377,6 @@ class ProcessPredictions(Plot):
 
         ep.regplot(true,
                    predicted,
-                   annotation_key=annotation_key,
-                   annotation_val=annotation_val,
                    marker_color='crimson',
                    line_color='k',
                    scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
@@ -389,6 +387,12 @@ class ProcessPredictions(Plot):
                    ridge_line_kws=RIDGE_LINE_KWS,
                    hist=False,
                    )
+
+        plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
+                     xy=(0.3, 0.95),
+                     xycoords='axes fraction',
+                     horizontalalignment='right', verticalalignment='top',
+                     fontsize=16)
 
         return self.save_or_show(fname=f"{target_name}_regression",
                                  where=where)

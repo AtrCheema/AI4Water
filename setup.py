@@ -12,12 +12,10 @@ else:
     long_desc = "https://github.com/AtrCheema/AI4Water"
 
 min_requirements = [
-    'numpy',
     'scikit-learn',
     'pandas',
-    'matplotlib',
 
-    'easy_mpl>=0.21.2',
+    'easy_mpl[all]>=0.21.2',
     'SeqMetrics>=1.3.3',
     ]
 
@@ -25,7 +23,7 @@ extra_requires = [
 'tensorflow', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 
-'h5py<2.11.0', # only if you want to save batches
+'h5py', # only if you want to save batches
 'xgboost',
 'lightgbm',
 'catboost',
@@ -57,10 +55,10 @@ extra_requires = [
 tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.21.2', 'tensorflow==1.15', 'pandas',
                'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3', 'AttentionLSTM']
 
-tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.21.2', 'tensorflow==2.7', 'pandas',
+tf2_requires = ['h5py', 'numpy', 'easy_mpl>=0.21.2', 'tensorflow<=2.7', 'pandas',
                'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3', 'AttentionLSTM']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.21.2', 'tensorflow', 'pandas',
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.21.2', 'tensorflow==1.15', 'pandas',
                    'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna<=2.10.1',
                    'SeqMetrics>=1.3.3', 'AttentionLSTM']
 

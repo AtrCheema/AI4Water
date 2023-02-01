@@ -2,6 +2,9 @@
 import unittest
 import os
 
+import xgboost
+import catboost
+import lightgbm
 import numpy as np
 import tensorflow as tf
 
@@ -31,20 +34,21 @@ def get_model(model_name, **kwargs):
 class TestML(unittest.TestCase):
 
     def test_xgboost(self):
-
+        assert xgboost.__version__ == "1.5.0"
         p = get_model("XGBRegressor")
         assert np.allclose(p.sum(), 85075350.0), p.sum()
 
         return
 
     def test_catboost(self):
-
+        assert catboost.__version__ == "'0.26'"
         p = get_model("CatBoostRegressor")
         assert np.allclose(p.sum(), 118372625.26412539), p.sum()
 
         return
 
     def test_lgbm(self):
+        assert lightgbm.__version__ == "3.3.1"
         p = get_model("LGBMRegressor")
         assert np.allclose(p.sum(), 276302360.69196635), p.sum()
 
