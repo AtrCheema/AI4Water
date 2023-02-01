@@ -119,6 +119,8 @@ class ProcessPredictions(Plot):
         if plots is None:
             if mode == "regression":
                 plots = ['regression', 'prediction', "residual", "errors", "edf"]
+            else:
+                plots = ["confusion_matrx"]
         elif not isinstance(plots, list):
             plots = [plots]
 
