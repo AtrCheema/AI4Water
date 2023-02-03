@@ -335,6 +335,14 @@ class Experiments(object):
             train_x, train_y,
             val_x, val_y):
 
+        """runs the `.fit` of allt he models being considered once.
+        Also populates following attributes
+
+            - eval_models
+            - cv_scores_
+            - metrics
+            - features
+        """
         if self.verbosity >= 0: print(f"running  {model_name} model")
 
         config = self._get_config(model_type, model_name, **self._named_x0())
@@ -358,6 +366,8 @@ class Experiments(object):
             cv_scoring = model.val_metric
             self.cv_scores_[model_type] = getattr(model, f'cross_val_scores')
             setattr(self, '_cv_scoring', cv_scoring)
+
+        self.eval_models[model_type] = self.model_.path
         return
 
     def _optimize_a_model(
@@ -1184,8 +1194,8 @@ Available cases are {self.models} and you wanted to include
         if kwargs is not None:
             _kws.update(kwargs)
         ax_kws = {
-                   'xlabel': "Epochs",
-                   'ylabel': 'Loss'}
+            'xlabel': "Epochs",
+            'ylabel': 'Loss'}
 
         if len(loss_curves) > 5:
             ax_kws['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
@@ -1194,7 +1204,9 @@ Available cases are {self.models} and you wanted to include
 
         for _model, _loss in loss_curves.items():
             label = shred_model_name(_model)
-            plot(_loss[start:end], ax=axis, label=label, show=False, **ax_kws, **_kws)
+            plot(_loss[start:end], ax=axis, label=label, show=False, ax_kws=ax_kws, **_kws)
+
+        axis.grid(ls='--', color='lightgrey')
 
         if self.save:
             fname = os.path.join(self.exp_path, f'loss_comparison_{loss_name}.png')
@@ -1359,6 +1371,8 @@ Available cases are {self.models} and you wanted to include
                 edf_plot(error, xlabel="Absolute Error", ax=axes, label=label,
                          show=False)
 
+        axes.grid(ls='--', color='lightgrey')
+
         if len(model_folders)>7:
             axes.legend(loc=(1.05, 0.0))
 
@@ -1377,7 +1391,8 @@ Available cases are {self.models} and you wanted to include
             y=None,
             data=None,
             figsize=None,
-            fname: Optional[str] = "regression"
+            fname: Optional[str] = "regression",
+            **kwargs
     ):
         """compare regression plots of all the models which have been fitted.
         This plot is only available for regression problems.
@@ -1394,6 +1409,8 @@ Available cases are {self.models} and you wanted to include
             figure size
         fname : str, optional
             name of the file to save the plot
+        **kwargs
+            any keyword arguments for `obj`:easy_mpl.reg_plot
         Returns
         -------
         plt.Figure
@@ -1438,7 +1455,8 @@ Available cases are {self.models} and you wanted to include
                     print(f"Model {model_name} only predicted nans")
                 continue
 
-            reg_plot(true, prediction, marker_size=5, ax=ax, show=False)
+            reg_plot(true, prediction, marker_size=5, ax=ax, show=False,
+                     **kwargs)
 
             if model_name.endswith("Regressor"):
                label = model_name.split("Regressor")[0]

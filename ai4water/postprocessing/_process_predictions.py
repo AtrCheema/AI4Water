@@ -388,21 +388,31 @@ class ProcessPredictions(Plot):
             marginals = False
 
         # if all the values in predicted are same, calculation of kde gives error
-        if np.sum(predicted).item() == (predicted[0] * len(predicted)).item():
+        if (predicted == predicted[0]).all():
             marginals = False
 
-        ep.regplot(true,
-                   predicted,
-                   marker_color='crimson',
-                   line_color='k',
-                   scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
-                   show=False,
-                   marginals=marginals,
-                   marginal_ax_pad=0.25,
-                   marginal_ax_size=0.7,
-                   ridge_line_kws=RIDGE_LINE_KWS,
-                   hist=False,
-                   )
+        try:
+            ep.regplot(true,
+                       predicted,
+                       marker_color='crimson',
+                       line_color='k',
+                       scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
+                       show=False,
+                       marginals=marginals,
+                       marginal_ax_pad=0.25,
+                       marginal_ax_size=0.7,
+                       ridge_line_kws=RIDGE_LINE_KWS,
+                       hist=False,
+                       )
+        except np.linalg.LinAlgError:
+            ep.regplot(true,
+                       predicted,
+                       marker_color='crimson',
+                       line_color='k',
+                       scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth': 0.5},
+                       show=False,
+                       marginals=False
+                       )
 
         plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
                      xy=(0.3, 0.95),

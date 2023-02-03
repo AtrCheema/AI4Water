@@ -81,6 +81,7 @@ if skopt is None:
             self.log_base = np.log10(base)
             self.name = name
             self.dtype = dtype
+            self.transform_ = transform
 
 
     class _Categorical(Dimension):

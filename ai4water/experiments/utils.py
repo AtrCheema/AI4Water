@@ -415,7 +415,12 @@ def regression_space(
     return spaces
 
 
-def classification_space(num_samples:int, verbosity=0):
+def classification_space(num_samples:int,
+                         verbosity=0,
+                         n_features:int = None):
+
+    ridge_cls = _ridge_classifier(num_samples=num_samples)
+    ridge_cls_cv = _ridge_classifiercv()
 
     spaces = {
         "AdaBoostClassifier": {
@@ -640,20 +645,13 @@ def classification_space(num_samples:int, verbosity=0):
             "x0":
                 [100, 5, 2, 0.2, 'auto']},
         "RidgeClassifier": {
-            "param_space": [
-                Real(low=1.0, high=5.0, name='alpha', num_samples=num_samples),
-                Real(low=1e-4, high=1e-1, name='tol', num_samples=num_samples),
-                Categorical(categories=[True, False], name='normalize'),
-                Categorical(categories=[True, False], name='fit_intercept')],
+            "param_space": ridge_cls.space,
             "x0":
-                [1.0, 1e-3, True, True]},
+                ridge_cls.x0},
         "RidgeClassifierCV": {
-            "param_space": [
-                Categorical(categories=[1e-3, 1e-2, 1e-1, 1], name='alphas'),
-                Categorical(categories=[True, False], name='normalize'),
-                Categorical(categories=[True, False], name='fit_intercept')],
+            "param_space": ridge_cls_cv.space,
             "x0":
-                [1e-3,True, True]},
+                ridge_cls_cv.x0},
         "SGDClassifier": {
             "param_space": [
                 Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
@@ -835,3 +833,37 @@ def regression_models()->list:
 def classification_models()->list:
     """returns availabel classification models as list"""
     return list(classification_space(5,0).keys())
+
+
+class _ridge_classifier(object):
+
+    def __init__(self, num_samples=10):
+        import sklearn
+        self.space = [
+            Real(low=1.0, high=5.0, name='alpha', num_samples=num_samples),
+            Real(low=1e-4, high=1e-1, name='tol', num_samples=num_samples),
+            Categorical(categories=[True, False], name='normalize'),
+            Categorical(categories=[True, False], name='fit_intercept')]
+
+        self.x0 = [1.0, 1e-3, True, True]
+
+        if sklearn.__version__ > "1.0.0":
+            self.space.pop(2)
+            self.x0.pop(2)
+
+
+class _ridge_classifiercv(object):
+
+    def __init__(self):
+        import sklearn
+        self.space = [
+             Categorical(categories=[1e-3, 1e-2, 1e-1, 1], name='alphas'),
+             Categorical(categories=[True, False], name='normalize'),
+             Categorical(categories=[True, False], name='fit_intercept')
+        ]
+
+        self.x0 = [1.0, True, True]
+
+        if sklearn.__version__ > "1.0.0":
+            self.space.pop(1)
+            self.x0.pop(1)
