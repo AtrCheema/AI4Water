@@ -824,7 +824,7 @@ class MtropicsLaos(Datasets):
         spm_6min = spm.resample(freq).first().interpolate(method='linear')
 
         # backfilling because for each month the value is given for last day of month
-        src = self.fetch_source().loc[st:en, 'NB_E. coli_total'].asfreq("6min").bfill()
+        src = self.fetch_source().loc[:, 'NB_E. coli_total'].asfreq("6min").bfill()
         src.name = "Ecoli_source"
 
         data = pd.concat([w_6min.loc[st:en],

@@ -380,8 +380,15 @@ class ProcessPredictions(Plot):
 
         RIDGE_LINE_KWS = {'color': 'firebrick', 'lw': 1.0}
 
+        if isinstance(predicted, (pd.DataFrame, pd.Series)):
+            predicted = predicted.values
+
         marginals = True
-        if np.isnan(np.array(true)).any() or np.isnan(np.array(predicted)).any():
+        if np.isnan(np.array(true)).any() or np.isnan(predicted).any():
+            marginals = False
+
+        # if all the values in predicted are same, calculation of kde gives error
+        if np.sum(predicted).item() == (predicted[0] * len(predicted)).item():
             marginals = False
 
         ep.regplot(true,

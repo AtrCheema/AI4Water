@@ -1731,7 +1731,8 @@ def maybe_three_outputs(data, teacher_forcing=False):
 def get_version_info(
         **kwargs
 ) -> dict:
-
+    """returns version information of all the packages which are
+    used by different modules of ai4water. """
     import sys
     from ai4water.backend import lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics
     from ai4water.backend import tf, keras, torch
@@ -1740,7 +1741,6 @@ def get_version_info(
     from ai4water.backend import sklearn, shapefile, xr, netCDF4
     from ai4water.backend import optuna, skopt, hyperopt, plotly
     from ai4water.backend import lime, sns
-    import joblib
     from ai4water import __version__
 
     info = {'python': sys.version, 'os': os.name, 'ai4water': __version__}
@@ -1752,7 +1752,7 @@ def get_version_info(
         info['eager_execution'] = tf.executing_eagerly()
 
     for lib in [lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
-                tf, keras, torch, np, pd, mpl, h5py, joblib, sklearn,
+                tf, keras, torch, np, pd, mpl, h5py, sklearn,
                 shapefile, xr, netCDF4,
                 optuna, skopt, hyperopt, plotly,
                 lime, sns]:
