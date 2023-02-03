@@ -1737,6 +1737,9 @@ def get_version_info(
     from ai4water.backend import tf, keras, torch
     from ai4water.backend import np, pd, mpl
     from ai4water.backend import h5py
+    from ai4water.backend import sklearn, shapefile, xr, netCDF4
+    from ai4water.backend import optuna, skopt, hyperopt, plotly
+    from ai4water.backend import lime, sns
     import joblib
     from ai4water import __version__
 
@@ -1749,11 +1752,15 @@ def get_version_info(
         info['eager_execution'] = tf.executing_eagerly()
 
     for lib in [lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
-                tf, keras, torch, np, pd, mpl, h5py, joblib]:
+                tf, keras, torch, np, pd, mpl, h5py, joblib, sklearn,
+                shapefile, xr, netCDF4,
+                optuna, skopt, hyperopt, plotly,
+                lime, sns]:
         if lib is not None:
             info[getattr(lib, '__name__')] =  getattr(lib, '__version__', 'NotDefined')
 
     return info
+
 
 def check_attributes(model, attributes):
     for method in attributes:
