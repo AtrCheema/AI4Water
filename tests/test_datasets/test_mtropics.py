@@ -67,24 +67,24 @@ class TestMtropicsLaos(unittest.TestCase):
 
         df = laos.make_regression()
         assert isinstance(df.index, pd.DatetimeIndex)
-        assert int(df.isna().sum().sum()) == 650483
-        self.assertEqual(df.shape[-1], 8)
+        assert int(df.isna().sum().sum()) == 658263, int(df.isna().sum().sum())
+        self.assertEqual(df.shape[-1], 9)
 
         return
 
     def test_regression_with_lookback(self):
 
         df = laos.make_regression(lookback_steps=30)
-        assert df.shape == (5948, 8)
-        assert int(df.isna().sum().sum()) == 5690
+        assert df.shape == (5948, 9)
+        assert int(df.isna().sum().sum()) == 5795, int(df.isna().sum().sum())
 
         return
 
     def test_classification_with_lookback(self):
 
         df = laos.make_classification(lookback_steps=30)
-        assert df.shape == (5948, 8)
-        assert int(df.isna().sum().sum()) == 5690
+        assert df.shape == (5948, 9)
+        assert int(df.isna().sum().sum()) == 5795, int(df.isna().sum().sum())
         s = df['Ecoli_mpn100']
         assert (s == 0).sum() == 102
         self.assertEqual((s == 1).sum(), 156)
@@ -95,7 +95,7 @@ class TestMtropicsLaos(unittest.TestCase):
 
         df = laos.make_classification()
         assert isinstance(df.index, pd.DatetimeIndex)
-        assert int(df.isna().sum().sum()) == 650483
+        assert int(df.isna().sum().sum()) == 658263, int(df.isna().sum().sum())
         s = df['Ecoli_mpn100']
         assert (s == 0).sum() == 102
         self.assertEqual((s == 1).sum(), 156)

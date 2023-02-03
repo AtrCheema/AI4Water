@@ -89,7 +89,7 @@ class MtropicsLaos(Datasets):
                             }
 
     weather_station_data = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
-    inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
+    inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm', "Ecoli_source"]
 
     def __init__(
             self,
@@ -683,7 +683,7 @@ class MtropicsLaos(Datasets):
             output_features :
                 feature/features to consdier as target/output/label
             st :
-                starting date of data
+                starting date of data. The default starting date is 20110525
             en :
                 end date of data
             freq :
@@ -759,6 +759,7 @@ class MtropicsLaos(Datasets):
                 - ``water_level``
                 - ``pcp``
                 - ``susp_pm``
+                - ``Ecoli_source``
 
             output_features : feature/features to consdier as target/output/label
             st :
@@ -822,10 +823,15 @@ class MtropicsLaos(Datasets):
         wl_6min = wl.resample(freq).first().interpolate(method="linear")
         spm_6min = spm.resample(freq).first().interpolate(method='linear')
 
+        # backfilling because for each month the value is given for last day of month
+        src = self.fetch_source().loc[st:en, 'NB_E. coli_total'].asfreq("6min").bfill()
+        src.name = "Ecoli_source"
+
         data = pd.concat([w_6min.loc[st:en],
                           pcp.loc[st:en],
                           wl_6min.loc[st:en],
                           spm_6min.loc[st:en],
+                          src[st:en],
                           ecoli_6min.loc[st:en],
                           ], axis=1)
 
