@@ -222,6 +222,12 @@ class Experiments(object):
     def category(self)->str:
         raise NotImplementedError
 
+    @property
+    def plots_(self)->list:
+        if self.mode == "regression":
+            return ['regression', 'prediction', "residual", "edf"]
+        return []
+
     def _pre_build_hook(self, **suggested_paras):
         """Anything that needs to be performed before building the model."""
         return suggested_paras
@@ -264,14 +270,21 @@ class Experiments(object):
             model:Model,
             config_path:str
     ):
-        """updates the weight of model. """
+        """updates the weight of model.
+        If no saved weight is found, a warning is raised.
+        """
         best_weights = find_best_weight(os.path.join(config_path, "weights"))
+        # Sometimes no weight is saved when the prediction is None,
+        # todo
+        # should we raise error in such case? What are other cases when best_weights can be None
+        if best_weights is None:
+            warnings.warn(f"Can't find weight for {model} from \n {config_path}")
+            return
 
-        assert best_weights is not None, f"Can't find weight from {config_path}"
         weight_file = os.path.join(model.w_path, best_weights)
 
         model.update_weights(weight_file=weight_file)
-        if self.verbosity>0:
+        if self.verbosity>1:
             print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
 
         return
@@ -672,7 +685,7 @@ class Experiments(object):
             val_results: Tuple[np.ndarray, np.ndarray] = None,
             test_results: Tuple[np.ndarray, np.ndarray] = None,
     ):
-        """populates self.metrics dictionary"""
+        """populates self.metrics and self.features dictionaries"""
         if not model_type.startswith('model_'):  # internally we always use model_ at the start.
             model_type = f'model_{model_type}'
 
@@ -732,7 +745,7 @@ class Experiments(object):
             data=None,
             include: Union[None, list] = None,
             exclude: Union[None, list] = None,
-            figsize: tuple = (9, 7),
+            figsize: tuple = (5, 8),
             **kwargs
     ) -> plt.Figure:
         """
@@ -746,8 +759,8 @@ class Experiments(object):
                 target data
             data :
                 raw unprocessed data from which x,y pairs can be drawn. This data
-                will be passed to DataSet class and DataSet.test_data() method
-                will be used to draw x,y pairs.
+                will be passed to DataSet class and :py:meth:`ai4water.preprocessing.DataSet.test_data`
+                 method will be used to draw x,y pairs.
             include : str, list, optional
                 if not None, must be a list of models which will be included.
                 None will result in plotting all the models.
@@ -1021,7 +1034,7 @@ Available cases are {self.models} and you wanted to include
     ) -> pd.DataFrame:
         """
         Plots a specific performance matric for all the models which were
-        run during [fit][ai4water.experiments.Experiments.fit] call.
+        run during :py:meth:`ai4water.experiments.Experiments.fit` call.
 
         Parameters
         ----------
@@ -1033,7 +1046,8 @@ Available cases are {self.models} and you wanted to include
                 target data
             data :
                 raw unprocessed data from which x,y pairs can be drawn. This data
-                will be passed to DataSet class and DataSet.test_data() method
+                will be passed to :py:meth:`ai4water.preprocessing.DataSet` class and
+                :py:meth:`ai4water.preprocessing.DataSet.test_data` method
                 will be used to draw x,y pairs.
             cutoff_val : float
                  if provided, only those models will be plotted for whome the
@@ -1287,6 +1301,20 @@ Available cases are {self.models} and you wanted to include
             plt.show()
         return axis
 
+    def _load_model(self, model_name:str):
+        """
+        builds the model from config and then update the weights
+        and returns it
+        """
+        m_path = self._get_best_model_path(model_name)
+
+        c_path = os.path.join(m_path, 'config.json')
+        model = self.build_from_config(c_path)
+        # calculate pr curve for each model
+        self.update_model_weight(model, m_path)
+
+        return model
+
     def compare_edf_plots(
             self,
             x=None,
@@ -1294,7 +1322,8 @@ Available cases are {self.models} and you wanted to include
             data=None,
             exclude:Union[list, str] = None,
             figsize=None,
-            fname: Optional[str] = "edf"
+            fname: Optional[str] = "edf",
+            **kwargs
     ):
         """compare EDF plots of all the models which have been fitted.
         This plot is only available for regression problems.
@@ -1310,8 +1339,11 @@ Available cases are {self.models} and you wanted to include
         exclude : list
             name of models to exclude from plotting
         figsize :
-            figure size
+            figure size as (width, height)
         fname : str, optional
+            name of the file to save plot
+        **kwargs
+            any keword arguments for `py:meth:ai4water.utils.utils.edf_plot`
 
         Returns
         -------
@@ -1347,12 +1379,7 @@ Available cases are {self.models} and you wanted to include
 
             if model_name not in exclude:
 
-                m_path = self._get_best_model_path(model_name)
-
-                c_path = os.path.join(m_path, 'config.json')
-                model = self.build_from_config(c_path)
-                # calculate pr curve for each model
-                self.update_model_weight(model, m_path)
+                model = self._load_model(model_name)
 
                 true, prediction = model.predict(x, y, return_true=True,
                                                  process_results=False)
@@ -1369,7 +1396,7 @@ Available cases are {self.models} and you wanted to include
                     label = model_name
 
                 edf_plot(error, xlabel="Absolute Error", ax=axes, label=label,
-                         show=False)
+                         show=False, **kwargs)
 
         axes.grid(ls='--', color='lightgrey')
 
@@ -1390,10 +1417,10 @@ Available cases are {self.models} and you wanted to include
             x=None,
             y=None,
             data=None,
-            figsize=None,
+            figsize: tuple=None,
             fname: Optional[str] = "regression",
             **kwargs
-    ):
+    )->plt.Figure:
         """compare regression plots of all the models which have been fitted.
         This plot is only available for regression problems.
 
@@ -1427,13 +1454,15 @@ Available cases are {self.models} and you wanted to include
         >>> experiment.fit(data=dataset)
         >>> experiment.compare_regression_plots(data=dataset)
         """
-        assert self.mode == "regression", f"This plot is not available for {self.mode} mode"
+        assert self.mode == "regression", f"""
+        This plot is not available for {self.mode} mode"""
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
         model_folders = self._get_model_folders()
 
-        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+        fig, axes = create_subplots(naxes=len(model_folders),
+                                    figsize=figsize, sharex="all")
 
         if not isinstance(axes, np.ndarray):
             axes = np.array(axes)
@@ -1441,14 +1470,10 @@ Available cases are {self.models} and you wanted to include
         # load all models from config
         for model_name, ax in zip(model_folders, axes.flat):
 
-            m_path = self._get_best_model_path(model_name)
+            model = self._load_model(model_name)
 
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
-
-            true, prediction = model.predict(x, y, return_true=True, process_results=False)
+            true, prediction = model.predict(x, y, return_true=True,
+                                             process_results=False)
 
             if np.isnan(prediction).sum() == prediction.size:
                 if self.verbosity>=0:
@@ -1458,19 +1483,24 @@ Available cases are {self.models} and you wanted to include
             reg_plot(true, prediction, marker_size=5, ax=ax, show=False,
                      **kwargs)
 
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+
             if model_name.endswith("Regressor"):
                label = model_name.split("Regressor")[0]
             elif model_name.endswith("Classifier"):
                 label = model_name.split("Classifier")[0]
             else:
                 label = model_name
-            ax.legend(labels=[label], fontsize=9,
+            ax.legend(labels=[label],
+                      fontsize=9,
                       numpoints=2,
-                      fancybox=False, framealpha=0.0)
+                      fancybox=False,
+                      framealpha=0.0)
 
         if hasattr(fig, "supxlabel"):
-            fig.supxlabel("Observed")
-            fig.supylabel("Predicted")
+            fig.supxlabel("Observed", fontsize=14)
+            fig.supylabel("Predicted", fontsize=14)
 
         if self.save:
             fname = os.path.join(self.exp_path, f'{fname}.png')
@@ -1479,7 +1509,7 @@ Available cases are {self.models} and you wanted to include
         if self.show:
             plt.show()
 
-        return
+        return fig
 
     def compare_residual_plots(
             self,
@@ -1536,12 +1566,7 @@ Available cases are {self.models} and you wanted to include
         # load all models from config
         for model_name, ax in zip(model_folders, axes.flat):
 
-            m_path = self._get_best_model_path(model_name)
-
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
+            model = self._load_model(model_name)
 
             true, prediction = model.predict(x, y, return_true=True, process_results=False)
 
@@ -1722,13 +1747,18 @@ Available cases are {self.models} and you wanted to include
 
         return axis
 
-    def _compare_cls_curves(self, x, y, func, name):
+    def _compare_cls_curves(
+            self, x, y, func, name,
+            figsize:tuple=None,
+            **kwargs
+    ):
 
-        assert self.mode == "classification", f"{name} is only available for classification mode."
+        assert self.mode == "classification", f"""
+        {name} is only available for classification mode."""
 
         model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path, p))]
 
-        _, ax = plt.subplots()
+        _, ax = plt.subplots(figsize=figsize)
 
         # find all the model folders
         m_paths = []
@@ -1736,19 +1766,26 @@ Available cases are {self.models} and you wanted to include
             if any(m in m_ for m_ in self.considered_models_):
                 m_paths.append(m)
 
+        nplots = 0
+
         # load all models from config
         for model_name in m_paths:
 
-            m_path = self._get_best_model_path(model_name)
+            model = self._load_model(model_name)
 
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
+            kws = {'estimator': model,
+                   'X': x,
+                   'y': y.reshape(-1, ),
+                   'ax': ax,
+                   'name': model.model_name
+                   }
 
-            kws = {'estimator': model, 'X': x, 'y': y.reshape(-1, ), 'ax': ax, 'name': model.model_name}
+            if kwargs:
+                kws.update(kwargs)
+
             if 'LinearSVC' in model.model_name:
-                # sklearn LinearSVC does not have predict_proba but ai4water Model does have this method
+                # sklearn LinearSVC does not have predict_proba
+                # but ai4water Model does have this method
                 # which will only throw error
                 kws['estimator'] = model._model
 
@@ -1766,6 +1803,12 @@ Available cases are {self.models} and you wanted to include
                     continue
 
             func(**kws)
+            nplots += 1
+
+        ax.grid(ls='--', color='lightgrey')
+
+        if nplots>5:
+            plt.legend(bbox_to_anchor=(1.1, 0.99))
 
         if self.save:
             fname = os.path.join(self.exp_path, f"{name}.png")
@@ -1780,6 +1823,8 @@ Available cases are {self.models} and you wanted to include
             self,
             x,
             y,
+            figsize:tuple=None,
+            **kwargs
     ):
         """compares precision recall curves of the all the models.
 
@@ -1789,6 +1834,10 @@ Available cases are {self.models} and you wanted to include
             input data
         y :
             labels for the input data
+        figsize : tuple
+            figure size
+        **kwargs :
+            any keyword arguments for :obj:matplotlib.plot function
 
         Returns
         -------
@@ -1819,13 +1868,17 @@ Available cases are {self.models} and you wanted to include
             x,
             y,
             name="precision_recall_curves",
-            func=sklearn.metrics.PrecisionRecallDisplay.from_estimator
+            func=sklearn.metrics.PrecisionRecallDisplay.from_estimator,
+            figsize=figsize,
+            **kwargs
         )
 
     def compare_roc_curves(
             self,
             x,
             y,
+            figsize:tuple=None,
+            **kwargs
     ):
         """compares roc curves of the all the models.
 
@@ -1835,6 +1888,10 @@ Available cases are {self.models} and you wanted to include
             input data
         y :
             labels for the input data
+        figsize : tuple
+            figure size
+        **kwargs :
+            any keyword arguments for :obj:matplotlib.plot function
 
         Returns
         -------
@@ -1865,7 +1922,9 @@ Available cases are {self.models} and you wanted to include
             x=x,
             y=y,
             name="roc_curves",
-            func=sklearn.metrics.RocCurveDisplay.from_estimator
+            func=sklearn.metrics.RocCurveDisplay.from_estimator,
+            figsize=figsize,
+            **kwargs
         )
 
     def sort_models_by_metric(
@@ -2184,8 +2243,13 @@ Available cases are {self.models} and you wanted to include
                 train_y,
                 validation_data=validation_data))
 
-        model.fit(x=train_x, y=train_y)
-        # model_ is used in the class for prediction so it must be the updated/trained model
+        if self.category == "DL":
+            model.fit(x=train_x, y=train_y, validation_data=validation_data)
+        else:
+            model.fit(x=train_x, y=train_y)
+
+        # model_ is used in the class for prediction so it must be the
+        # updated/trained model
         self.model_ = model
         return
 
@@ -2246,6 +2310,7 @@ Available cases are {self.models} and you wanted to include
                                forecast_len=model.forecast_len,
                                path=model.path,
                                output_features=model.output_features,
+                               plots=self.plots_,
                                show=bool(model.verbosity),
                                )(true, predicted)
         return true, predicted
@@ -2258,21 +2323,22 @@ Available cases are {self.models} and you wanted to include
             validation_data: tuple = None,
             test_data: tuple = None,
     ) -> tuple:
-        def num_examples(samples):
-            if isinstance(samples, list):
-                assert len(set(len(sample) for sample in samples)) == 1
-                return len(samples[0])
-            return len(samples)
 
         """
         verifies that either
             - only x,y should be given (val will be taken from it according to splitting schemes)
             - or x,y and validation_data should be given  (means no test data)
             - or x, y and validation_data and test_data are given
-            - or only data should be given (train, validation and test data will be 
+            - or only data should be given (train, validation and test data will be
                 taken accoring to splitting schemes)
 
         """
+
+        def num_examples(samples):
+            if isinstance(samples, list):
+                assert len(set(len(sample) for sample in samples)) == 1
+                return len(samples[0])
+            return len(samples)
 
         model_maker = make_model(**self.model_kws)
         data_config = model_maker.data_config
@@ -2305,10 +2371,20 @@ Available cases are {self.models} and you wanted to include
                     # because the user expects it to be hyperparameter
                     data_config['ts_args']['lookback'] = self._named_x0()['lookback']
 
+                # when saving is done during initialization of DataSet and verbosity>0
+                # it prints information two times!
+                save = data_config.pop('save') or True
+
                 dataset = DataSet(data=data,
-                                  save=data_config.pop('save') or True,
+                                  save=False,
                                   category=self.category,
                                   **data_config)
+
+                if save:
+                    verbosity = dataset.verbosity
+                    dataset.verbosity = 0
+                    dataset.to_disk()
+                    dataset.verbosity = verbosity
 
                 train_x, train_y = dataset.training_data()
                 val_x, val_y = dataset.validation_data() # todo what if there is not validation data

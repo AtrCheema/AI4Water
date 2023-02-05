@@ -48,7 +48,8 @@ ERROR_LABELS = {
     'mase': 'MASE'
 }
 
-def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
+def reset_seed(seed: Union[int, None], os=None, random=None, np=None,
+               tf=None, torch=None):
     """
     Sets the random seed for a given module if the module is not None
     Arguments:
@@ -155,7 +156,9 @@ def dict_to_file(
     if 'config' in data:
         if data['config'].get('model', None) is not None:
             model = data['config']['model']
-            if 'layers' not in model:  # because ML args which come algorithms may not be of json serializable.
+            # because ML args which come algorithms may not be of json serializable.
+            if 'layers' not in model:
+
                 model = jsonize(model)
                 data['config']['model'] = model
 
@@ -230,7 +233,9 @@ def check_kwargs(**kwargs):
             kwargs['model'] = {model: {}}
 
         if mode=="ML":
-            if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
+            # for ML, default batches will be 2d unless the user specifies
+            # otherwise.
+            if "batches" not in kwargs:
                 kwargs["batches"] = "2d"
 
             if "ts_args" not in kwargs:
@@ -256,7 +261,8 @@ class make_model(object):
 
     def __init__(self, **kwargs):
 
-        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(**kwargs)
+        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(
+            **kwargs)
 
 
 def process_io(**kwargs):
@@ -339,10 +345,12 @@ def _make_model(**kwargs):
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches
-        # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
+        # will be inferred from the Input layer but for cases, the model takes
+        # more than 1 Input, then there can be two
         # cases, either all the input_features are of same shape or they
         # are not. In second case, we should overwrite `train_paras`
-        # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
+        # method. In former case, define whether the batches are 2d or 3d. 3d
+        # means it is for an LSTM and 2d means it is
         # for Dense layer.
         'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
         'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
@@ -460,7 +468,9 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:
             for k, v in data.items():
-                assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
+                assert isinstance(v, list), f"""
+                {k} is of type {v.__class__.__name__} but it must of of type list
+                {k}: {v}"""
 
     _data_config = {}
     for key, val in config.items():
@@ -493,20 +503,26 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
         elif not isinstance(val, dtype):
             # the default value may be None which will be different than dtype
             if val != dict_to_lookup[key]['default']:
-                raise TypeError(f"{key} must be of type {dtype} but it is of type {val.__class__.__name__}")
+                raise TypeError(f"""
+                {key} must be of type {dtype} but it is of type {val.__class__.__name__} 
+                {key}: {val}
+                """)
 
-    if isinstance(val, int) or isinstance(val, float):
+    if isinstance(val, (int, float)):
         if low is not None:
             if val < low:
-                raise ValueError(f"The value '{val}' for '{key}' must be greater than '{low}'")
+                raise ValueError(f"""
+                The value '{val}' for '{key}' must be greater than '{low}'""")
         if up is not None:
             if val > up:
-                raise ValueError(f"The value '{val} for '{key} must be less than '{up}'")
+                raise ValueError(f"""
+                The value '{val} for '{key} must be less than '{up}'""")
 
     if isinstance(val, str):
         if between is not None:
             if val not in between:
-                raise ValueError(f"Unknown value '{val}' for '{key}'. It must be one of '{between}'")
+                raise ValueError(f"""
+                Unknown value '{val}' for '{key}'. It must be one of '{between}'""")
 
     dict_to_update[key] = val
     return
@@ -560,7 +576,8 @@ def find_opt_paras_from_model_config(
     assert isinstance(config, dict) and len(config) == 1
 
     if 'layers' in config:
-        original_model_config, _ = process_config_dict(deepcopy_dict_without_clone(config['layers']), False)
+        original_model_config, _ = process_config_dict(
+            deepcopy_dict_without_clone(config['layers']), False)
 
         # it is a nn based model
         new_lyrs_config, opt_paras = process_config_dict(config['layers'])
@@ -572,7 +589,8 @@ def find_opt_paras_from_model_config(
         ml_config: dict = list(config.values())[0]
         model_name = list(config.keys())[0]
 
-        original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
+        original_model_config, _ = process_config_dict(
+            copy.deepcopy(config[model_name]), False)
 
         for k, v in ml_config.items():
 
@@ -607,13 +625,16 @@ def process_config_dict(config_dict: dict, update_initial_guess=True):
                     v.name = k
 
                 if v.name in opt_paras:
-                    raise ValueError("Hyperparameters with duplicate name found. A hyperparameter to be "
-                                     f"optimized with name '{v.name}' already exists")
+                    raise ValueError(f"""
+        Hyperparameter with duplicate name {v.name} found. A hyperparameter to be
+        optimized with name '{v.name}' already exists""")
+
                 opt_paras[v.name] = v
                 if update_initial_guess:
                     x0 = jsonize(v.rvs(1)[0])  # get initial guess
                     d[k] = x0  # inplace change of dictionary
-                else:  # we most probably have updated the name, so doing inplace change
+                else:
+                # we most probably have updated the name, so doing inplace change
                     d[k] = v
         return
 
@@ -622,7 +643,8 @@ def process_config_dict(config_dict: dict, update_initial_guess=True):
 
 
 def update_model_config(config: dict, suggestions:dict)->dict:
-    """returns the updated config if config contains any parameter from suggestions."""
+    """returns the updated config if config contains any parameter from
+    suggestions."""
     cc = copy.deepcopy(config)
 
     def update(c):
@@ -766,9 +788,12 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     return results
 
 
-def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5",
+def find_best_weight(w_path: str,
+                     best: str = "min",
+                     ext: str = ".hdf5",
                      epoch_identifier: int = None):
-    """Given weights in w_path, find the best weight.
+    """
+    Given weights in w_path, find the best weight.
     if epoch_identifier is given, it will be given priority to find best_weights
     The file_names are supposed in following format FileName_Epoch_Error.ext
 
@@ -1695,6 +1720,7 @@ class DataNotFound(Exception):
         return f"""
         Unable to get {self.source} data.
         You must specify the data either using 'x' or 'data' keywords."""
+
 
 def print_something(something, prefix=''):
     """prints shape of some python object"""

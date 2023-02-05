@@ -40,7 +40,7 @@ class DLRegressionExperiments(Experiments):
     >>> y_transformation="log",
     >>> x_transformation="minmax",
     >>> )
-
+    ... # runt he experiments
     >>> exp.fit(data=data)
 
     """
@@ -59,8 +59,23 @@ class DLRegressionExperiments(Experiments):
         """initializes the experiment."""
         self.input_features = input_features
         self.param_space = param_space
+
+        # batch_size and lr will come from x0 so should not be
+        # in model_kws
+        if 'batch_size' in model_kws:
+            self.batch_size_x0 = model_kws.pop('batch_size')
+        else:
+            self.batch_size_x0 = 32
+
+        if 'lr' in model_kws:
+            self.lr_x0 = model_kws.pop('lr')
+        else:
+            self.lr_x0 = 0.001
+
         self.x0 = x0
 
+        # during model initiation, we must provide input_features argument
+        model_kws['input_features'] = input_features
 
         self.lookback_space = []
         self.batch_size_space = Categorical(categories=[4, 8, 12, 16, 32],
@@ -134,9 +149,9 @@ class DLRegressionExperiments(Experiments):
         if self.lookback_space:
             _x0.append(self.model_kws.get('lookback', 5))
         if self.batch_size_space:
-            _x0.append(self.model_kws.get('batch_size', 32))
+            _x0.append(self.batch_size_x0)
         if self.lr_space:
-            _x0.append(self.model_kws.get('lr', 0.001))
+            _x0.append(self.lr_x0)
         return _x0
 
     @property
@@ -150,7 +165,8 @@ class DLRegressionExperiments(Experiments):
     def _pre_build_hook(self, **suggested_paras):
         """suggested_paras contain model configuration which
         may contain executable tf layers which should be
-        serialized properly."""
+        serialized properly.
+        """
 
         suggested_paras = jsonize(suggested_paras, {
             tf.keras.layers.Layer: tf.keras.layers.serialize})
@@ -206,7 +222,7 @@ class DLRegressionExperiments(Experiments):
 
         return config
 
-    def model_CNNLSTM(self, **kwargs):
+    def model_CNNLSTM(self, **kwargs)->dict:
         """CNN-LSTM model"""
 
         self.param_space = self.spaces["CNNLSTM"]["param_space"] + self.static_space
@@ -216,6 +232,8 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
+
+        assert len(self.input_shape) == 2
         config = {'model': CNNLSTM(input_shape=self.input_shape,
                                    mode=self.mode,
                                    **kwargs)}
