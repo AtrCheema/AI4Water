@@ -62,7 +62,7 @@ def feature_interaction(
     # prediction
     prediction = predict_func(X, **predict_kwds)
 
-    info_df = X[_make_list(features[0]) + _make_list(features[1])]
+    info_df = X[_make_list(features[0]) + _make_list(features[1])].copy()
     actual_prediction_columns = ['actual_prediction']
     if n_classes == 0:
         info_df['actual_prediction'] = prediction

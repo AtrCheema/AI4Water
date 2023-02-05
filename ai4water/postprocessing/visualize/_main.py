@@ -97,15 +97,20 @@ class Visualize(Plots):
             model,
             save=True,
             show=True,
+            verbosity=None,
     ):
         """
         Arguments:
-            model : the learned machine learning model.
+            model :
+                the learned machine learning model.
+            save : bool
+            show : bool
+            verbosity : bool/int
         """
         plt.rcParams.update(plt.rcParamsDefault)
 
         self.model = model
-        self.verbosity = model.verbosity
+        self.verbosity = model.verbosity if verbosity is None else verbosity
         self.save=save
         self.show=show
 
@@ -120,48 +125,62 @@ class Visualize(Plots):
     def __call__(
             self,
             layer_name,
-            data='training',
+            data=None,
+            data_type='training',
             x=None,
             y=None,
             examples_to_use=None
     ):
 
         if self.model.category == "DL":
-            self.activations(layer_name, data, x, examples_to_use)
-            self.activation_gradients(layer_name, x=x, y=y,
+            self.activations(layer_name,
+                             data=data,
+                             data_type=data_type,
+                             x=x,
+                             examples_to_use=examples_to_use)
+            self.activation_gradients(layer_name,
+                                      x=x, y=y,
+                                      data=data,
+                                      data_type=data_type,
                                       examples_to_use=examples_to_use)
             self.weights(layer_name)
-            self.weight_gradients(layer_name, data=data, x=x, y=y)
+            self.weight_gradients(layer_name, data=data, data_type=data_type, x=x, y=y)
         else:
             self.decision_tree()
-            self.decision_tree_leaves(data=data)
+            self.decision_tree_leaves(data=data, data_type=data_type)
 
         return
 
-    def get_activations(self,
-                        layer_names: Union[list, str] = None,
-                        x=None,
-                        data: str = 'training',
-                        batch_size=None,
-                        ) -> dict:
-        """gets the activations/outputs of any layer of the Keras Model.
+    def get_activations(
+            self,
+            layer_names: Union[list, str] = None,
+            x=None,
+            data = None,
+            data_type: str = 'training',
+            batch_size:int=None,
+    ) -> dict:
+        """
+        gets the activations/outputs of any layer of the Keras Model.
 
         Arguments:
             layer_names : name of list of names of layers whose activations are
                 to be returned.
-            x : If provided, it will override `data`.
-            data : data to use to get activations. Only relevent if `x` is not
-                provided. By default training data is used. Possible values are
-                `training`, `test` or `validation`.
+            x :
+                The input that will be fed to NN to extract activations. If provided,
+                it will override `data`.
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract input
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
+            batch_size : int
         Returns:
             a dictionary whose keys are names of layers and values are weights
             of those layers as numpy arrays
         """
         if x is None:
-            # if layer names are not specified, this will get get activations
-            # of allparameters
-            x, _ = getattr(self.model, f'{data}_data')()
-            #x, _ = maybe_three_outputs(data, self.model.teacher_forcing)
+            x, y = self._get_xy_from_data(data=data, data_type=data_type)
 
         if self.model.api == "subclassing":
             dl_model = self.model
@@ -181,13 +200,17 @@ class Visualize(Plots):
             _activations = []
             for batch in range(num_examples // batch_size):
                 batch_x = _get_batch_input(x, batch, batch_size)
-                batch_activations = keract.get_activations(dl_model, batch_x, layer_names=layer_names,
-                                                 auto_compile=True)
+                batch_activations = keract.get_activations(
+                    dl_model,
+                    batch_x,
+                    layer_names=layer_names,
+                    auto_compile=True)
                 assert len(batch_activations) == 1  # todo
                 _activations.append(list(batch_activations.values())[0])
             activations = {layer_names: np.concatenate(_activations)}
         else:
-            activations = keract.get_activations(dl_model, x, layer_names=layer_names,
+            activations = keract.get_activations(dl_model, x,
+                                                 layer_names=layer_names,
                                              auto_compile=True)
 
         return activations
@@ -195,21 +218,32 @@ class Visualize(Plots):
     def activations(
             self,
             layer_names=None,
-            data: str = 'training',
             x=None,
-            examples_to_use: Union[int, list, np.ndarray, range] = None
+            data = None,
+            data_type:str = "training",
+            examples_to_use: Union[int, list, np.ndarray, range] = None,
+            **kwargs
     ):
-        """Plots outputs of any layer of neural network.
+        """
+        Plots outputs of any layer of neural network.
 
         Arguments:
-            data : The data to be used for calculating outputs of layers.
-            x : if given, will override, 'data'.
-            layer_names : name of layer whose output is to be plotted. If None,
+            x :
+                if given, will override, 'data'.
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract input
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
+            layer_names :
+                name of layer whose output is to be plotted. If None,
                 it will plot outputs of all layers
-            examples_to_use : If integer, it will be the number of examples to use.
+            examples_to_use :
+                If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
         """
-        activations = self.get_activations(x=x, data=data)
+        activations = self.get_activations(x=x, data=data, data_type=data_type)
 
         if layer_names is not None:
             if isinstance(layer_names, str):
@@ -232,23 +266,33 @@ class Visualize(Plots):
                 if isinstance(activation, np.ndarray):
 
                     if activation.ndim == 2 and examples_to_use is None:
-                        examples_to_use = len(activation)-1
+                        examples_to_use = range(len(activation)-1)
 
-                    self._plot_activations(activation, lyr_name, examples_to_use)
+                    self._plot_activations(
+                        activation,
+                        lyr_name,
+                        examples_to_use,
+                        **kwargs
+                    )
 
                 elif isinstance(activation, tuple):
                     for act in activation:
-                        self._plot_activations(act, lyr_name)
+                        self._plot_activations(act, lyr_name, **kwargs)
         return
 
-    def _plot_activations(self, activation, lyr_name, examples_to_use=24):
+    def _plot_activations(self,
+                          activation,
+                          lyr_name,
+                          examples_to_use=None,
+                          **kwargs):
 
         if examples_to_use is None:
             indices = range(len(activation))
         else:
             activation, indices = choose_examples(activation, examples_to_use)
 
-        kwargs = {}
+        if kwargs is None:
+            kwargs = {}
 
         if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3):
 
@@ -273,23 +317,32 @@ class Visualize(Plots):
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             if "lstm" in lyr_name.lower():
                 kwargs['xlabel'] = "LSTM units"
-            self._imshow(activation, lyr_name + " Activations", show=self.show,
+            self._imshow(activation, lyr_name + " Activations",
+                         show=self.show,
                          fname=lyr_name, **kwargs)
 
         elif np.ndim(activation) == 3:
             if "input" in lyr_name.lower():
                 kwargs['xticklabels'] = self.model.input_features
-            self._imshow_3d(activation, lyr_name, save=self.show, **kwargs, where='')
+            self._imshow_3d(activation, lyr_name, save=self.show, **kwargs,
+                            where='')
+
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
-            self.plot1d(activation, label=lyr_name + ' Outputs', show=self.show,
-                        fname=lyr_name + '_outputs')
+            self.plot1d(activation,
+                        label=lyr_name + ' Outputs',
+                        show=self.show,
+                        fname=lyr_name + '_outputs',
+                        **kwargs
+                        )
         else:
-            print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
-                                                                                   np.ndim(activation)))
+            print("""
+            ignoring activations for {} because it has shape {}, {}""".format(
+                lyr_name, activation.shape,
+                np.ndim(activation)))
         return
 
-    def get_weights(self):
+    def get_weights(self)->dict:
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
         for weight in self.model.trainable_weights:
@@ -301,7 +354,8 @@ class Visualize(Plots):
 
     def weights(
             self,
-            layer_names: Union[str, list] = None
+            layer_names: Union[str, list] = None,
+            **kwargs
     ):
         """Plots the weights of a specific layer or all layers.
 
@@ -340,7 +394,12 @@ class Visualize(Plots):
                                      rnn_args=rnn_args)
 
                     elif len(weight) > 1 and np.ndim(weight) < 3:
-                        self.plot1d(weight, title, self.show, fname, rnn_args=rnn_args)
+                        self.plot1d(weight,
+                                    title,
+                                    self.show,
+                                    fname,
+                                    rnn_args=rnn_args,
+                                    **kwargs)
 
                     elif "conv" in _name.lower() and np.ndim(weight) == 3:
                         _name = _name.replace("/", "_")
@@ -354,7 +413,8 @@ class Visualize(Plots):
                                          tight=True,
                                          borderwidth=1)
                     else:
-                        print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
+                        print("""ignoring weight for {} because it has shape {}
+                        """.format(_name, weight.shape))
         return
 
     def get_activation_gradients(
@@ -362,38 +422,52 @@ class Visualize(Plots):
             layer_names: Union[str, list] = None,
             x=None,
             y=None,
-            data: str = 'training'
+            data = None,
+            data_type:str = "training",
     ) -> dict:
         """
         Finds gradients of outputs of a layer.
 
         either x,y or data is required
+
         Arguments:
-            layer_names : The layer for which, the gradients of its outputs are to be
-                calculated.
-            x : input data. Will overwrite `data`
-            y : corresponding label of x. Will overwrite `data`.
-            data : one of `training`, `test` or `validation`
+            layer_names :
+                The layer for which, the gradients of its outputs are
+                to be calculated.
+            x :
+                input data. Will overwrite `data`
+            y :
+                corresponding label of x. Will overwrite `data`.
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract x and y
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
         """
         if isinstance(layer_names, str):
             layer_names = [layer_names]
 
         if x is None:
-            data = getattr(self.model, f'{data}_data')()
-            x, y = maybe_three_outputs(data)
+            x, y = self._get_xy_from_data(data=data, data_type=data_type)
 
         from ai4water.functional import Model as FModel
         if isinstance(self.model, FModel):
             model = self.model._model
         else:
             model = self.model
-        return keract.get_gradients_of_activations(model, x, y,
-                                                   layer_names=layer_names)
+
+        return keract.get_gradients_of_activations(
+            model,
+            x,
+            y,
+            layer_names=layer_names)
 
     def activation_gradients(
             self,
             layer_names: Union[str, list],
-            data='training',
+            data = None,
+            data_type='training',
             x=None,
             y=None,
             examples_to_use=None,
@@ -404,7 +478,13 @@ class Visualize(Plots):
         Arguments:
             layer_names : the layer name for which the gradients of its outputs
                 are to be plotted.
-            data : the data to be used for calculating gradients
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract x and y
+                which will be given to NN to get gradients of ativations
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
             x : alternative to data
             y : alternative to data
             examples_to_use : the examples from the data to use. If None, then all
@@ -412,51 +492,86 @@ class Visualize(Plots):
             plot_type :
         """
         if plot_type == "2D":
-            return self.activation_gradients_2D(layer_names, data, x, y,
-                                                examples_to_use)
+            return self.activation_gradients_2D(
+                layer_names,
+                data=data,
+                data_type=data_type,
+                x=x, y=y,
+                examples_to_use=examples_to_use
+            )
 
-        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use)
+        return self.activation_gradients_1D(
+            layer_names,
+            data=data,
+            data_type=data_type,
+            x=x,
+            y=y,
+            examples_to_use=examples_to_use
+        )
 
-    def activation_gradients_2D(self,
-                                layer_names=None,
-                                data='training',
-                                x=None,
-                                y=None,
-                                examples_to_use=24
-                                ):
+    def activation_gradients_2D(
+            self,
+            layer_names=None,
+            data = None,
+            data_type:str='training',
+            x=None,
+            y=None,
+            examples_to_use=None
+    ):
         """Plots activations of intermediate layers except input and output
 
         Arguments:
             layer_names :
             data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract input
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
             x :
             y :
             examples_to_use : if integer, it will be the number of examples to use.
                 If array like, it will be index of examples to use
         """
 
-        gradients = self.get_activation_gradients(layer_names=layer_names,
-                                                  data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(
+            layer_names=layer_names,
+            data=data,
+            data_type=data_type,
+            x=x,
+            y=y)
 
         return self._plot_act_grads(gradients, examples_to_use)
 
-    def activation_gradients_1D(self,
-                                layer_names,
-                                data='training',
-                                x=None,
-                                y=None,
-                                examples_to_use=None):
+    def activation_gradients_1D(
+            self,
+            layer_names,
+            data = None,
+            data_type:str='training',
+            x=None,
+            y=None,
+            examples_to_use=None
+    ):
         """Plots gradients of layer outputs as 1D
 
         Arguments:
             layer_names :
             examples_to_use :
             data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract input
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
             x :
             y :
         """
-        gradients = self.get_activation_gradients(layer_names=layer_names,
-                                                  data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(
+            layer_names=layer_names,
+            data=data,
+            data_type=data_type,
+            x=x,
+            y=y)
 
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_output_grads"
@@ -528,29 +643,47 @@ class Visualize(Plots):
                     # (?, ?, ?)
                     self._imshow_3d(gradient, lyr_name, self.show)
             else:
-                print("ignoring activation gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
-                                                                                               np.ndim(gradient)))
+                print("""
+                ignoring activation gradients for {} because it has shape {} {}
+                """.format(lyr_name, gradient.shape, np.ndim(gradient)))
+
+    def _get_xy_from_data(self, data, data_type:str = "training"):
+
+        assert data is not None, f"If x is not given, data must be given"
+        assert isinstance(data_type, str)
+
+        data = getattr(self.model, f'{data_type}_data')(data=data)
+        x, y = maybe_three_outputs(data)
+
+        return x, y
 
     def get_weight_gradients(
             self,
-            data: str = 'training',
             x=None,
-            y=None
+            y=None,
+            data = None,
+            data_type: str = 'training'
     ) -> dict:
         """Returns the gradients of weights.
 
         Arguments:
-            data : the data to use to calculate gradients of weights.
             x :
+                inputs, if not given, then ``data`` must be given
             y :
+                target
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract x and y
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
 
         Returns:
             dictionary whose keys are names of layers and values are gradients of
             weights as numpy arrays.
         """
         if x is None:
-            data = getattr(self.model, f'{data}_data')()
-            x, y = maybe_three_outputs(data)
+            x, y = self._get_xy_from_data(data=data, data_type=data_type)
 
         from ai4water.functional import Model as FModel
         if isinstance(self.model, FModel):
@@ -562,7 +695,8 @@ class Visualize(Plots):
     def weight_gradients(
             self,
             layer_names: Union[str, list] = None,
-            data='training',
+            data = None,
+            data_type='training',
             x=None,
             y=None,
     ):
@@ -570,11 +704,17 @@ class Visualize(Plots):
 
         Arguments:
             layer_names : the layer whose weeights are to be considered.
-            data :  the data to use to calculate gradients of weights
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract x and y
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
             x : alternative to data
             y : alternative to data
         """
-        gradients = self.get_weight_gradients(data=data, x=x, y=y)
+        gradients = self.get_weight_gradients(
+            data=data, data_type=data_type, x=x, y=y)
 
         if layer_names is None:
             layers_to_plot = list(gradients.keys())
@@ -598,8 +738,9 @@ class Visualize(Plots):
                     rnn_args = None
 
                     if "LSTM" in title.upper():
-                        rnn_args = {'n_gates': 4,
-                                    'gate_names_str': "(input, forget, cell, output)"}
+                        rnn_args = {
+                            'n_gates': 4,
+                            'gate_names_str': "(input, forget, cell, output)"}
 
                         if np.ndim(gradient) == 3:
                             self.rnn_histogram(gradient, name=fname, title=title)
@@ -612,8 +753,9 @@ class Visualize(Plots):
                         self.plot1d(gradient, title, show=self.show, fname=fname,
                                     rnn_args=rnn_args)
                     else:
-                        print(f"""ignoring weight gradients for {lyr_name} because it has
-                         shape {gradient.shape} {np.ndim(gradient)}""")
+                        print(f"""ignoring weight gradients for {lyr_name} 
+                        because it has shape {gradient.shape} {np.ndim(gradient)}
+                        """)
         return
 
     def find_num_lstms(self, layer_names=None) -> list:
@@ -640,7 +782,8 @@ class Visualize(Plots):
     def get_rnn_weights(self, weights: dict, layer_names=None) -> dict:
         """Finds RNN related weights.
 
-         It combines kernel recurrent curnel and bias of each layer into a list."""
+         It combines kernel recurrent curnel and bias of each layer into a list.
+         """
         lstm_weights = {}
         if self.config['model'] is not None and 'layers' in self.config['model']:
             if "LSTM" in self.config['model']['layers']:
@@ -668,14 +811,17 @@ class Visualize(Plots):
 
         return
 
-    def rnn_weight_grads_as_hist(self,
-                                 layer_name=None,
-                                 data='training',
-                                 x=None,
-                                 y=None,
-                                 ):
+    def rnn_weight_grads_as_hist(
+            self,
+             layer_name=None,
+             data=None,
+             data_type='training',
+             x=None,
+             y=None,
+    ):
 
-        gradients = self.get_weight_gradients(data=data, x=x, y=y)
+        gradients = self.get_weight_gradients(
+            data=data, data_type=data_type, x=x, y=y)
 
         rnn_weights = self.get_rnn_weights(gradients)
         for k, w in rnn_weights.items():
@@ -712,7 +858,7 @@ class Visualize(Plots):
                 _fig, axis = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
 
                 if model_name.startswith("XGB"):
-                    # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree
+# https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree
                     xgboost.plot_tree(self.model._model, ax=axis, **kwargs)
 
                 elif model_name.startswith("Cat"):
@@ -736,11 +882,24 @@ class Visualize(Plots):
             else:
                 print(f"decision tree can not be plotted for {model_name}")
         else:
-            print(f"decision tree can not be plotted for {self.model.category} models")
+            print(f"""
+            decision tree can not be plotted for {self.model.category} models""")
         return
 
-    def decision_tree_leaves(self, save=True, data='training'):
-        """Plots dtreeviz related plots if dtreeviz is installed"""
+    def decision_tree_leaves(
+            self,
+            data = None,
+            data_type:str='training'
+    ):
+        """Plots dtreeviz related plots if dtreeviz is installed
+
+            data :
+                raw unprepared data from which will be forwarded to
+                :py:meth:`ai4water.preprocessing.DataSet` to extract input
+            data_type : str
+                either ``training``, ``validation`` or ``test``. Only relevant
+                if ``data`` argument is active
+        """
 
         model = list(self.config['model'].keys())[0]
         if model in ["DecisionTreeRegressor", "DecisionTreeClassifier"]:
@@ -748,17 +907,18 @@ class Visualize(Plots):
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
             else:
-                x, y = getattr(self.model, f'{data}_data')()
+                x, y = getattr(self.model, f'{data_type}_data')(data=data)
 
                 if np.ndim(y) > 2:
                     y = np.squeeze(y, axis=2)
 
                 trees.viz_leaf_samples(self.model._model, x, self.in_cols)
-                self.save_or_show(save, fname="viz_leaf_samples", where="plots")
+                self.save_or_show(self.save, fname="viz_leaf_samples", where="plots")
 
                 trees.ctreeviz_leaf_samples(self.model._model, x, y,
                                             self.in_cols)
-                self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
+                self.save_or_show(self.save, fname="ctreeviz_leaf_samples",
+                                  where="plots")
         return
 
     def features_2d(self, data, name, save=True, slices=24, slice_dim=0, **kwargs):
@@ -846,7 +1006,7 @@ def features_2D(data,
     vmax = data.max()
 
     for idx, ax in enumerate(axis.flat):
-        ax, im = ep.imshow(data[idx],
+        im = ep.imshow(data[idx],
                           ax=ax,
                           cmap=cmap, vmin=vmin, vmax=vmax,
                           ax_kws=dict(title=title[idx]),

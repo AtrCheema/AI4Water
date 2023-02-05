@@ -2202,7 +2202,8 @@ class BaseModel(NN):
     def view(
             self,
             layer_name: Union[list, str] = None,
-            data: str = 'training',
+            data = None,
+            data_type: str = 'training',
             x=None,
             y=None,
             examples_to_view=None,
@@ -2215,16 +2216,17 @@ class BaseModel(NN):
                 the layer to view. If not given, all the layers will be viewed.
                 This argument is only required when the model consists of layers of neural
                 networks.
-            data:
+            data :
                 the data to use when making calls to model for activation calculation
-                or for gradient calculation. It can either ``training``, ``validation`` or
-                ``test``.
+                or for gradient calculation.
+            data_type : str
+                It can either ``training``, ``validation`` or ``test`` or ``all``.
             x:
                 input, alternative to data. If given it will override `data` argument.
             y:
                 target/observed/label, alternative to data. If given it will
                 override `data` argument.
-            examples_to_view:
+            examples_to_view :
                 the examples to view.
             show:
                 whether to show the plot or not!
@@ -2238,6 +2240,7 @@ class BaseModel(NN):
 
         visualizer(layer_name,
                    data=data,
+                   data_type=data_type,
                    x=x,
                    y=y,
                    examples_to_use=examples_to_view
@@ -3455,9 +3458,6 @@ class BaseModel(NN):
         if show:
             plt.show()
 
-        plt.savefig(os.path.join(self.path, f"{fname}"),
-                    bbox_inches="tight",
-                    dpi=300)
         return ax
 
     def _transform(self, data, name_in_config):
@@ -3610,9 +3610,11 @@ class BaseModel(NN):
         return self.__fetch('test', data, key)
 
     def all_data(self, x=None, y=None, data=None)->tuple:
-        """it returns all i.e. training+validation+test data
-        Example
-        -------
+        """it returns all data i.e. training+validation+test
+        after extracting them ``data``.
+
+        Examples
+        --------
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="XGBRegressor")
