@@ -1081,10 +1081,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                           **kwargs):
         plt.close('all')
         if original:
-            ax = easy_mpl.plot(self.func_vals(), '--.',
-                 ax_kws=dict(xlabel="Number of calls $n$",
-                 ylabel=r"$\min f(x)$ after $n$ calls"),
+            ax = easy_mpl.plot(self.func_vals(),
+                               marker=".",
+                               markersize= 12,
+                               lw= 2,
+                               ax_kws=dict(xlabel="Number of calls $n$",
+                                           ylabel=r"$\min f(x)$ after $n$ calls"),
                                show=False,
+                               grid=True,
                                **kwargs)
         else:
             ax = plot_convergence(self.func_vals(), ax=ax, show=False, **kwargs)
@@ -1237,7 +1241,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return ax
 
     def _calc_importance_with_optuna(self, plot_type="bar", save=False, show=True):
-
+        # todo, it is plotting both bar_chart and boxplot on same axes
         from ._optuna_fanova import plot_param_importances
 
         importances, importance_paras, ax = plot_param_importances(self.optuna_study())

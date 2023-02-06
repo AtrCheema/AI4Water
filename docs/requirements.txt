@@ -8,6 +8,8 @@ sphinx_copybutton
 sphinx_toggleprompt
 sphinx_rtd_theme
 sphinx_issues
+nbsphinx
+
 scipy
 scikit-learn
 scikit-optimize
