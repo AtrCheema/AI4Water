@@ -68,7 +68,20 @@ class TestLayers(unittest.TestCase):
         assert model.count_params() == 37610, model.count_params()
         model.fit(x=train_x, y=train_data[LABEL].values,
                       validation_data=(test_x, test_data[LABEL].values),
-                      epochs=1)
+                      epochs=1, verbose=0)
+        return
+
+    def test_fttransformer_without_cat_features(self):
+        # build the model
+        model = Model(model=FTTransformer(
+            len(NUMERIC_FEATURES), hidden_units=16,
+            num_heads=8),
+            verbosity=0)
+
+        assert model.count_params() == 37274, model.count_params()
+        model.fit(x=train_x[0], y=train_data[LABEL].values,
+                      validation_data=(test_x[0], test_data[LABEL].values),
+                      epochs=1, verbose=0)
         return
 
     def test_tabtransformer(self):
@@ -78,7 +91,7 @@ class TestLayers(unittest.TestCase):
             cat_vocabulary=cat_vocab,
             hidden_units=16, final_mlp_units=[84, 42]), verbosity=0)
 
-        assert model.count_params() == 26347
+        assert model.count_params() == 26347, model.count_params()
 
         model.fit(x=train_x, y= train_data[LABEL].values,
                       validation_data=(test_x, test_data[LABEL].values), epochs=1)
@@ -119,7 +132,7 @@ class TestLayers(unittest.TestCase):
         out = Dense(1)(lstm)
         model = Model(inputs=[inp_dyn, inp_static], outputs=out)
         model.compile(loss='mse')
-        print(model.summary())
+
         # generate hypothetical data and train it
         dyn_x = np.random.random((100, lookback, num_dyn_inputs))
         static_x = np.random.random((100, num_static_inputs))

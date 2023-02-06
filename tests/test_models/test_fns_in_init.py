@@ -7,6 +7,7 @@ from ai4water import Model
 from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water.models import MLP, LSTM, CNN, CNNLSTM, LSTMAutoEncoder, TFT
+from ai4water.models import AttentionLSTM, FTTransformer
 from sklearn.datasets import make_classification
 
 
@@ -49,6 +50,25 @@ class TestModels(unittest.TestCase):
                       ts_args={'lookback': 5},
                       verbosity=0)
         assert model.category == "DL"
+        return
+
+    def test_attenlstm(self):
+        model = Model(model=AttentionLSTM(32),
+                      input_features=input_features,
+                      output_features=output_features,
+                      ts_args={'lookback': 5},
+                      verbosity=0)
+        assert model.category == "DL"
+        model.fit(data=data)
+        return
+
+    def test_fttransformer(self):
+        model = Model(model=FTTransformer(len(input_features)),
+                      input_features=input_features,
+                      output_features=output_features,
+                      verbosity=0)
+        assert model.category == "DL"
+        model.fit(data=data)
         return
 
     def test_cnn(self):

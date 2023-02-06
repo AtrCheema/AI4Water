@@ -69,17 +69,8 @@ def LSTM(
     """helper function to make LSTM Model for tensorflow
     """
 
-    assert num_layers>=1
-
-    if input_shape is None:
-        layers = {}
-    else:
-        layers = {"Input": {"shape": input_shape}}
-        assert len(input_shape)>=2
-
-    units = _check_length(units, num_layers)
-    dropout = _check_length(dropout, num_layers)
-    activation = _check_length(activation, num_layers)
+    units, dropout, activation, layers = _precheck(
+        num_layers, input_shape, units, dropout, activation)
 
     for idx, lyr in enumerate(range(num_layers)):
 
@@ -112,6 +103,55 @@ def LSTM(
     return {'layers': layers}
 
 
+def AttentionLSTM(
+        units: Union[int, list] = 32,
+        num_layers: int = 1,
+        input_shape: tuple = None,
+        num_outputs: int = 1,
+        activation: Union[str, list] = None,
+        dropout: Union[float, list] = None,
+        atten_units:int = 128,
+        atten_activation:str = "tanh",
+        mode: str = "regression",
+        output_activation: str = None,
+        **kwargs
+)->dict:
+    """helper function to make AttentionLSTM Model for tensorflow"""
+
+    units, dropout, activation, layers = _precheck(
+        num_layers, input_shape, units, dropout, activation)
+
+    for idx, lyr in enumerate(range(num_layers)):
+
+        config = {"units": units[idx],
+                  "activation": activation[idx],
+                  "return_sequences": True,
+                  }
+        config.update(kwargs)
+
+        _lyr = {f"LSTM_{lyr}": config}
+        layers.update(_lyr)
+
+        _dropout = dropout[idx]
+        if _dropout and _dropout > 0.0:
+            layers.update({"Dropout": {"rate": _dropout}})
+
+    attn_layer = {"SelfAttention":
+                      {"config": {"units": atten_units, "activation": atten_activation},
+                       "outputs": ["atten_outputs", "atten_weights"]}}
+    layers.update(attn_layer)
+
+    layers = _make_output_layer(
+        layers,
+        mode,
+        num_outputs,
+        output_activation,
+        inputs="atten_outputs"
+    )
+
+    return {'layers': layers}
+
+
 def CNN(
         filters: Union[int, list] = 32,
         kernel_size: Union[int, tuple, list] = 3,
@@ -131,7 +171,6 @@ def CNN(
         **kwargs
 )->dict:
     """helper function to make convolution neural network based model for tensorflow
-
     """
 
     assert num_layers>=1
@@ -469,7 +508,7 @@ def TabTransformer(
 
 def FTTransformer(
         num_numeric_features:int,
-        cat_vocabulary:dict,
+        cat_vocabulary:dict=None,
         hidden_units = 32,
         num_heads: int = 4,
         depth:int = 4,
@@ -486,7 +525,12 @@ def FTTransformer(
     """
     FTTransformer for tensorflow
     """
-    layers = _make_input_lyrs(num_numeric_features, len(cat_vocabulary))
+    if cat_vocabulary:
+        layers = _make_input_lyrs(num_numeric_features, len(cat_vocabulary))
+        inputs = ["Input_num", "Input_cat"]
+    else:
+        layers = _make_input_lyrs(num_numeric_features)
+        inputs = "Input_num"
 
     body = {
 
@@ -503,7 +547,7 @@ def FTTransformer(
             dropout=dropout,
             seed=seed
         ),
-            "inputs": ["Input_num", "Input_cat"],
+            "inputs": inputs,
             "outputs": ['transformer_output', 'imp']}
     }
 
@@ -523,14 +567,34 @@ def FTTransformer(
 
 def _make_input_lyrs(
         num_numeric_features:int,
-        num_cat_features:int,
+        num_cat_features:int=None,
         numeric_dtype:tf.DType=tf.float32,
         cat_dtype:tf.DType = tf.string
 )->dict:
 
-    lyrs = {
-        "Input_num": {"shape": (num_numeric_features,), "dtype": numeric_dtype},
-        "Input_cat": {"shape": (num_cat_features,), "dtype": cat_dtype}
-    }
+    if num_cat_features:
+        lyrs = {
+            "Input_num": {"shape": (num_numeric_features,), "dtype": numeric_dtype},
+            "Input_cat": {"shape": (num_cat_features,), "dtype": cat_dtype}
+        }
+    else:
+        lyrs = {
+            "Input_num": {"shape": (num_numeric_features,), "dtype": numeric_dtype}
+        }
 
     return lyrs
+
+
+def _precheck(num_layers, input_shape, units, dropout, activation):
+    assert num_layers>=1
+
+    if input_shape is None:
+        layers = {}
+    else:
+        layers = {"Input": {"shape": input_shape}}
+        assert len(input_shape)>=2
+
+    units = _check_length(units, num_layers)
+    dropout = _check_length(dropout, num_layers)
+    activation = _check_length(activation, num_layers)
+    return units, dropout, activation, layers

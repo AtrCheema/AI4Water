@@ -25,4 +25,5 @@ if tf is not None:
     from ._functions import TFT
     from ._functions import TabTransformer
     from ._functions import FTTransformer
+    from ._functions import AttentionLSTM
 

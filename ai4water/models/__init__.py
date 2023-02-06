@@ -137,7 +137,7 @@ def TabTransformer(
 
 def FTTransformer(
         num_numeric_features:int,
-        cat_vocabulary:dict,
+        cat_vocabulary:dict = None,
         hidden_units = 32,
         num_heads: int = 4,
         depth:int = 4,
@@ -163,7 +163,9 @@ def FTTransformer(
         are lists which consist of unique values of categorical features.
         You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
         own data. The length of dictionary should be equal to number of
-        categorical features.
+        categorical features. If it is None, then it is supposed that
+        no categoical variables are available and the model will expect only
+        numerical input features.
     hidden_units : int, optional (default=32)
         number of hidden units
     num_heads : int, optional (default=4)
@@ -483,6 +485,109 @@ def LSTM(
     else:
         from ._torch import LSTM
         return LSTM(**kws)
+
+
+def AttentionLSTM(
+        units: Union[int, list] = 32,
+        num_layers:int = 1,
+        input_shape: tuple = None,
+        num_outputs:int = 1,
+        activation: Union[str, list] = None,
+        dropout: Union[float, list] = None,
+        atten_units:int = 128,
+        atten_activation:str = "tanh",
+        mode:str = "regression",
+        output_activation:str = None,
+        backend:str = "tf",
+        **kwargs
+):
+    """helper function to make LSTM Model
+
+    Parameters
+    ----------
+    units : Union[int, list], optional (default 32)
+        number of units in LSTM layer
+    num_layers : int (default=1)
+        number of lstm layers to use
+    input_shape : tuple, optional (default=None)
+        shape of input tensor to the model. If specified, it should exclude batch_size
+        for example if model takes inputs (num_examples, lookback, num_features) then
+        we should define the shape as (lookback, num_features). The batch_size dimension
+        is always None.
+    num_outputs : int, optinoal (default=1)
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    activation : Union[str, list], optional
+        activation function to use in LSTM
+    dropout :
+        if > 0.0, a dropout layer is added after each LSTM layer
+    atten_units : int
+        number of units in SelfAttention layer
+    atten_activation : str
+        activation function in SelfAttention layer
+    mode : str, optional
+        either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given and the mode is clsasification
+        then the activation of output layer is decided based upon ``num_outputs``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the num_outputs are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 num_outputs as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to num_outputs
+        and ``softmax`` as activation.
+    backend : str
+        the type of backend to use. Allowed vlaues are ``tf`` or ``pytorch``.
+    **kwargs :
+        any keyword argument for LSTM layer of `tensorflow <https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM>`_
+        or `pytorch <https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html>`_ layer
+
+    Returns
+    -------
+    dict :
+        a dictionary with 'layers' as key
+
+    Examples
+    --------
+    >>> from ai4water import Model
+    >>> from ai4water.datasets import busan_beach
+    >>> from ai4water.models import AttentionLSTM
+    >>> data = busan_beach()
+    >>> input_features = data.columns.tolist()[0:-1]
+    >>> output_features = data.columns.tolist()[-1:]
+    # a simple Attention LSTM model with 32 neurons/units
+    >>> AttentionLSTM(32)
+    # to build a model with stacking of LSTM layers
+    >>> AttentionLSTM(32, num_layers=2)
+    # we can build ai4water's model and train it
+    >>> lstm = AttentionLSTM(32)
+    >>> model = Model(model=lstm, input_features=input_features,
+    >>>               output_features=output_features, ts_args={"lookback": 5})
+    >>> model.fit(data=data)
+
+    """
+    check_backend("AttentionLSTM", backend=backend)
+    kws = dict(
+        units = units,
+        num_layers = num_layers,
+        input_shape = input_shape,
+        num_outputs = num_outputs,
+        activation = activation,
+        dropout = dropout,
+        atten_units = atten_units,
+        atten_activation = atten_activation,
+        mode = mode,
+        output_activation = output_activation,
+        **kwargs
+    )
+
+    if backend == "tf":
+        from ._tensorflow import AttentionLSTM
+        return AttentionLSTM(**kws)
+    else:
+        raise NotImplementedError
 
 
 def CNN(

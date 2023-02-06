@@ -1,4 +1,6 @@
 
+from typing import Union
+
 from ai4water.backend import tf
 
 layers = tf.keras.layers
@@ -602,6 +604,11 @@ class TabTransformer(layers.Layer):
     """
     tensorflow/keras layer which implements logic of TabTransformer model.
 
+    The TabTransformer layer converts categorical features into contextual embeddings
+    by passing them into Transformer block. The output of Transformer block is
+    concatenated with numerical features and passed through an MLP to
+    get the final model output.
+
     It is available only in tensorflow >= 2.6
     """
     def __init__(
@@ -629,9 +636,10 @@ class TabTransformer(layers.Layer):
         cat_vocabulary : dict
             a dictionary whose keys are names of categorical features and values
             are lists which consist of unique values of categorical features.
-            You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
-            own data. The length of dictionary should be equal to number of
-            categorical features.
+            You can use the function :py:meth:`ai4water.models.utils.gen_cat_vocab`
+            to create this for your own data. The length of dictionary should be
+            equal to number of categorical features. If it is None, then this
+            layer expects only numeri features
         hidden_units : int, optional (default=32)
             number of hidden units
         num_heads : int, optional (default=4)
@@ -735,11 +743,16 @@ class TabTransformer(layers.Layer):
 class FTTransformer(layers.Layer):
     """
     tensorflow/keras layer which implements logic of FTTransformer model.
+
+    In FTTransformer, both categorical and numerical features are passed
+    through transformer block and then passed through MLP layer to get
+    the final model prediction.
+
     """
     def __init__(
             self,
             num_numeric_features: int,
-            cat_vocabulary: dict,
+            cat_vocabulary: Union[dict, None] = None,
             hidden_units=32,
             num_heads: int = 4,
             depth: int = 4,
@@ -758,12 +771,13 @@ class FTTransformer(layers.Layer):
         ----------
         num_numeric_features : int
             number of numeric features to be used as input.
-        cat_vocabulary : dict
+        cat_vocabulary : dict/None
             a dictionary whose keys are names of categorical features and values
             are lists which consist of unique values of categorical features.
-            You can use the function :fun:`ai4water.models.utils.gen_cat_vocab` to create this for your
-            own data. The length of dictionary should be equal to number of
-            categorical features.
+            You can use the function :py:meth:`ai4water.models.utils.gen_cat_vocab`
+            to create this for your own data. The length of dictionary should be
+            equal to number of categorical features.  If it is None, then this
+            layer expects only numeri features
         hidden_units : int, optional (default=32)
             number of hidden units
         num_heads : int, optional (default=4)
@@ -797,18 +811,20 @@ class FTTransformer(layers.Layer):
         self.with_cls_token = with_cls_token
         self.seed = seed
 
-        self.cat_embs = CatEmbeddings(
-            vocabulary=cat_vocabulary,
-            embed_dim=hidden_units,
-            lookup_kws=lookup_kws
-        )
+        if cat_vocabulary is not None:
+            self.cat_embs = CatEmbeddings(
+                vocabulary=cat_vocabulary,
+                embed_dim=hidden_units,
+                lookup_kws=lookup_kws
+            )
 
         self.num_embs = NumericalEmbeddings(
             num_features=num_numeric_features,
             emb_dim=hidden_units
         )
 
-        self.concat =  layers.Concatenate(axis=1)
+        if cat_vocabulary is not None:
+            self.concat =  layers.Concatenate(axis=1)
 
         self.transformers = TransformerBlocks(
             embed_dim=hidden_units,
@@ -838,20 +854,34 @@ class FTTransformer(layers.Layer):
     def __call__(self, inputs:list, *args, **kwargs):
         """
         inputs :
-            list of 2. The first tensor is numerical inputs and second
-            tensor is categorical inputs
+            If categorical variables are considered then inputs is a list of 2.
+            The first tensor is numerical inputs and second tensor is categorical inputs.
+            If categorical variables are not considered then inputs is just a single
+            tensor!
         """
 
-        num_inputs = inputs[0]
-        cat_inputs = inputs[1]
+        if self.cat_vocabulary is None:
+            if isinstance(inputs, list):
+                assert len(inputs) == 1
+                num_inputs = inputs[0]
+            else:
+                num_inputs = inputs
+        else:
+            assert len(inputs) == 2
+
+            num_inputs = inputs[0]
+            cat_inputs = inputs[1]
 
         # cls_tokens = tf.repeat(self.cls_weights, repeats=tf.shape(inputs[self.numerical[0]])[0], axis=0)
         # cls_tokens = tf.expand_dims(cls_tokens, axis=1)
 
         num_embs = self.num_embs(num_inputs)
-        cat_embs = self.cat_embs(cat_inputs)
 
-        embs = self.concat([num_embs, cat_embs])
+        if self.cat_vocabulary is None:
+            embs = num_embs
+        else:
+            cat_embs = self.cat_embs(cat_inputs)
+            embs = self.concat([num_embs, cat_embs])
 
         x, imp = self.transformers(embs)
 
