@@ -378,20 +378,24 @@ class DualAttentionModel(FModel):
             self.dh_ = DataSet(data=data, **self.data_config)
         return
 
-    def interpret(self, data='training', **kwargs):
-        import matplotlib
-        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
+    def interpret(
+            self,
+            data=None,
+            data_type='training',
+            **kwargs):
 
-        self.plot_act_along_inputs(f'attn_weight_{self.lookback - 1}_1',
-                                   data=data,
-                                   **kwargs)
-        return
+        return self.plot_act_along_inputs(
+            data=data,
+            layer_name=f'attn_weight_{self.lookback - 1}_1',
+            data_type=data_type,
+            **kwargs)
 
     def get_attention_weights(
             self,
             layer_name: str=None,
             x = None,
-            data = 'training',
+            data = None,
+            data_type = 'training',
     )->np.ndarray:
         """
         Parameters
@@ -401,13 +405,15 @@ class DualAttentionModel(FModel):
                 layer will be used.
             x : optional
                 input data, if given, then ``data`` must not be given
-            data : str, optional
+            data :
+            data_type : str, optional
                 the data to make forward pass to get attention weghts. Possible
                 values are
 
                 - ``training``
                 - ``validation``
                 - ``test``
+                - ``all``
 
         Returns
         -------
@@ -415,7 +421,7 @@ class DualAttentionModel(FModel):
         """
         if x is not None:
             # default value
-            assert data=="training"
+            assert data_type in ("training", "test", "validation", "all")
 
         layer_name = layer_name or f'attn_weight_{self.lookback - 1}_1'
 
@@ -428,10 +434,13 @@ class DualAttentionModel(FModel):
         kwargs = {}
         if self.config['drop_remainder']:
             kwargs['batch_size'] = self.config['batch_size']
-        activation = Visualize(model=self).get_activations(layer_names=layer_name,
-                                                           x=x,
-                                                           data=data,
-                                                           **kwargs)
+
+        activation = Visualize(model=self).get_activations(
+            layer_names=layer_name,
+            x=x,
+            data=data,
+            data_type=data_type,
+            **kwargs)
 
         activation = activation[layer_name]  # (num_examples, lookback, num_ins)
 
@@ -439,30 +448,32 @@ class DualAttentionModel(FModel):
 
     def plot_act_along_inputs(
             self,
+            data,
             layer_name: str,
-            name: str = None,
+            data_type='training',
             vmin=None,
             vmax=None,
-            data='training',
             show=False
     ):
 
         if not os.path.exists(self.act_path):
             os.makedirs(self.act_path)
 
-        data_name = name or data
-
-        activation = self.get_attention_weights(layer_name=layer_name, data=data)
+        activation = self.get_attention_weights(
+            layer_name=layer_name,
+            data=data,
+            data_type=data_type,
+        )
 
         act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
 
         lookback = self.config['ts_args']['lookback']
-        x, observations = getattr(self, f'{data}_data')()
+        x, observations = getattr(self, f'{data_type}_data')(data=data)
 
         if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
-            raise ValueError(f"no {data} data found.")
+            raise ValueError(f"no {data_type} data found.")
 
-        predictions = self.predict(process_results=False, x=x)
+        predictions = self.predict(x=x, process_results=False)
 
         plt.close('all')
 
@@ -480,27 +491,27 @@ class DualAttentionModel(FModel):
         axis.set_xticks(np.arange(self.num_ins))
         axis.set_xticklabels(self.input_features, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
+        plt.savefig(
+            os.path.join(self.act_path, f'acts_avg_over_examples_{data_type}'),
                     dpi=400, bbox_inches='tight')
         plt.close('all')
 
-        data = self.inputs_for_attention(x)
+        x = self.inputs_for_attention(x)
 
-        plot_activations_along_inputs(
-            data=data,
+        return plot_activations_along_inputs(
+            data=x,
             activations=activation,
             observations=observations,
             predictions=predictions,
             in_cols=self.input_features,
             out_cols=self.output_features,
             lookback=lookback,
-            name=data_name,
+            name=data_type,
             path=self.act_path,
             vmin=vmin,
             vmax=vmax,
             show=show
         )
-        return
 
     def plot_act_along_lookback(self, activations, sample=0):
 

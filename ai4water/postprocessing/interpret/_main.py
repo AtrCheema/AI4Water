@@ -11,14 +11,18 @@ from ai4water.utils.utils import plot_activations_along_inputs
 class Interpret(Plot):
     """Interprets the ai4water Model."""
 
-    def __init__(self, model):
+    def __init__(self, model, save:bool = False, show:bool = True):
         """
         Arguments
         ---------
             model :
                 an instance of ai4water's Model
+            save : bool
+            show : bool
         """
         self.model = model
+        self.save = save
+        self.show = show
 
         super().__init__(model.path)
 
@@ -26,10 +30,6 @@ class Interpret(Plot):
 
             if hasattr(model, 'interpret') and not model.__class__.__name__ == "Model":
                 model.interpret()
-            else:
-                pass
-                #if hasattr(model, 'TemporalFusionTransformer_attentions'):
-                #    atten_components = self.tft_attention_components()
 
         elif self.model.category == 'ML':
             use_xgb = False
@@ -62,7 +62,7 @@ class Interpret(Plot):
             elif hasattr(estimator, "feature_importances_"):
                 return estimator.feature_importances_
 
-    def f_importances_svm(self, coef, names, save):
+    def f_importances_svm(self, coef, names):
 
         plt.close('all')
         mpl.rcParams.update(mpl.rcParamsDefault)
@@ -76,18 +76,19 @@ class Interpret(Plot):
             ax.bar(range(features), self._model.coef_[idx], 0.4)
 
         plt.xticks(ticks=range(features), labels=self.model.input_features, rotation=90, fontsize=12)
-        self.save_or_show(save=save, fname=f"{list(self.model.config['model'].keys())[0]}_feature_importance")
+        self.save_or_show(save=self.save, fname=f"{list(self.model.config['model'].keys())[0]}_feature_importance")
         return
 
-    def plot_feature_importance(self,
-                                importance=None,
-                                save=True,
-                                show=False,
-                                use_xgb=False,
-                                max_num_features=20,
-                                figsize=None,
-                                **kwargs):
-
+    def plot_feature_importance(
+            self,
+            importance=None,
+            use_xgb=False,
+            max_num_features=20,
+            figsize=None,
+            **kwargs):
+        """
+        plots feature importance when the model is tree based.
+        """
         figsize = figsize or (8, 8)
 
         if importance is None:
@@ -97,7 +98,7 @@ class Interpret(Plot):
             model_name = list(self.model.config['model'].keys())[0]
             if model_name.upper() in ["SVC", "SVR"]:
                 if self.model._model.kernel == "linear":
-                    return self.f_importances_svm(importance, self.model.input_features, save=save)
+                    return self.f_importances_svm(importance, self.model.input_features)
                 else:
                     warnings.warn(f"for {self.model._model.kernel} kernels of {model_name}, feature "
                                   f"importance can not be plotted.")
@@ -126,8 +127,7 @@ class Interpret(Plot):
         all_cols = list(all_cols[0:max_num_features]) + [f'rest_{len(all_cols) - max_num_features}']
 
         if use_xgb:
-            self._feature_importance_xgb(max_num_features=max_num_features,
-                                         save=save, show=show)
+            self._feature_importance_xgb(max_num_features=max_num_features)
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
@@ -137,10 +137,11 @@ class Interpret(Plot):
                       ax_kws={'title':"Feature importance",
                               'xlabel_kws': {'fontsize': 12}},
                       show=False)
-            self.save_or_show(save=save, show=show, fname="feature_importance.png")
+            self.save_or_show(save=self.save, show=self.show,
+                              fname="feature_importance.png")
         return
 
-    def _feature_importance_xgb(self, save=True, show=False, max_num_features=None, **kwargs):
+    def _feature_importance_xgb(self, max_num_features=None, **kwargs):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_importance
         if xgboost is None:
             warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
@@ -150,17 +151,17 @@ class Interpret(Plot):
             plt.close('all')
             # global feature importance with xgboost comes with different types
             xgboost.plot_importance(booster, max_num_features=max_num_features)
-            self.save_or_show(save=save, show=show,
+            self.save_or_show(save=self.save, show=self.show,
                               fname="feature_importance_weight.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="cover",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save=save, show=show,
+            self.save_or_show(save=self.save, show=self.show,
                               fname="feature_importance_type_cover.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="gain",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save=save, show=show,
+            self.save_or_show(save=self.save, show=self.show,
                               fname="feature_importance_type_gain.png")
 
         return
@@ -171,7 +172,6 @@ class Interpret(Plot):
             rescale=True,
             figsize:tuple=None,
             backend:str = 'matplotlib',
-            show:bool = False,
             **kwargs
     ):
         """compare various feature importance calculations methods that are built
@@ -241,8 +241,10 @@ class Interpret(Plot):
 
         fname = os.path.join(self.model.path, "xgb_f_imp_comp")
 
-        plt.savefig(fname, bbox_inches="tight")
-        if show:
+        if self.save:
+            plt.savefig(fname, bbox_inches="tight")
+
+        if self.show:
             plt.show()
 
         return fig
@@ -250,7 +252,8 @@ class Interpret(Plot):
     def tft_attention_components(
             self,
             x = None,
-            data='test'
+            data=None,
+            data_type:str = "test",
     ):
         """
         Gets attention components of tft layer from ai4water's Model.
@@ -260,6 +263,8 @@ class Interpret(Plot):
             x :
                 the input data to the model
             data :
+                raw data from which ``x``/inputs are extracted.
+            data_type :
                 the data to use to calculate attention components
 
         Returns
@@ -278,13 +283,13 @@ class Interpret(Plot):
         maybe_create_path(self.model.path)
 
         if x is None:
-            x, _, = getattr(self.model, f'{data}_data')()
+            x, _, = getattr(self.model, f'{data_type}_data')(data=data)
 
-        if len(x) == 0 and data == "test":
+        if len(x) == 0 and data_type == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
-            data = 'validation'
-            x, _, = getattr(self.model, f'{data}_data')()
+            x, _, = getattr(self.model, 'validation_data')(data=data)
+            assert len(x) >0
 
         attentions = self.model.TemporalFusionTransformer_attentions
         if self.model.api == 'subclassing':
@@ -298,88 +303,173 @@ class Interpret(Plot):
             if v is not None:
                 temp_model = tf.keras.Model(inputs=inputs,
                                             outputs=v)
-                attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
+                attention_components[k] = temp_model.predict(x=x, verbose=0, steps=1)
 
         return attention_components, data
 
-    def get_enc_var_selection_weights(self, data='test'):
+    def get_enc_var_selection_weights(self, data, data_type:str='test'):
         """Returns encoder variable selection weights of TFT model"""
 
-        mpl.rcParams.update(mpl.rcParamsDefault)
-
-        ac, data = self.tft_attention_components(data=data)
+        ac, _ = self.tft_attention_components(data=data, data_type=data_type)
         return ac['encoder_variable_selection_weights']
 
-    def interpret_example_tft(self,
-                              example_index,
-                              data='test',
-                              show=False):
+    def interpret_example_tft(
+            self,
+            example_index:int,
+            x = None,
+            data=None,
+            data_type='test'
+    ):
         """interprets a single example using TFT model.
 
         Parameters
         ---------
-            example_index :
+            example_index : int
                 index of example to be explained
+            x :
+                input data, if not given, ``data`` must be given
             data :
                 the data whose example to interpret.
-            show :
-                whether to show the plot or not
+            data_type : str
+                either ``training``, ``test``, ``validation`` or ``all``.
+                It is only useful when ``data`` argument is used.
         """
-        if isinstance(data, str):
-            assert data in ("training", "test", "validation")
-            data_name = data
+
+        assert data_type in ("training", "test", "validation", "all")
+
+        if x is None:
+            data_name = data_type
         else:
             data_name = "data"
 
-        enc_var_selection_weights = self.get_enc_var_selection_weights(data=data)
+        enc_var_selection_weights = self.get_enc_var_selection_weights(
+            data=data, data_type=data_type)
 
         plt.close('all')
 
-        axis, im = ep.imshow(enc_var_selection_weights[example_index],
-                          aspect="auto",
-                          ylabel="lookback steps",
-                          ax_kws=dict(title=example_index),
-                          show=False
-                          )
+        im = ep.imshow(
+            enc_var_selection_weights[example_index],
+            aspect="auto",
+            ax_kws=dict(title=example_index,
+                        ylabel="lookback steps"),
+            show=False
+        )
 
         plt.xticks(np.arange(self.model.num_ins), self.model.input_features,
                    rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
         fname = os.path.join(maybe_create_path(self.model.path),
                              f'{data_name}_enc_var_selec_{example_index}.png')
-        plt.savefig(fname, bbox_inches='tight', dpi=300)
-        if show:
+        if self.save:
+            plt.savefig(fname, bbox_inches='tight', dpi=300)
+        if self.show:
             plt.show()
         return
 
-    def interpret_tft(self, data="test"):
+    def interpret_tft(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            data_type="test"
+    ):
         """global interpretation of TFT model.
 
         Arguments:
-            data : the data to use to interpret model
+            x :
+                input data. If not given, ``data`` argument must be given.
+            y :
+                labels/target/true data corresponding to ``x``. It is only
+                used for plotting.
+            data :
+                the data to use to interpret model. It is only required
+                when ``x`` is not given.
+            data_type :
+                either ``training``, ``test``, ``validation`` or ``all``.
+                It is only useful when ``data`` argument is used.
         """
 
-        true, predictions = self.model.predict(data=data, return_true=True,
-                                          process_results=False)
+        if x is None:
+            predictions = getattr(self.model, f"predict_on_{data_type}_data")(
+                data=data,
+                process_results=False, verbose=0)
+            x, y, = getattr(self.model, f'{data_type}_data')(data=data)
+        else:
+            predictions = self.model.predict(x=x, verbose=0)
 
         ac, data = self.tft_attention_components(data=data)
 
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
-        train_x, train_y = getattr(self.model, f'{data}_data')()
-
-        plot_activations_along_inputs(activations=encoder_variable_selection_weights,
-                                      data=train_x[:, -1],
-                                      observations=true,
-                                      predictions=predictions,
-                                      in_cols=self.model.input_features,
-                                      out_cols=self.model.output_features,
-                                      lookback=self.model.lookback,
-                                      name=f'tft_encoder_weights_{data}',
-                                      path=maybe_create_path(self.model.path)
-                                      )
+        plot_activations_along_inputs(
+            activations=encoder_variable_selection_weights,
+            data=x[:, -1],
+            observations=y,
+            predictions=predictions,
+            in_cols=self.model.input_features,
+            out_cols=self.model.output_features,
+            lookback=self.model.lookback,
+            name=f'tft_encoder_weights_{data}',
+            path=maybe_create_path(self.model.path)
+        )
         return
 
+    def interpret_attention_lstm(
+            self,
+            x=None,
+            data = None,
+            data_type:str = "test"
+    ):
+        """
+        Arguments:
+            x :
+                input data. If not given, ``data`` argument must be given.
+            data :
+                the data to use to interpret model. It is only required
+                when ``x`` is not given.
+            data_type :
+                either ``training``, ``test``, ``validation`` or ``all``.
+                It is only useful when ``data`` argument is used.
+        """
+        raise NotImplementedError
+
+    def interpret_tab_transformer(
+            self,
+            x=None,
+            data = None,
+            data_type:str = "test"
+    ):
+        """
+        Arguments:
+            x :
+                input data. If not given, ``data`` argument must be given.
+            data :
+                the data to use to interpret model. It is only required
+                when ``x`` is not given.
+            data_type :
+                either ``training``, ``test``, ``validation`` or ``all``.
+                It is only useful when ``data`` argument is used.
+        """
+        raise NotImplementedError
+
+    def interpret_ft_transformer(
+            self,
+            x=None,
+            data = None,
+            data_type:str = "test"
+    ):
+        """
+        Arguments:
+            x :
+                input data. If not given, ``data`` argument must be given.
+            data :
+                the data to use to interpret model. It is only required
+                when ``x`` is not given.
+            data_type :
+                either ``training``, ``test``, ``validation`` or ``all``.
+                It is only useful when ``data`` argument is used.
+        """
+        raise NotImplementedError
 
 def xgb_fimp_with_plotly(
         importance:pd.DataFrame,

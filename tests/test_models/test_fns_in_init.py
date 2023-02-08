@@ -29,7 +29,8 @@ X, y = make_classification(n_classes=4,
                            n_repeated=0)
 y = y.reshape(-1, 1)
 
-multi_cls_data = pd.DataFrame(np.concatenate([X, y], axis=1), columns=multi_cls_inp + multi_cls_out)
+multi_cls_data = pd.DataFrame(np.concatenate([X, y], axis=1),
+                              columns=multi_cls_inp + multi_cls_out)
 
 class TestModels(unittest.TestCase):
 
@@ -132,7 +133,9 @@ class TestModels(unittest.TestCase):
 
     def test_tft(self):
         model = FModel(model=TFT(input_shape=(14, 13)),
-                       ts_args={"lookback": 14}, verbosity=0)
+                       ts_args={"lookback": 14}, verbosity=-1,
+                       epochs=1)
+        model.fit(data=busan_beach(), verbose=0)
         return
 
 if __name__ == "__main__":
