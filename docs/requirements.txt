@@ -1,7 +1,4 @@
 
-pandas
-numpy
-matplotlib
 sphinx
 sphinx-prompt
 sphinx_copybutton
@@ -10,14 +7,12 @@ sphinx_rtd_theme
 sphinx_issues
 nbsphinx
 
-scipy
-scikit-learn
 scikit-optimize
 plotly
 tensorflow==2.7
 protobuf==3.19.1
 seaborn
-easy_mpl>=0.21.2
+easy_mpl[all]>=0.21.3
 SeqMetrics
 sphinx-gallery
 

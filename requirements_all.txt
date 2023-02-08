@@ -34,5 +34,5 @@ wrapt
 psutil
 SHAP
 
-easy_mpl>=0.21.2
+easy_mpl>=0.21.3
 SeqMetrics>=1.3.3
