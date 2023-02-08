@@ -469,11 +469,11 @@ class DualAttentionModel(FModel):
         fig, axis = plt.subplots()
 
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        _, im = imshow(act_avg_over_examples,
+        im = imshow(act_avg_over_examples,
                        ax=axis,
                        aspect="auto",
                        yticklabels=ytick_labels,
-                       ylabel='lookback steps',
+                       ax_kws=dict(ylabel='lookback steps'),
                        show=False
                        )
 

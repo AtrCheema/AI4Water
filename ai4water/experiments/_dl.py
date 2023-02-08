@@ -326,3 +326,12 @@ class DLClassificationExperiments(DLRegressionExperiments):
     @property
     def mode(self):
         return "classification"
+
+    def metric_kws(self, metric_name:str=None):
+        kws = {
+            'precision': {'average': 'macro'},
+            'recall': {'average': 'macro'},
+            'f1_score': {'average': 'macro'},
+        }
+        return kws.get(metric_name, {})
+

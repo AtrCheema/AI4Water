@@ -49,9 +49,10 @@ SEP = os.sep
 
 # in order to unify the use of metrics
 Metrics = {
-    'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
-    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p,
-                                                                                     multiclass=multiclass, **kwargs)
+    'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(
+        t, p, **kwargs),
+    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(
+        t, p,  multiclass=multiclass, **kwargs)
 }
 
 Monitor = {
@@ -59,7 +60,7 @@ Monitor = {
                    'nse', 'kge', 'mape', 'pbias', 'bias', 'mae', 'nrmse',
                    'mase'],
 
-    'classification': ['accuracy', 'precision', 'recall', 'mse']
+    'classification': ['accuracy', 'precision', 'recall', 'f1_score']
 }
 
 reg_dts = ["ExtraTreeRegressor","DecisionTreeRegressor",
@@ -227,6 +228,9 @@ class Experiments(object):
         if self.mode == "regression":
             return ['regression', 'prediction', "residual", "edf"]
         return []
+
+    def metric_kws(self, metric_name:str=None)->dict:
+        return {}
 
     def _pre_build_hook(self, **suggested_paras):
         """Anything that needs to be performed before building the model."""
@@ -729,7 +733,7 @@ class Experiments(object):
         metrics = {}
         for metric in self.monitor:
             if isinstance(metric, str):
-                metrics[metric] = getattr(metrics_inst, metric)()
+                metrics[metric] = getattr(metrics_inst, metric)(**self.metric_kws(metric))
             elif callable(metric):
                 # metric is a callable
                 metrics[metric.__name__] = metric(true, predicted)
@@ -1028,7 +1032,8 @@ Available cases are {self.models} and you wanted to include
             cutoff_type: str = None,
             sort_by: str = 'test',
             ignore_nans: bool = True,
-            name: str = 'ErrorComparison',
+            colors = None,
+            cmaps = None,
             figsize:tuple = None,
             **kwargs
     ) -> pd.DataFrame:
@@ -1065,8 +1070,12 @@ Available cases are {self.models} and you wanted to include
                 default True, if True, then performance matrics with nans are ignored
                 otherwise nans/empty bars will be shown to depict which models have
                 resulted in nans for the given performance matric.
-            name : str
-                name of the saved file.
+            colors :
+                color for bar chart. To assign separate colors for both bar charts, provide
+                a list of two.
+            cmaps :
+                color map for bar chart. To assign separate cmap for both bar charts, provide
+                a list of two.
             figsize : tuple
                 figure size as (width, height)
             **kwargs :
@@ -1094,6 +1103,7 @@ Available cases are {self.models} and you wanted to include
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
+        # populate self.metrics dictionary
         self._build_predict_from_configs(x, y)
 
         models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
@@ -1109,8 +1119,26 @@ Available cases are {self.models} and you wanted to include
             for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws']:
                 assert arg not in kwargs, f"{arg} not allowed in kwargs"
 
+        color1, color2 = None, None
+        if colors is not None:
+            if hasattr(colors, '__len__') and len(colors)==2:
+                color1, color2 = colors
+            else:
+                color1 = colors
+                color2 = colors
+
+        cmap1, cmap2 = None, None
+        if cmaps is not None:
+            if hasattr(cmaps, '__len__') and len(cmaps)==2:
+                cmap1, cmap2 = cmaps
+            else:
+                cmap1 = cmaps
+                cmap2 = cmaps
+
         bar_chart(ax=axis[0],
                   labels=labels,
+                  color=color1,
+                  cmap=cmap1,
                   values=models['train'],
                   ax_kws={'title':"Train",
                   'xlabel':ERROR_LABELS.get(matric_name, matric_name)},
@@ -1121,6 +1149,8 @@ Available cases are {self.models} and you wanted to include
         bar_chart(ax=axis[1],
                   labels=labels,
                   values=models.iloc[:, 1],
+                  color=color2,
+                  cmap=cmap2,
                   ax_kws={'title': models.columns.tolist()[1],
                           'xlabel':ERROR_LABELS.get(matric_name, matric_name),
                           'show_yaxis':False},
@@ -1132,7 +1162,7 @@ Available cases are {self.models} and you wanted to include
         if self.save:
             fname = os.path.join(
                 os.getcwd(),
-                f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
+                f'results{SEP}{self.exp_name}{SEP}ErrorComprison_{matric_name}_{appendix}.png')
             plt.savefig(fname, dpi=100, bbox_inches='tight')
 
         if self.show:
@@ -2441,12 +2471,7 @@ Available cases are {self.models} and you wanted to include
         # load all models from config
         for model_name in model_folders:
 
-            m_path = self._get_best_model_path(model_name)
-
-            c_path = os.path.join(m_path, 'config.json')
-            model = self.build_from_config(c_path)
-            # calculate pr curve for each model
-            self.update_model_weight(model, m_path)
+            model = self._load_model(model_name)
 
             out = model.predict(x=x, y=y, return_true=True, process_results=False)
 

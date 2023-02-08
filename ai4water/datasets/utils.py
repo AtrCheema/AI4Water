@@ -276,7 +276,17 @@ def maybe_download(ds_dir,
                    name=None,
                    include:list=None,
                    **kwargs):
-
+    """
+    Parameters
+    ----------
+    ds_dir :
+    url :
+    overwrite :
+    name :
+    include :
+    **kwargs :
+        any keyword arguments for download_and_unzip function
+    """
     if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
         if overwrite:
             print(f"removing previous data directory {ds_dir} and downloading new")
@@ -299,12 +309,15 @@ def download_and_unzip(path,
                        **kwargs):
     """
 
+    parameters
+    ----------
+    path :
     url :
 
     include :
         files to download. Files which are not in include will not be
         downloaded.
-    kwargs :
+    **kwargs :
         any keyword arguments for download_from_zenodo function
     """
     from .download_zenodo import download_from_zenodo

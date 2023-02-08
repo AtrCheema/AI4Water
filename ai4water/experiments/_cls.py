@@ -90,6 +90,14 @@ class MLClassificationExperiments(Experiments):
     def category(self):
         return "ML"
 
+    def metric_kws(self, metric_name:str=None):
+        kws = {
+            'precision': {'average': 'macro'},
+            'recall': {'average': 'macro'},
+            'f1_score': {'average': 'macro'},
+        }
+        return kws.get(metric_name, {})
+
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
 

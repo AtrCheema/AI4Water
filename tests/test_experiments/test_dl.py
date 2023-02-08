@@ -33,6 +33,9 @@ class TestClassification(unittest.TestCase):
         )
 
         exp.fit(data=cls_data, include=["TFT", "MLP"])
+        exp.compare_errors('accuracy', data=cls_data)
+        exp.compare_errors('f1_score', data=cls_data)
+        exp.loss_comparison()
         return
 
 

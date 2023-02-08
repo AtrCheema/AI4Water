@@ -22,7 +22,7 @@ inputs = data.columns.tolist()[0:-1]
 outputs = data.columns.tolist()[-1:]
 
 
-def f1_score(t,p)->float:
+def f1_score_(t,p)->float:
     return ClassificationMetrics(t, p).f1_score(average="macro")
 
 
@@ -53,7 +53,7 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(
             input_features=inputs,
             output_features=outputs,
-            monitor = [f1_score, "accuracy"],
+            monitor = [f1_score_, "accuracy", "f1_score", "precision"],
             show=False, save=False
         )
 
@@ -160,7 +160,7 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(
             input_features=inputs,
             output_features=outputs,
-            cross_validator={'KFold': {'n_splits': 5}},
+            cross_validator={'KFold': {'n_splits': 3}},
             show=False, save=False
         )
 
@@ -176,6 +176,7 @@ class TestCls(unittest.TestCase):
                 )
         exp.plot_cv_scores()
         return
+
 
 if __name__ == "__main__":
     unittest.main()

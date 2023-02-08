@@ -1282,7 +1282,8 @@ class BaseModel(NN):
             y :
                 label/target data corresponding to x data.
             data :
-                raw data from which training and validation x,y pairs are drawn.
+                raw data which will be passed to `py:meth:ai4water.preprocessing.DataSet`
+                 to get training and validation x,y pairs.
                 The x data from training and validation is concatenated.
                 Similarly, y data from training and validation is concatenated
             **kwargs
