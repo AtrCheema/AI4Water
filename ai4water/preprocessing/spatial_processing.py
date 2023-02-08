@@ -59,7 +59,8 @@ class MakeHRUs(object):
             soil_shape: Union[dict, None] = None,
             slope_shape: Union[dict, None]=None,
             subbasins_shape: Union[None, dict] = None,
-            save:bool = True,
+            save:bool = False,
+            show:bool = True,
             verbosity: int = 1
                  ):
         """
@@ -94,7 +95,10 @@ class MakeHRUs(object):
                 >>> {'shapefile': os.path.join(shapefile_paths, 'subbasins.shp'), 'feature': 'id'}
 
             save : bool
-            verbosity : Determines verbosity.
+            show : bool, default=False
+                whether to save the plots or not.
+            verbosity :
+                Determines verbosity.
         """
 
         if shapefile is None:
@@ -125,6 +129,7 @@ class MakeHRUs(object):
         self.all_hrus = []
         self.hru_names = []
         self.save = save
+        self.show = show
         self.verbosity = verbosity
 
         st, en = list(index.keys())[0], list(index.keys())[-1]
@@ -159,12 +164,12 @@ class MakeHRUs(object):
         return
 
     def get_hrus(self,
-                 idx_shp,  # shapefile whose area distribution changes with time e.g land use
+                 idx_shp,
                  year
                  ):
         """
-        lu_path: path of landuse shapefile
-        :return:
+        idx_shp :
+            shapefile whose area distribution changes with time e.g land use
 
         """
 
@@ -333,7 +338,7 @@ class MakeHRUs(object):
 
     def plot_hrus(self, year, bbox, _polygon_dict, annotate=False, nrows=3,
                   ncols=4, name='',
-                  annotate_missing_hru=False):
+                  annotate_missing_hru=False)->plt.Figure:
 
         polygon_dict = OrderedDict()
         for k, v in _polygon_dict.items():
@@ -400,33 +405,57 @@ class MakeHRUs(object):
         # plt.title('HRUs for year {}'.format(year), fontsize=22)
         if self.save:
             name = 'hrus_{}.png'.format(year) if name is None else name + str(year)
-            plt.savefig('plots/' + name)
-        plt.show()
+            plt.savefig(name, bbox_inches="tight")
 
-    def plot_as_ts(self, name=None, show=True, **kwargs):
-        """hru_object.plot_as_ts(save=True, min_xticks=3, max_xticks=4"""
+        if self.show:
+            plt.show()
 
-        figsize = kwargs.get('figsize', (12, 6))
-        bbox_inches = kwargs.get('bbox_inches', 'tight')
-        tick_fs = kwargs.get('tick_fs', 14)
-        axis_label_fs = kwargs.get('axis_label_fs', 18)
-        bbox_to_anchor = kwargs.get('bbox_to_anchor', (1.1, 0.99))
-        leg_fs = kwargs.get('leg_fs', 14)
-        markerscale = kwargs.get('markerscale', 2)
-        style=  kwargs.get('style', '-s')
-        title = kwargs.get('title', False)
-        min_xticks = kwargs.get('min_xticks', None)
-        max_xticks = kwargs.get('max_xticks', None)
+        return figure
+
+    def plot_as_ts(
+            self,
+            marker='o',
+            ms=8,
+            min_xticks=None, max_xticks=None,
+            figsize=None,
+            **kwargs)->plt.Axes:
+        """
+        parameters
+        ----------
+        marker :
+        ms :
+            marker size as integer
+        min_xticks : int
+            minimum ticks on x-axis
+        max_xticks : int
+            maximum ticks on x-axis
+        figsize :
+            figure size
+        **kwargs
+            any keyword arguments for easy_mpl.plot
+
+        hru_object.plot_as_ts()"""
+
+        figsize = figsize or (12, 6)
+
+        legend_kws = dict(fontsize=14, markerscale=2, bbox_to_anchor=(1.1, 0.99))
+        ax_kws = dict(
+            xlabel="Time", xlabel_kws=dict(fontsize=18),
+            ylabel="Area (Acres)", ylabel_kws=dict(fontsize=18),
+            legend_kws=legend_kws,
+            title = 'Variation of Area (acre) of HRUs with time'
+        )
 
         plt.close('all')
         _, axis = plt.subplots(figsize=figsize)
         for area in self.area:
-            axis.plot(self.area[area], style, label=area)
-        axis.legend(fontsize=leg_fs, markerscale=markerscale, bbox_to_anchor=bbox_to_anchor)
-        axis.set_xlabel('Time', fontsize=axis_label_fs)
-        axis.set_ylabel('Area (Acres)', fontsize=axis_label_fs)
-        axis.tick_params(axis="x", which='major', labelsize=tick_fs)
-        axis.tick_params(axis="y", which='major', labelsize=tick_fs)
+            easy_mpl.plot(self.area[area], marker=marker,
+                          mfc='white', ms=ms, lw=4,
+                          label=area,
+                          ax=axis, ax_kws=ax_kws, show=False, **kwargs)
+
+        axis.tick_params(color='lightgrey', labelsize=14, labelcolor='grey')
+        axis.grid(ls='--', color='lightgrey')
 
         if min_xticks is not None:
             assert isinstance(min_xticks, int)
@@ -435,17 +464,14 @@ class MakeHRUs(object):
             axis.xaxis.set_major_locator(loc)
             fmt = mdates.AutoDateFormatter(loc)
             axis.xaxis.set_major_formatter(fmt)
-        if title:
-            plt.suptitle('Variation of Area (acre) of HRUs with time')
-        if self.save:
-            if name is None:
-                name = self.hru_definition
-            plt.savefig(f'{name}_hru_as_ts.png', dpi=300, bbox_inches=bbox_inches)
 
-        if show:
+        if self.save:
+            plt.savefig(f'{self.hru_definition}_hru_as_ts.png', dpi=300, bbox_inches="tight")
+
+        if self.show:
             plt.show()
 
-        return
+        return axis
 
     def plot_hru_evolution(self, hru_name, make_gif=False):
         """
@@ -478,7 +504,7 @@ class MakeHRUs(object):
         gif.remove_images()
         return
 
-    def plot(self, what, index=None, show_all_together=True):
+    def plot(self, what:str, index=None, show_all_together=True):
         assert what in ['landuse', 'soil', 'subbasins', 'slope']
         if what == 'landuse':
             assert index
@@ -486,10 +512,9 @@ class MakeHRUs(object):
         else:
             shp_file = getattr(self, f'{what}_shape')
 
-        plot_shapefile(shp_file, show_all_together)
-        return
+        return plot_shapefile(shp_file, show_all_together)
 
-    def plot_hru(self, hru_name, bbox=None):
+    def plot_hru(self, hru_name, bbox=None)->plt.Figure:
         """
         plot only one hru from `hru_geoms`.
         The value of each key in hru_geoms is a list with three shapes
@@ -530,18 +555,21 @@ class MakeHRUs(object):
                 axs.set_xlim([bbox[0], bbox[2]])
 
         if self.save:
-            plt.savefig('plots/' + hru_name + '.png')
-        plt.show()
-        return
+            plt.savefig(hru_name + '.png')
 
-    def draw_pie(self,
-                 year:int,
-                 n_merge:int=0,
-                 title:bool=False,
-                 name:str=None,
-                 show:bool = True,
-                 save:bool = False,
-                 **kwargs):
+        if self.show:
+            plt.show()
+
+        return figure
+
+    def draw_pie(
+            self,
+             year:int,
+             n_merge:int=0,
+             shadow:bool = True,
+             title:bool=False,
+             **kwargs
+    )->tuple:
         """
         todo draw nested pie chart for all years
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
@@ -555,22 +583,15 @@ class MakeHRUs(object):
                 the year for which area of hrus will be used.
             n_merge :
                 number of hrus to merge
+            shadow : bool
             title :
-            name : str
-            show : bool
-            save : bool
-            kwargs :
-                Following keyword arguments are allowed
-                shadow
-                strartangle
-                autopct
-                textprops
-        """
-        shadow = kwargs.get('shadow', True)
-        startangle = kwargs.get('startangle', 90)
-        autopct = kwargs.get('autopct', '%1.1f%%')
-        textprops = kwargs.get('textprops', {})
+            **kwargs :
+                any keyword arguments for `easy_mpl.pie`
 
+        Returns
+        --------
+        tuple
+        """
         idx = str(year) + '-01-31'
         area_unsort = self.area.loc[idx]
         area = area_unsort.sort_values()
@@ -598,18 +619,19 @@ class MakeHRUs(object):
         if title:
             title = 'Areas of HRUs for year {}'.format(year)
 
-        easy_mpl.pie(fractions=vals,
+        outs = easy_mpl.pie(fractions=vals,
                    labels=labels_n,
                    explode=tuple(explode),
-                   autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
-                   ax_kws=dict(title=title), show=show)
+                   shadow=shadow,
+                   ax_kws=dict(title=title), show=False,
+                     **kwargs)
 
-        if name is None: name = self.hru_definition
-        name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
+        name = f'{len(self.hru_names)}hrus_for_{year}_{self.hru_definition}.png'
 
-        if save:
-            plt.savefig(name, dpi=300)
+        if self.save:
+            plt.savefig(name, dpi=300, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
-        return
+
+        return outs

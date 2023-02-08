@@ -303,7 +303,14 @@ class Datasets(object):
         return
 
     def _download(self, overwrite=False, **kwargs):
-        """Downloads the dataset. If already downloaded, then"""
+        """Downloads the dataset. If already downloaded, then
+
+        Parameters
+        -----------
+        overwrite : bool
+        **kwargs :
+            any keyword arguments for maybe_download function
+        """
         maybe_download(self.ds_dir, overwrite=overwrite,
                        url=self.url, name=self.name, **kwargs)
         return
@@ -984,7 +991,7 @@ def mg_photodegradation(
                 - ``Ci (mg/L)``
                 - ``Cf (mg/L)``
 
-        target : str, optional
+        target : str, optional, default="Efficiency (%)"
             features to use as target. By default ``Efficiency (%)`` is used as target
             which is photodegradation removal efficiency of dye from wastewater. Following
             are valid target names
@@ -993,7 +1000,7 @@ def mg_photodegradation(
                 - ``k_first``
                 - ``k_2nd``
 
-        encoding : str
+        encoding : str, default=None
             type of encoding to use for the two categorical features i.e., ``Catalyst_type``
             and ``Anions``, to convert them into numberical. Available options are ``ohe``,
             ``le`` and None. If ohe is selected the original input columns are replaced

@@ -1670,7 +1670,12 @@ def plot_activations_along_inputs(
 
     for out in range(len(out_cols)):
         pred = predictions[:, out]
-        obs = observations[:, out]
+
+        if observations is None:
+            obs = None
+        else:
+            obs = observations[:, out]
+
         out_name = out_cols[out]
 
         for idx in range(len(in_cols)):
@@ -1684,7 +1689,10 @@ def plot_activations_along_inputs(
             ax1.set_ylabel(in_cols[idx])
 
             ax2.plot(pred, label='Prediction')
-            ax2.plot(obs, '.', label='Observed')
+
+            if obs is not None:
+                ax2.plot(obs, '.', label='Observed')
+
             ax2.legend()
             ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
             im = imshow(
@@ -1766,6 +1774,7 @@ def get_version_info(
     from ai4water.backend import h5py
     from ai4water.backend import sklearn, shapefile, xr, netCDF4
     from ai4water.backend import optuna, skopt, hyperopt, plotly
+    from ai4water.backend import fiona
     from ai4water.backend import lime, sns
     from ai4water import __version__
 
@@ -1777,11 +1786,12 @@ def get_version_info(
         info['tf_is_gpu_available'] = tf.test.is_gpu_available()
         info['eager_execution'] = tf.executing_eagerly()
 
-    for lib in [lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
-                tf, keras, torch, np, pd, mpl, h5py, sklearn,
-                shapefile, xr, netCDF4,
-                optuna, skopt, hyperopt, plotly,
-                lime, sns]:
+    for lib in [
+        lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
+        tf, keras, torch, np, pd, mpl, h5py, sklearn,
+        shapefile, fiona, xr, netCDF4,
+        optuna, skopt, hyperopt, plotly,
+        lime, sns]:
         if lib is not None:
             info[getattr(lib, '__name__')] =  getattr(lib, '__version__', 'NotDefined')
 

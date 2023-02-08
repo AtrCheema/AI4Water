@@ -791,6 +791,25 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return search_result
 
+    def save_results(self, results, path:str = None):
+        """
+        saves the hpo results so that they can be loaded
+        using load_results method.
+
+        parameters
+        ----------
+        results :
+            hpo results i.e. output of optimizer.fit()
+        path :
+            path where to save the results
+        """
+        assert self.algorithm == "bayes"
+
+        if path is None:
+            path = self.opt_path
+        save_skopt_results(results, path)
+        return
+
     def eval_sequence(self, params, **kwargs):
         """"
         kwargs :
@@ -1053,6 +1072,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         parallel_coordinates(
             data=data,
             categories=categories,
+            title="Hyperparameters",
             show=False,
             **kwargs,
         )
@@ -1086,9 +1106,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                markersize= 12,
                                lw= 2,
                                ax_kws=dict(xlabel="Number of calls $n$",
-                                           ylabel=r"$\min f(x)$ after $n$ calls"),
+                                           ylabel=r"$\min f(x)$ after $n$ calls",
+                                           grid=True),
                                show=False,
-                               grid=True,
                                **kwargs)
         else:
             ax = plot_convergence(self.func_vals(), ax=ax, show=False, **kwargs)
@@ -1251,6 +1271,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
         else:
+            plt.close('all')  # because bar chart has already been drawn
             df = pd.DataFrame.from_dict(importance_paras)
             ax = df.boxplot(rot=70, return_type="axes")
             ax.set_ylabel("Relative Importance")
