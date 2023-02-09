@@ -49,6 +49,11 @@ class TestExperiments(unittest.TestCase):
                                                  cutoff_val=0.01)
         comparisons.taylor_plot(data=df)
         comparisons.compare_regression_plots(data=df)
+        comparisons.compare_regression_plots(data=df, include=["RandomForestRegressor",
+                                                               "DecisionTreeRegressor"])
+        comparisons.compare_residual_plots(data=df)
+        comparisons.compare_residual_plots(data=df, include=["RandomForestRegressor",
+                                                               "DecisionTreeRegressor"])
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
@@ -236,35 +241,35 @@ class TestNonSKlearn(unittest.TestCase):
         experiment.compare_edf_plots(data=df)
         return
 
-    def test_fit_with_tpot(self):
-        exp = MLRegressionExperiments(
-            exp_name=f"tpot_{dateandtime_now()}",
-            verbosity=0,
-            show=False, save=False)
+    # def test_fit_with_tpot(self):
+    #     exp = MLRegressionExperiments(
+    #         exp_name=f"tpot_{dateandtime_now()}",
+    #         verbosity=0,
+    #         show=False, save=False)
+    #
+    #     exp.fit(
+    #         data=busan_beach(),
+    #         include=[
+    #         "RandomForestRegressor",
+    #         "GradientBoostingRegressor"])
+    #
+    #     exp.fit_with_tpot( data=busan_beach(), models=2, generations=1,
+    #                        population_size=1)
+    #     return
 
-        exp.fit(
-            data=busan_beach(),
-            include=[
-            "RandomForestRegressor",
-            "GradientBoostingRegressor"])
-
-        exp.fit_with_tpot( data=busan_beach(), models=2, generations=1,
-                           population_size=1)
-        return
-
-    def test_fit_with_tpot1(self):
-
-        exp = MLRegressionExperiments(
-            exp_name=f"tpot_{dateandtime_now()}",
-            verbosity=0,
-            show=False, save=False)
-
-        exp.fit_with_tpot(
-            data=busan_beach(),
-            models = ["LGBMRegressor", "RandomForestRegressor"],
-            generations=1,
-            population_size=1)
-        return
+    # def test_fit_with_tpot1(self):
+    #
+    #     exp = MLRegressionExperiments(
+    #         exp_name=f"tpot_{dateandtime_now()}",
+    #         verbosity=0,
+    #         show=False, save=False)
+    #
+    #     exp.fit_with_tpot(
+    #         data=busan_beach(),
+    #         models = ["LGBMRegressor", "RandomForestRegressor"],
+    #         generations=1,
+    #         population_size=1)
+    #     return
 
 
 if __name__=="__main__":

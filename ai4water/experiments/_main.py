@@ -867,7 +867,7 @@ class Experiments(object):
 
         return ax
 
-    def _consider_include(self, include: Union[str, list], to_filter):
+    def _consider_include(self, include: Union[str, list], to_filter:dict):
 
         filtered = {}
 
@@ -879,7 +879,16 @@ class Experiments(object):
 
         return filtered
 
-    def _check_include_arg(self, include):
+    def _check_include_arg(
+            self,
+            include:Union[str, List[str]],
+            default=None,
+    )->list:
+        """
+        if include is None, then self.models is returned.
+        """
+        if default is None:
+            default = self.models
 
         if isinstance(include, str):
             if include == "DTs":
@@ -890,7 +899,7 @@ class Experiments(object):
                 include = [include]
 
         if include is None:
-            include = self.models
+            include = default
         include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include]
 
         # make sure that include contains same elements which are present in models
@@ -1222,7 +1231,7 @@ Available cases are {self.models} and you wanted to include
         >>> exp.loss_comparison(logy=True)
         """
 
-        include = self._check_include_arg(include)
+        include = self._check_include_arg(include, self.considered_models_)
 
         if self.model_.category == "ML":
             raise NotImplementedError(f"Non neural network models can not have loss comparison")
@@ -1447,6 +1456,7 @@ Available cases are {self.models} and you wanted to include
             x=None,
             y=None,
             data=None,
+            include: Union[None, list] = None,
             figsize: tuple=None,
             fname: Optional[str] = "regression",
             **kwargs
@@ -1462,8 +1472,11 @@ Available cases are {self.models} and you wanted to include
             target data
         data :
             raw unprocessed data from which x,y pairs of the test data are drawn
+        include : str, list, optional
+            if not None, must be a list of models which will be included.
+            None will result in plotting all the models.
         figsize :
-            figure size
+            figure size as (width, length)
         fname : str, optional
             name of the file to save the plot
         **kwargs
@@ -1491,14 +1504,18 @@ Available cases are {self.models} and you wanted to include
 
         model_folders = self._get_model_folders()
 
-        fig, axes = create_subplots(naxes=len(model_folders),
+        include = self._check_include_arg(include, self.considered_models_)
+
+        fig, axes = create_subplots(naxes=len(include),
                                     figsize=figsize, sharex="all")
 
         if not isinstance(axes, np.ndarray):
             axes = np.array(axes)
 
         # load all models from config
-        for model_name, ax in zip(model_folders, axes.flat):
+        for model_name, ax in zip(include, axes.flat):
+
+            model_name = model_name.split('model_')[1]
 
             model = self._load_model(model_name)
 
@@ -1546,6 +1563,7 @@ Available cases are {self.models} and you wanted to include
             x=None,
             y=None,
             data = None,
+            include: Union[None, list] = None,
             figsize: tuple = None,
             fname: Optional[str] = "residual"
     )->plt.Figure:
@@ -1561,6 +1579,9 @@ Available cases are {self.models} and you wanted to include
         data :
             raw unprocessed data frmm which test x,y pairs are drawn using
             :py:meth:`ai4water.preprocessing.DataSet`. class. Only valid if x and y are not given.
+        include : str, list, optional
+            if not None, must be a list of models which will be included.
+            None will result in plotting all the models.
         figsize : tuple
             figure size as (width, height)
         fname : str, optional
@@ -1584,17 +1605,21 @@ Available cases are {self.models} and you wanted to include
         """
         assert self.mode == "regression", f"This plot is not available for {self.mode} mode"
 
+        include = self._check_include_arg(include, self.considered_models_)
+
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
 
         model_folders = self._get_model_folders()
 
-        fig, axes = create_subplots(naxes=len(model_folders), figsize=figsize)
+        fig, axes = create_subplots(naxes=len(include), figsize=figsize)
 
         if not isinstance(axes, np.ndarray):
             axes = np.array(axes)
 
         # load all models from config
-        for model_name, ax in zip(model_folders, axes.flat):
+        for model_and_name, ax in zip(include, axes.flat):
+
+            model_name = model_and_name.split('model_')[1]
 
             model = self._load_model(model_name)
 

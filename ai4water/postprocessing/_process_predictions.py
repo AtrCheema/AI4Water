@@ -357,7 +357,7 @@ class ProcessPredictions(Plot):
         return plot_metrics(
             errors.calculate_all(),
             show=self.show,
-            save_path=os.path.join(self.path, where),
+            save_path=os.path.join(self.path, where, f"{prefix}_errors.png"),
             save=self.save,
             text_kws = {"fontsize": 16},
             max_metrics_per_fig=20,
@@ -392,7 +392,7 @@ class ProcessPredictions(Plot):
             marginals = False
 
         try:
-            ep.regplot(true,
+            axes = ep.regplot(true,
                        predicted,
                        marker_color='crimson',
                        line_color='k',
@@ -405,7 +405,7 @@ class ProcessPredictions(Plot):
                        hist=False,
                        )
         except np.linalg.LinAlgError:
-            ep.regplot(true,
+            axes = ep.regplot(true,
                        predicted,
                        marker_color='crimson',
                        line_color='k',
@@ -414,7 +414,7 @@ class ProcessPredictions(Plot):
                        marginals=False
                        )
 
-        plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
+        axes.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
                      xy=(0.3, 0.95),
                      xycoords='axes fraction',
                      horizontalalignment='right', verticalalignment='top',

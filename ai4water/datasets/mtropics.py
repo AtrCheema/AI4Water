@@ -740,7 +740,8 @@ class MtropicsLaos(Datasets):
             st: Union[None, str] = "20110525 14:00:00",
             en: Union[None, str] = "20181027 00:00:00",
             freq: str = "6min",
-            lookback_steps: int = None
+            lookback_steps: int = None,
+            replace_zeros_in_target:bool=True,
     ) -> pd.DataFrame:
         """
         Returns data for a regression problem using hydrological, environmental,
@@ -771,6 +772,8 @@ class MtropicsLaos(Datasets):
                 the number of previous steps to use. If this argument is used,
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
+            replace_zeros_in_target : bool, default=True
+                Replace the zeroes in target column with 1s.
 
         Returns
         -------
@@ -787,13 +790,18 @@ class MtropicsLaos(Datasets):
 
         todo add HRU definition
         """
-        data = self._make_ml_problem(input_features, output_features, st, en, freq)
+        data = self._make_ml_problem(
+            input_features, output_features, st, en, freq,
+        replace_zeros_in_target=replace_zeros_in_target)
 
         if lookback_steps:
             return consider_lookback(data, lookback_steps, output_features)
         return data
 
-    def _make_ml_problem(self, input_features, output_features, st, en, freq):
+    def _make_ml_problem(
+            self, input_features, output_features, st, en, freq,
+            replace_zeros_in_target:bool = True
+    ):
         inputs = check_attributes(input_features, self.inputs)
         target = check_attributes(output_features, self.target)
         features_to_fetch = inputs + target
@@ -818,6 +826,8 @@ class MtropicsLaos(Datasets):
         ecoli = self.fetch_ecoli(st=st, en=en)
         ecoli = ecoli.dropna()
         ecoli_6min = ecoli.resample(freq).mean()
+        if replace_zeros_in_target:
+            ecoli_6min.loc[ecoli_6min['Ecoli_mpn100']==0.0] = 1.0
 
         wl, spm = self.fetch_hydro(st=st, en=en)
         wl_6min = wl.resample(freq).first().interpolate(method="linear")

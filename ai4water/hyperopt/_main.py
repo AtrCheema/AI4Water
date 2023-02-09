@@ -1061,20 +1061,32 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
 
-    def _plot_parallel_coords(self, save=True, show=False, **kwargs):
+    def plot_parallel_coords(self, save=True, show=False, **kwargs):
         """ parallel coordinates of hyperparameters
+
+        Parameters
+        -----------
+        save : bool, default=True
+        show : bool, default=False
+        **kwargs :
+            any keyword arguments for easy_mpl.parallel_coordinates
         """
         d = self.xy_of_iterations()
 
         data = pd.DataFrame([list(v['x'].values()) for v in d.values()],
                             columns=[s for s in self.space()])
         categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+
+        _kws = dict(coord_title_kws=dict(rotation=10, fontsize=12))
+        if kwargs is not None:
+            _kws.update(kwargs)
+
         parallel_coordinates(
             data=data,
             categories=categories,
             title="Hyperparameters",
             show=False,
-            **kwargs,
+            **_kws
         )
         if save:
             fname = os.path.join(self.opt_path, "parallel_coordinates")
@@ -1125,7 +1137,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """post processing of results"""
         self.save_iterations_as_xy()
 
-        self._plot_parallel_coords()
+        self.plot_parallel_coords()
 
         # deep learning related results
         if self.objective_fn_is_dl:

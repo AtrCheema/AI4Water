@@ -9,7 +9,11 @@ from ai4water.utils.utils import plot_activations_along_inputs
 
 
 class Interpret(Plot):
-    """Interprets the ai4water Model."""
+    """Interprets the ai4water Model.
+    The ``Interpret`` class is different than the methods in ``explain`` module.
+    The ``Interpret`` class explains the behaviour of the model by using consituents
+    of the model itself for example attention weights or feature importance.
+    """
 
     def __init__(self, model, save:bool = False, show:bool = True):
         """

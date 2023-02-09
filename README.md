@@ -89,17 +89,21 @@ Build a `Model` by providing all the arguments to initiate it.
 
 ```python
 from ai4water import Model
-from ai4water.datasets import busan_beach
-data = busan_beach()
+from ai4water.models import MLP
+from ai4water.datasets import mg_photodegradation
+data, *_ = mg_photodegradation(encoding="le")
+
 model = Model(
-        model = {'layers': {"LSTM": 64,
-                            'Dense': 1}},
-        # columns in data file to be used as input
-        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'rel_hum', 'pcp_mm'],  
-       # columns in csv file to be used as output
-        output_features = ['tetx_coppml'],    
-       # how much historical data we want to feed to model
-        ts_args={'lookback': 12}  
+    # define the model/algorithm
+    model=MLP(units=24, activation="relu", dropout=0.2),
+    # columns in data file to be used as input
+    input_features=data.columns.tolist()[0:-1],
+    # columns in csv file to be used as output
+    output_features=data.columns.tolist()[-1:],
+    lr=0.001,  # learning rate
+    batch_size=8,  # batch size
+    epochs=500,  # number of epochs to train the neural network
+    patience=50,  # used for early stopping
 )
 ```
 
@@ -108,10 +112,24 @@ Train the model by calling the `fit()` method
 history = model.fit(data=data)
 ```
 
-Make predictions from it
+<p float="left">
+  <img src="/docs/source/imgs/mlp_loss.png" width="500" />
+</p>
+
+Make predictions from it on test/training data
 ```python
-predicted = model.predict(data=data)
+prediction = model.predict_on_test_data(data=data)
 ```
+
+<p float="left">
+  <img src="/docs/source/imgs/mlp_reg.png" width="500" />
+  <img src="/docs/source/imgs/mlp_residue.png" width="500" />
+</p>
+
+<p float="left">
+  <img src="/docs/source/imgs/mlp_line.png" width="500" />
+  <img src="/docs/source/imgs/mlp_edf.png" width="500" />
+</p>
 
 The model object returned from initiating AI4Water's `Model` is same as that of Keras' `Model`
 We can verify it by checking its type
@@ -181,47 +199,103 @@ For hyperparameter optimization, replace the actual values of hyperparameters
 with the space.
 ```python
 
-from ai4water import Model
-from ai4water.datasets import busan_beach
-from ai4water.hyperopt import Categorical, Integer, Real
+from ai4water.functional import Model
+from ai4water.datasets import MtropicsLaos
+from ai4water.hyperopt import Real, Integer
 
-data = busan_beach()
+data = MtropicsLaos().make_regression(lookback_steps=1)
 
 model = Model(
-    model={"XGBRegressor": {
-        "iterations": Integer(low=10, high=50, name='iterations', num_samples=10),
-        "learning_rate": Real(low=0.001, high=0.3, prior='log', name='learning_rate', num_samples=10),
-        "l2_leaf_reg": Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=10),
-        "model_size_reg": Real(low=0.01, high=10, name='model_size_reg', num_samples=10),
-        "rsm": Real(low=0.1, high=0.8, name='rsm', num_samples=10),
-        "border_count": Integer(low=32, high=50, name='border_count', num_samples=10),
-        "feature_border_type": Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
-                                                       'MaxLogSum', 'MinEntropy', 'GreedyLogSum'],
-                                           name='feature_border_type'),
-        "n_jobs": 0,
+    model = {"RandomForestRegressor": {
+        "n_estimators": Integer(low=5, high=30, name='n_estimators', num_samples=10),
+       "max_leaf_nodes": Integer(low=2, high=30, prior='log', name='max_leaf_nodes', num_samples=10),
+        "min_weight_fraction_leaf": Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=10),
+        "max_depth": Integer(low=2, high=10, name='max_depth', num_samples=10),
+        "min_samples_split": Integer(low=2, high=10, name='min_samples_split', num_samples=10),
+        "min_samples_leaf": Integer(low=1, high=5, name='min_samples_leaf', num_samples=10),
     }},
-    split_random=True,
-    seed=3244,
-    cross_validator={"KFold": {"n_splits": 10}},
     input_features=data.columns.tolist()[0:-1],
     output_features=data.columns.tolist()[-1:],
-    verbosity=-1,
+    cross_validator = {"KFold": {"n_splits": 5}},
+    x_transformation="zscore",
+    y_transformation="log",
 )
 
 # First check the performance on test data with default parameters
 model.fit_on_all_training_data(data=data)
-print(model.evaluate_on_test_data(data=data, metrics="r2_score"))
+print(model.evaluate_on_test_data(data=data, metrics=["r2_score", "r2"]))
 
 # optimize the hyperparameters
 optimizer = model.optimize_hyperparameters(
    algorithm = "bayes",  # you can choose between `random`, `grid` or `tpe`
     data=data,
-    num_iterations=100,
+    num_iterations=60,
 )
 
 # Now check the performance on test data with default parameters
-print(model.evaluate_on_test_data(data=data, metrics="r2_score"))
+print(model.evaluate_on_test_data(data=data, metrics=["r2_score", "r2"]))
 ```
+
+Running the above code will optimize the hyperparameters and generate
+following figures
+
+<p float="left">
+  <img src="/docs/source/imgs/hpo_ml_convergence.png" width="500" />
+  <img src="/docs/source/imgs/hpo_fanova_importance_hist.png" width="500" />
+</p>
+
+<p float="left">
+  <img src="/docs/source/imgs/hpo_objective.png" width="500" />
+  <img src="/docs/source/imgs/hpo_evaluations.png" width="500" />
+</p>
+
+<p float="left"> 
+  <img src="/docs/source/imgs/hpo_parallel_coordinates.png" width="500" />
+</p>
+
+
+# Experiments
+The experiments module is for comparison of multiple models on a single data
+or for comparison of one model under different conditions.
+
+```python
+from ai4water.datasets import busan_beach
+from ai4water.experiments import MLRegressionExperiments
+
+data = busan_beach()
+
+comparisons = MLRegressionExperiments(
+    input_features=data.columns.tolist()[0:-1],
+    output_features=data.columns.tolist()[-1:],
+    split_random=True
+)
+# train all the available machine learning models
+comparisons.fit(data=data)
+# Compare R2 of models 
+best_models = comparisons.compare_errors(
+    'r2',
+    data=data,
+    cutoff_type='greater',
+    cutoff_val=0.1,
+    figsize=(8, 9),
+    colors=['salmon', 'cadetblue']
+)
+# Compare model performance using Taylor diagram
+_ = comparisons.taylor_plot(
+    data=data,
+    figsize=(5, 9),
+    exclude=["DummyRegressor", "XGBRFRegressor",
+             "SGDRegressor", "KernelRidge", "PoissonRegressor"],
+    leg_kws={'facecolor': 'white',
+             'edgecolor': 'black','bbox_to_anchor':(2.0, 0.9),
+             'fontsize': 10, 'labelspacing': 1.0, 'ncol': 2
+            },
+)
+```
+<p float="left">
+  <img src="/docs/source/imgs/exp_r2.png" width="500" />
+  <img src="/docs/source/imgs/exp_taylor.png" width="500" />
+</p>
 
 
 ## Disclaimer
