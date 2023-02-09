@@ -52,6 +52,10 @@ considered.
 Module linkage
 ===============
 The information flow in the ai4water framework is illustrated in following diagram.
+The sub-modules on the left are about model building, training, hyperaparameter optimization
+and comparison of models. On the other hand, the sub-modules on the left
+are related to data-preprocessing, data-preparation, post-processing of results
+and visualization.
 
 .. image:: imgs/architecture.png
     :align: center

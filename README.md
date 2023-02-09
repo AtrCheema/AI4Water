@@ -83,6 +83,15 @@ by using the specific keyword. Following keywords are available
  - `post_process` if you want postprocessing
  - `exp` for experiments sub-module
 
+
+## Sub-modules
+AI4Water consists of several submodules, each of wich responsible for a specific tasks.
+The modules are also liked with each other. For understanding sub-module structure of
+ai4water, [see this article](https://ai4water.readthedocs.io/en/dev/understanding.html)
+<p float="left">
+  <img src="/docs/source/imgs/architecture.png" width="500" />
+</p>
+
 ## How to use
 
 Build a `Model` by providing all the arguments to initiate it.
@@ -116,7 +125,7 @@ history = model.fit(data=data)
   <img src="/docs/source/imgs/mlp_loss.png" width="500" />
 </p>
 
-Make predictions from it on test/training data
+After training, we can make predictions from it on test/training data
 ```python
 prediction = model.predict_on_test_data(data=data)
 ```
@@ -145,6 +154,7 @@ input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
 from ai4water import Model  # import any of the above model
+from ai4water.models import LSTM
 
 batch_size = 16
 lookback = 15
@@ -152,8 +162,7 @@ inputs = ['dummy1', 'dummy2', 'dummy3', 'dummy4', 'dummy5']  # just dummy names 
 outputs=['DummyTarget']
 
 model = Model(
-            model = {'layers': {"LSTM": 64,
-                                'Dense': 1}},
+            model = LSTM(units=64),
             batch_size=batch_size,
             ts_args={'lookback':lookback},
             input_features=inputs,
@@ -163,7 +172,7 @@ model = Model(
 x = np.random.random((batch_size*10, lookback, len(inputs)))
 y = np.random.random((batch_size*10, len(outputs)))
 
-history = model.fit(x=x,y=y)
+model.fit(x=x,y=y)
 
 ```
 
@@ -292,11 +301,13 @@ _ = comparisons.taylor_plot(
             },
 )
 ```
+
 <p float="left">
   <img src="/docs/source/imgs/exp_r2.png" width="500" />
   <img src="/docs/source/imgs/exp_taylor.png" width="500" />
 </p>
 
+For more comprehensive and detailed examples see [![Documentation Status](https://readthedocs.org/projects/ai4water-examples/badge/?version=latest)](https://ai4water.readthedocs.io/projects/Examples/en/latest/?badge=latest)
 
 ## Disclaimer
 The library is still under development. Fundamental changes are expected without prior notice or
