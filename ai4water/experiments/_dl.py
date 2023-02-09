@@ -19,11 +19,13 @@ class DLRegressionExperiments(Experiments):
     not allowed to optimize when using random or grid search.
 
     To check the available models
+
     >>> exp = DLRegressionExperiments(...)
     >>> exp.models
 
     If learning rate, batch size, and lookback are are to be optimzied,
     their space can be specified in the following way:
+
     >>> exp = DLRegressionExperiments(...)
     >>> exp.lookback_space = [Integer(1, 100, name='lookback')]
 
@@ -307,8 +309,8 @@ class DLClassificationExperiments(DLRegressionExperiments):
     ...     output_features=outputs,
     ...     epochs=5,
     ...     ts_args={"lookback": 5}
-    )
-    run the experiments
+    ...)
+     run the experiments
     >>> exp.fit(data=data, include=["TFT", "MLP"])
 
     """
