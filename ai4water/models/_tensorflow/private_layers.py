@@ -353,7 +353,7 @@ class TransformerBlocks(tf.keras.layers.Layer):
         -----------
         num_blocks : int
         num_heads : int
-        embed_dim :
+        embed_dim : int
         **kwargs :
             additional keyword arguments for :class:`ai4water.models.tensorflow.Transformer`
         """
@@ -361,10 +361,19 @@ class TransformerBlocks(tf.keras.layers.Layer):
         super(TransformerBlocks, self).__init__(name=name)
         self.num_blocks = num_blocks
         self.num_heads = num_heads
+        self.embed_dim = embed_dim
 
         self.blocks = []
         for n in range(num_blocks):
             self.blocks.append(Transformer(num_heads, embed_dim, **kwargs))
+
+    def get_config(self)->dict:
+        config = {
+            "num_blocks": self.num_blocks,
+            "num_heads": self.num_heads,
+            "embed_dim": self.embed_dim
+        }
+        return config
 
     def __call__(self, inputs, *args, **kwargs):
 
@@ -468,6 +477,18 @@ class Transformer(tf.keras.layers.Layer):
 
         return tf.keras.Sequential(lyrs)
 
+    def get_config(self)->dict:
+        config = {
+            "num_heads": self.num_heads,
+            "embed_dim": self.embed_dim,
+            "dropout": self.dropout,
+            "post_norm": self.post_norm,
+            "pre_norm_mlp": self.prenorm_mlp,
+            "seed": self.seed,
+            "num_dense_lyrs": self.num_dense_lyrs
+        }
+        return config
+
     def __call__(self, inputs, *args, **kwargs):
 
         inputs = self.layernorm1(inputs)
@@ -514,6 +535,13 @@ class NumericalEmbeddings(layers.Layer):
             ), trainable=True, name="NumEmbeddingBias")
         return
 
+    def get_config(self)->dict:
+        config = {
+            "num_features": self.num_features,
+            "emb_dim": self.emb_dim
+        }
+        return config
+
     def call(self, X, *args, **kwargs):
         embs = tf.einsum('f n e, b f -> bfe', self.linear_w, X)
         embs = tf.nn.relu(embs + self.linear_b)
@@ -543,7 +571,9 @@ class CatEmbeddings(layers.Layer):
     ):
         super(CatEmbeddings, self).__init__(*args, **kwargs)
 
+        self.vocabulary = vocabulary
         self.embed_dim = embed_dim
+        self.lookup_kws = lookup_kws
         self.lookups = {}
         self.embedding_lyrs = {}
         self.feature_names = []
@@ -571,6 +601,14 @@ class CatEmbeddings(layers.Layer):
             self.embedding_lyrs[feature_name] = embedding
 
             self.feature_names.append(feature_name)
+
+    def get_config(self)->dict:
+        config = {
+            "lookup_kws": self.lookup_kws,
+            "embed_dim": self.embed_dim,
+            "vocabulary": self.vocabulary
+        }
+        return config
 
     def call(self, inputs, *args, **kwargs):
         """

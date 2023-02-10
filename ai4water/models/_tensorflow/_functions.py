@@ -339,8 +339,13 @@ def LSTMAutoEncoder(
 
     for idx, enc_lyr in enumerate(range(encoder_layers)):
 
+        return_sequences = False
+        if idx + 1 != encoder_layers:
+            return_sequences = True
+
         config = {
-            "units": encoder_units[idx]
+            "units": encoder_units[idx],
+            "return_sequences": return_sequences
         }
         lyr = {f"LSTM_e{idx}": config}
         layers.update(lyr)
@@ -349,8 +354,13 @@ def LSTMAutoEncoder(
 
     for idx, dec_lyr in enumerate(range(decoder_layers)):
 
+        return_sequences = False
+        if idx + 1 != decoder_units:
+            return_sequences = True
+
         config = {
-            "units": decoder_units[idx]
+            "units": decoder_units[idx],
+            "return_sequences": return_sequences
         }
         lyr = {f"LSTM_d{idx}": config}
         layers.update(lyr)

@@ -89,7 +89,7 @@ AI4Water consists of several submodules, each of wich responsible for a specific
 The modules are also liked with each other. For understanding sub-module structure of
 ai4water, [see this article](https://ai4water.readthedocs.io/en/dev/understanding.html)
 <p float="left">
-  <img src="/docs/source/imgs/architecture.png" width="700" height="800"/>
+  <img src="/docs/source/imgs/architecture.png" width="800" height="700"/>
 </p>
 
 ## How to use

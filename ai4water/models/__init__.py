@@ -442,6 +442,7 @@ def LSTM(
     Examples
     --------
     >>> from ai4water import Model
+    >>> from ai4water.models import LSTM
     >>> from ai4water.datasets import busan_beach
     >>> data = busan_beach()
     >>> input_features = data.columns.tolist()[0:-1]
@@ -676,15 +677,16 @@ def CNN(
     >>> from ai4water.datasets import busan_beach
     ...
     >>> data = busan_beach()
+    >>> time_steps = 5
     >>> input_features = data.columns.tolist()[0:-1]
     >>> output_features = data.columns.tolist()[-1:]
-    >>> model_config = CNN(32, 2, "1D", input_shape=(5, 10))
-    >>> model = Model(model=model_config, ts_args={"lookback": 5}, backend="pytorch",
+    >>> model_config = CNN(32, 2, "1D", input_shape=(time_steps, len(input_features)))
+    >>> model = Model(model=model_config, ts_args={"lookback": time_steps}, backend="pytorch",
     ...         input_features=input_features, output_features=output_features)
     ...
     >>> model.fit(data=data)
-    >>> model_config = CNN(32, 2, "1D", pooling_type="MaxPool", input_shape=(5, 10))
-    >>> model = Model(model=model_config, ts_args={"lookback": 5}, backend="pytorch",
+    >>> model_config = CNN(32, 2, "1D", pooling_type="MaxPool", input_shape=(time_steps, len(input_features)))
+    >>> model = Model(model=model_config, ts_args={"lookback": time_steps}, backend="pytorch",
     ...         input_features=input_features, output_features=output_features)
     ...
     >>> model.fit(data=data)
@@ -805,7 +807,7 @@ def CNNLSTM(
     >>> model_config = CNNLSTM(input_shape=(lookback_steps, len(inputs)), sub_sequences=3)
     ... # build the model
     >>> model = Model(model=model_config, input_features=inputs,
-    ...    num_outputs=outputs, ts_args={"lookback": lookback_steps})
+    ...    output_features=outputs, ts_args={"lookback": lookback_steps})
     ... # train the model
     >>> model.fit(data=data)
 
@@ -891,9 +893,30 @@ def LSTMAutoEncoder(
 
     Examples
     --------
-    >>> LSTMAutoEncoder((5, 10), 2, 2, 32, 32)
+    >>> from ai4water import Model
+    >>> from ai4water.models import LSTMAutoEncoder
+    >>> from ai4water.datasets import busan_beach
+    ... # define data and input/output features
+    >>> data = busan_beach()
+    >>> inputs = data.columns.tolist()[0:-1]
+    >>> outputs = [data.columns.tolist()[-1]]
+    >>> lookback_steps = 9
+    ... # get configuration of CNNLSTM as dictionary which can be given to Model
+    >>> model_config = LSTMAutoEncoder((lookback_steps, len(inputs)), 2, 2, 32, 32)
+    ... # build the model
+    >>> model = Model(model=model_config, input_features=inputs,
+    ... output_features=outputs, ts_args={"lookback": lookback_steps})
+    ... # train the model
+    >>> model.fit(data=data)
 
-    >>> LSTMAutoEncoder((5, 10), 2, 2, [64, 32], [32, 64])
+    specify neurons in each of encoder and decoder LSTMs
+
+    >>> model_config = LSTMAutoEncoder((lookback_steps, len(inputs)), 2, 2, [64, 32], [32, 64])
+    ... # build the model
+    >>> model = Model(model=model_config, input_features=inputs,
+    ... output_features=outputs, ts_args={"lookback": lookback_steps})
+    ... # train the model
+    >>> model.fit(data=data)
     """
 
     check_backend("LSTMAutoEncoder", backend=backend)
@@ -973,7 +996,21 @@ def TCN(
 
     Examples
     --------
-    >>> TCN((5, 10), 32)
+    >>> from ai4water import Model
+    >>> from ai4water.models import TCN
+    >>> from ai4water.datasets import busan_beach
+    ... # define data and input/output features
+    >>> data = busan_beach()
+    >>> inputs = data.columns.tolist()[0:-1]
+    >>> outputs = [data.columns.tolist()[-1]]
+    >>> lookback_steps = 9
+    ... # get configuration of CNNLSTM as dictionary which can be given to Model
+    >>> model_config = TCN((lookback_steps, len(inputs)), 32)
+    ... # build the model
+    >>> model = Model(model=model_config, input_features=inputs,
+    ...    output_features=outputs, ts_args={"lookback": lookback_steps})
+    ... # train the model
+    >>> model.fit(data=data)
 
     """
     check_backend("TCN", backend=backend)
@@ -1048,11 +1085,12 @@ def TFT(
 
     Examples
     --------
-    >>> from ai4water import Model
+    >>> from ai4water.functional import Model
     >>> from ai4water.models import TFT
     >>> from ai4water.datasets import busan_beach
     >>> model = Model(model=TFT(input_shape=(14, 13)),
     ...                   ts_args={"lookback": 14})
+    >>> model.fit(data=busan_beach())
     """
 
     kws = dict(

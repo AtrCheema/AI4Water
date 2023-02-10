@@ -148,8 +148,8 @@ class Learner(AttributeContainer):
         -------
             >>> from torch import nn
             >>> import torch
-            >>> from ai4water.models.torch import Learner
-
+            >>> from ai4water.models._torch import Learner
+            ...
             >>> class Net(nn.Module):
             >>>    def __init__(self, D_in, H, D_out):
             ...        super(Net, self).__init__()

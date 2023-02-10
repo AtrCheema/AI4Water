@@ -150,7 +150,7 @@ def regression_space(
                     True]},
         "OneClassSVM": {
             "param_space": [
-                Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
+                Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel'),
                 Real(low=0.1, high=0.9, name='nu', num_samples=num_samples),
                 Categorical(categories=[True, False], name='shrinking')],
             "x0":

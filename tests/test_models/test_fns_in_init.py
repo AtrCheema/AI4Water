@@ -138,5 +138,32 @@ class TestModels(unittest.TestCase):
         model.fit(data=busan_beach(), verbose=0)
         return
 
+    def test_lstm_autoencoder_1lyr(self):
+
+        lookback_steps = 9
+        # get configuration of CNNLSTM as dictionary which can be given to Model
+        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, 32, 32)
+        # build the model
+        model = Model(model=model_config, input_features=input_features,
+                      output_features=output_features, ts_args={"lookback": lookback_steps},
+                      verbosity=0)
+        # train the model
+        model.fit(data=data, verbose=0, epochs=1)
+
+        return
+
+    def test_lstm_autoencoder_2lyr(self):
+        lookback_steps = 9
+        # specify neurons in each of encoder and decoder LSTMs
+
+        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, [64, 32], [32, 64])
+        # build the model
+        model = Model(model=model_config, input_features=input_features,
+                      output_features=output_features, ts_args={"lookback": lookback_steps},
+                      verbosity=0)
+        # train the model
+        model.fit(data=data, verbose=0, epochs=1)
+        return
+
 if __name__ == "__main__":
     unittest.main()

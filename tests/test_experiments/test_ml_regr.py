@@ -80,7 +80,8 @@ class TestExperiments(unittest.TestCase):
         return
 
     def test_optimize(self):
-        best_models = ['BaggingRegressor', 'ARDRegression']
+        best_models = ['BaggingRegressor', 'ARDRegression', "LassoLarsIC", "NuSVR",
+                       "SVR", "TheilSenRegressor", "SGDRegressor", "OneClassSVM"]
 
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
@@ -93,7 +94,8 @@ class TestExperiments(unittest.TestCase):
         comparisons.num_samples = 2
         comparisons.fit(data=df, run_type="optimize", opt_method="random",
                         num_iterations=4,
-                        include=best_models, post_optimize='eval_best')
+                        include=best_models, post_optimize='eval_best',
+                        hpo_kws=dict(process_results=False))
         comparisons.compare_errors('r2', data=df)
         comparisons.taylor_plot(data=df)
         comparisons.plot_improvement('r2')

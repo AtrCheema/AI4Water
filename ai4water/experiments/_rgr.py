@@ -512,7 +512,7 @@ class MLRegressionExperiments(Experiments):
 
         return {'model': {'TweedieRegressor': kwargs}}
 
-    def model_TheilsenRegressor(self, **kwargs):
+    def model_TheilSenRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
 
         self.path = "sklearn.linear_model.TheilSenRegressor"

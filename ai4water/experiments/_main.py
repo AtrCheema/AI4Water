@@ -465,7 +465,7 @@ class Experiments(object):
             exclude: Union[None, list, str] = '',
             cross_validate: bool = False,
             post_optimize: str = 'eval_best',
-            hpo_kws: dict = None
+            **hpo_kws
     ):
         """
         Runs the fit loop for all the ``models`` of experiment. The user can
