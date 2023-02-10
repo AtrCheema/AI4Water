@@ -768,7 +768,7 @@ class MtropicsLaos(Datasets):
             en :
                 end date of data
             freq : frequency of data
-            lookback_steps:
+            lookback_steps : int, default=None
                 the number of previous steps to use. If this argument is used,
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.

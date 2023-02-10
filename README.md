@@ -131,13 +131,13 @@ prediction = model.predict_on_test_data(data=data)
 ```
 
 <p float="left">
-  <img src="/docs/source/imgs/mlp_reg.png" width="500" />
-  <img src="/docs/source/imgs/mlp_residue.png" width="500" />
+  <img src="/docs/source/imgs/mlp_reg.png" width="400" />
+  <img src="/docs/source/imgs/mlp_residue.png" width="400" />
 </p>
 
 <p float="left">
-  <img src="/docs/source/imgs/mlp_line.png" width="500" />
-  <img src="/docs/source/imgs/mlp_edf.png" width="500" />
+  <img src="/docs/source/imgs/mlp_line.png" width="400" />
+  <img src="/docs/source/imgs/mlp_edf.png" width="400" />
 </p>
 
 The model object returned from initiating AI4Water's `Model` is same as that of Keras' `Model`
@@ -249,8 +249,8 @@ Running the above code will optimize the hyperparameters and generate
 following figures
 
 <p float="left">
-  <img src="/docs/source/imgs/hpo_ml_convergence.png" width="500" />
-  <img src="/docs/source/imgs/hpo_fanova_importance_hist.png" width="500" />
+  <img src="/docs/source/imgs/hpo_ml_convergence.png" width="400" />
+  <img src="/docs/source/imgs/hpo_fanova_importance_hist.png" width="400" />
 </p>
 
 <p float="left">

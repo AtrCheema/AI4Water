@@ -59,7 +59,7 @@ class fANOVA(object):
     ... # calculate importance
     >>> imp = f.feature_importance()
 
-    # for categorical parameters
+    for categorical parameters
 
     >>> x = pd.DataFrame(['2', '2', '3', '1', '1', '2', '2', '1', '3', '3', '3'], columns=['a'])
     >>> x['b'] = ['3', '3', '1', '3', '1', '2', '4', '4', '3', '3', '4']
@@ -69,7 +69,7 @@ class fANOVA(object):
     ... # calculate importance
     >>> imp = f.feature_importance()
 
-    # for mix types
+    for mix types
 
     >>> x = pd.DataFrame(['2', '2', '3', '1', '1', '2', '2', '1', '3', '3', '3'], columns=['a'])
     >>> x['b'] = np.arange(100, 100+len(x))
