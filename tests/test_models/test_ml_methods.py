@@ -31,9 +31,10 @@ cols = data_class['feature_names'].tolist() + ['target']
 df_class = pd.DataFrame(np.concatenate([data_class['data'], data_class['target'].reshape(-1,1)], axis=1), columns=cols)
 
 
-def run_class_test(method):
+def run_class_test(method, mode=None):
 
-    mode = "classification" if "class" in method else "regression"
+    if mode is None:
+        mode = "classification" if "class" in method else "regression"
 
     if method not in ["STACKINGREGRESSOR", "VOTINGREGRESSOR",  "LOGISTICREGRESSIONCV", # has convergence issues
                       "RIDGE_REGRESSION", "MULTIOUTPUTREGRESSOR", "REGRESSORCHAIN", "REGRESSORMIXIN",
@@ -121,6 +122,10 @@ class TestMLMethods(unittest.TestCase):
 
     def test_LinearSVR(self):
         run_class_test("LinearSVR")
+        return
+
+    def test_LinearSVC(self):
+        run_class_test("LinearSVC", "classification")
         return
 
     def test_OrthogonalMatchingPursuitCV(self):

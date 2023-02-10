@@ -1,13 +1,17 @@
-import os
-import ssl
-from typing import Union
 
+import os
+import sys
+import ssl
+import glob
+import shutil
+import zipfile
 import tempfile
-import sys, shutil
+from typing import Union, List
 import urllib.request as ulib
 import urllib.parse as urlparse
 
-import pandas as pd
+from ai4water.backend import pd, np
+
 
 try:
     import requests
@@ -51,7 +55,12 @@ def download_all_http_directory(url, outpath=None, filetypes=".zip", match_name=
     mathc_name str: if not None, then only those files will be downloaded whose name
         have match_name string in them.
     """
-    import bs4
+    try:
+        import bs4
+    except (ModuleNotFoundError, ImportError) as e:
+        raise e(f"You must install bs4 library e.g. by using"
+                f"pip install bs4")
+
     if os.name == 'nt':
         ssl._create_default_https_context = ssl._create_unverified_context
     page = list(urlparse.urlsplit(url))[2].split('/')[-1]
@@ -89,6 +98,8 @@ def download(url, out=None):
     if out is not None:
         outdir = os.path.dirname(out)
         out_filename = os.path.basename(out)
+        if outdir == '':
+            outdir = os.getcwd()
         if not os.path.exists(outdir):
             os.makedirs(outdir)
     else:
@@ -195,7 +206,7 @@ def check_attributes(attributes, check_against: list) -> list:
     return attributes
 
 
-def sanity_check(dataset_name, path):
+def sanity_check(dataset_name, path, url=None):
     if dataset_name in DATA_FILES:
         if dataset_name == 'CAMELS-GB':
             if not os.path.exists(os.path.join(path, 'data')):
@@ -205,6 +216,22 @@ def sanity_check(dataset_name, path):
                 for file in DATA_FILES[dataset_name]:
                     if not os.path.exists(os.path.join(data_path, file)):
                         raise FileNotFoundError(f"File {file} must exist inside {data_path}")
+    _maybe_not_all_files_downloaded(path, url)
+    return
+
+
+def _maybe_not_all_files_downloaded(
+        path:str,
+        url:Union[str, list, dict]
+):
+    if isinstance(url, dict):
+        available_files = os.listdir(path)
+
+        for fname, link in url.items():
+            if fname not in available_files:
+                print(f"file {fname} is not available so downloading it now.")
+                download_and_unzip(path, {fname:link})
+
     return
 
 
@@ -234,3 +261,214 @@ def check_st_en(
         df = df.loc[st:en]
 
     return df
+
+
+def unzip_all_in_dir(dir_name, ext=".gz"):
+    gz_files = glob.glob(f"{dir_name}/*{ext}")
+    for f in gz_files:
+        shutil.unpack_archive(f, dir_name)
+    return
+
+
+def maybe_download(ds_dir,
+                   url:Union[str, List[str], dict],
+                   overwrite:bool=False,
+                   name=None,
+                   include:list=None,
+                   **kwargs):
+    """
+    Parameters
+    ----------
+    ds_dir :
+    url :
+    overwrite :
+    name :
+    include :
+    **kwargs :
+        any keyword arguments for download_and_unzip function
+    """
+    if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
+        if overwrite:
+            print(f"removing previous data directory {ds_dir} and downloading new")
+            shutil.rmtree(ds_dir)
+            download_and_unzip(ds_dir, url=url, include=include, **kwargs)
+        else:
+            print(f"""
+    Not downloading the data since the directory 
+    {ds_dir} already exists.
+    Use overwrite=True to remove previously saved files and download again""")
+            sanity_check(name, ds_dir, url)
+    else:
+        download_and_unzip(ds_dir, url=url, include=include, **kwargs)
+    return
+
+
+def download_and_unzip(path,
+                       url:Union[str, List[str], dict],
+                       include=None,
+                       **kwargs):
+    """
+
+    parameters
+    ----------
+    path :
+    url :
+
+    include :
+        files to download. Files which are not in include will not be
+        downloaded.
+    **kwargs :
+        any keyword arguments for download_from_zenodo function
+    """
+    from .download_zenodo import download_from_zenodo
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+    if isinstance(url, str):
+        if 'zenodo' in url:
+            download_from_zenodo(path, doi=url, include=include, **kwargs)
+        else:
+            download(url, path)
+        _unzip(path)
+    elif isinstance(url, list):
+        for url in url:
+            if 'zenodo' in url:
+                download_from_zenodo(path, url, include=include, **kwargs)
+            else:
+                download(url, path)
+        _unzip(path)
+    elif isinstance(url, dict):
+        for fname, url in url.items():
+            if 'zenodo' in url:
+                download_from_zenodo(path, doi=url, include=include, **kwargs)
+            else:
+                download(url, os.path.join(path, fname))
+        _unzip(path)
+
+    else:
+        raise ValueError(f"Invalid url: {path}, {url}")
+
+    return
+
+
+def _unzip(ds_dir, dirname=None):
+    """unzip all the zipped files in a directory"""
+    if dirname is None:
+        dirname = ds_dir
+
+    all_files = glob.glob(f"{dirname}/*.zip")
+    for f in all_files:
+        src = os.path.join(dirname, f)
+        trgt = os.path.join(dirname, f.split('.zip')[0])
+        if not os.path.exists(trgt):
+            print(f"unzipping {src} to {trgt}")
+            with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
+                try:
+                    zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
+                except OSError:
+                    filelist = zip_ref.filelist
+                    for _file in filelist:
+                        if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
+                            zip_ref.extract(_file)
+
+    # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
+    gz_files = glob.glob(f"{ds_dir}/*.gz")
+    for f in gz_files:
+        shutil.unpack_archive(f, ds_dir)
+
+    return
+
+
+class OneHotEncoder(object):
+    """
+    >>> from ai4water.datasets import mg_photodegradation
+    >>> data, _, _ = mg_photodegradation()
+    >>> cat_enc1 = OneHotEncoder()
+    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> _cat = cat_enc1.inverse_transform(cat_)
+    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    """
+    def fit(self, X:np.ndarray):
+        assert len(X) == X.size
+        categories, inverse = np.unique(X, return_inverse=True)
+        X = np.eye(categories.shape[0])[inverse]
+        self.categories_ = [categories]
+        return X
+
+    def transform(self, X):
+        return X
+
+    def fit_transform(self, X):
+        return self.transform(self.fit(X))
+
+    def inverse_transform(self, X):
+        return pd.DataFrame(X, columns=self.categories_[0]).idxmax(1).values
+
+
+class LabelEncoder(object):
+    """
+    >>> from ai4water.datasets import mg_photodegradation
+    >>> data, _, _ = mg_photodegradation()
+    >>> cat_enc1 = LabelEncoder()
+    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> _cat = cat_enc1.inverse_transform(cat_)
+    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    """
+    def fit(self, X):
+        assert len(X) == X.size
+        categories, inverse = np.unique(X, return_inverse=True)
+        self.categories_ = [categories]
+        labels = np.unique(inverse)
+        self.mapper_ = {label:category for category,label in zip(categories, labels)}
+        return inverse
+
+    def transform(self, X):
+        return X
+
+    def fit_transform(self, X):
+        return self.transform(self.fit(X))
+
+    def inverse_transform(self, X:np.ndarray):
+        assert len(X) == X.size
+        X = np.array(X).reshape(-1,)
+        return pd.Series(X).map(self.mapper_).values
+
+
+def encode_column(
+        df:pd.DataFrame,
+        col_name:str,
+        encoding:str
+)->tuple:
+    """encode a column in a dataframe according the encoding type"""
+    if encoding == "ohe":
+        return ohe_column(df, col_name)
+    elif encoding == "le":
+        return le_column(df, col_name)
+    else:
+        raise ValueError
+
+
+def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
+    """one hot encode a column in datatrame"""
+    assert isinstance(col_name, str)
+    assert isinstance(df, pd.DataFrame)
+
+    encoder = OneHotEncoder()
+    ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
+    cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
+
+    df[cols_added] = ohe_cat
+
+    df.pop(col_name)
+
+    return df, cols_added, encoder
+
+
+def le_column(df:pd.DataFrame, col_name:str)->tuple:
+    """label encode a column in dataframe"""
+    encoder = LabelEncoder()
+    index = df.columns.to_list().index(col_name)
+    encoded = encoder.fit_transform(df[col_name])
+    df.pop(col_name)
+    df.insert(index, col_name, encoded)
+    return df, None, encoder

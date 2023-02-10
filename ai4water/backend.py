@@ -7,20 +7,21 @@ other files of ai4water.
 __all__ = ["np", "os", "plt", "mpl", "pd", "random", "scipy", "stats",
            "easy_mpl", "SeqMetrics",
            "sklearn",
+           "xgboost", "catboost", "lightgbm",
            "skopt", "hyperopt", "hp", "optuna",
            "xr", "fiona", "netCDF4",
            "sns", "imageio", "shapefile", "tf", "torch", "keras",
            "requests", "plotly", "h5py", "lime",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
-           "get_attributes"]
+           "get_attributes",
+           "wandb", "WandbCallback",
+           ]
 
 from types import FunctionType
 
 import os
 import random
 
-import skopt
-import sklearn
 import easy_mpl
 import scipy
 from scipy import stats
@@ -30,6 +31,10 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+try:
+    import sklearn
+except (ModuleNotFoundError, ImportError):
+    sklearn = None
 
 
 def get_attributes(
@@ -155,6 +160,10 @@ except ModuleNotFoundError:
     tf = None
 
 try:
+    import skopt
+except ModuleNotFoundError:
+    skopt = None
+try:
     import tcn
 except ModuleNotFoundError:
     tcn = None
@@ -278,6 +287,13 @@ keras = keras
 torch = torch
 tf = tf
 
+
+try:
+    from wandb.keras import WandbCallback
+    import wandb
+except ModuleNotFoundError:
+    WandbCallback = None
+    wandb = None
 
 if tf is not None:
     BACKEND = 'tensorflow'

@@ -4,27 +4,33 @@ from typing import Union
 
 import pandas as pd
 
-from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada
+from ai4water.datasets import busan_beach
+from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin
+from ai4water.datasets import HydrometricParana, EtpPcpSamoylov, HydrocarbonsGabes
+from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope
+from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain
+from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee
+from ai4water.datasets import PrecipBerlin, RiverTempEroo
+from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
+from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada, gw_punjab
+from ai4water.datasets import qe_biochar_ec, mg_photodegradation
 
 
-def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, str] = 'index'):
+def check_data(dataset, num_datasets=1,
+               min_len_data=1, index_col: Union[None, str] = 'index'):
     data = dataset.fetch(index_col=index_col)
     assert len(data) == num_datasets, f'data is of length {len(data)}'
 
     for k, v in data.items():
         assert len(v) >= min_len_data, f'{v} if length {len(v)}'
         if index_col is not None:
-            assert isinstance(v.index, pd.DatetimeIndex), f'for {k} index is of type {type(v.index)}'
+            assert isinstance(v.index, pd.DatetimeIndex), f"""
+            for {k} index is of type {type(v.index)}"""
     return
 
 
 def test_jena_weather():
-    wj = WeatherJena()
+    wj = WeatherJena(path=r'F:\data\WeatherJena')
     df = wj.fetch()
 
     assert df.shape[0] >= 919551
@@ -37,7 +43,7 @@ def test_jena_weather():
 
 
 def test_swe_canada():
-    swe = SWECanada()
+    swe = SWECanada(path=r'F:\data\SWECanada')
 
     stns = swe.stations()
 
@@ -61,15 +67,15 @@ def test_swe_canada():
 class TestPangaea(unittest.TestCase):
 
     def test_Weisssee(self):
-        dataset = Weisssee()
+        dataset = Weisssee(path=r'F:\data\Weisssee')
         check_data(dataset, 21, 29)
 
     def test_jordanwq(self):
-        dataset = WQJordan()
+        dataset = WQJordan(path=r'F:\data\WQJordan')
         check_data(dataset, 1, 428)
 
     def test_jordanwq2(self):
-        dataset = WQJordan2()
+        dataset = WQJordan2(path=r'F:\data\WQJordan2')
         check_data(dataset, 1, 189)
 
     def test_YamaguchiClimateJp(self):
@@ -158,6 +164,58 @@ class TestPangaea(unittest.TestCase):
 
     def test_jena_weather(self):
         test_jena_weather()
+        return
+
+    def test_gw_punjab(self):
+        df = gw_punjab()
+        assert df.shape == (68782, 5)
+        assert isinstance(df.index, pd.DatetimeIndex)
+        df_lts = gw_punjab("LTS")
+        assert df_lts.shape == (68782, 4)
+        assert isinstance(df_lts.index, pd.DatetimeIndex)
+
+        df = gw_punjab(country="IND")
+        assert df.shape == (29172, 5)
+        df = gw_punjab(country="PAK")
+        assert df == (39610, 5)
+        return
+
+    def test_qe_biochar(self):
+        data, *_ = qe_biochar_ec()
+        assert data.shape == (3757, 27)
+        data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+        assert data.shape == (3757, 27)
+        assert data.sum().sum() >= 10346311.47
+        ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
+        pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
+        wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
+        adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
+        data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+        assert data.shape == (3757, 58)
+        adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
+        polt_enc.inverse_transform(data.iloc[:, 37:51].values)
+        wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
+        adspt_enc.inverse_transform(data.iloc[:, -3:-1].values)
+        return
+
+    def test_mg_photodegradation(self):
+        data, *_ = mg_photodegradation()
+        assert data.shape == (1200, 12)
+        data, cat_enc, an_enc = mg_photodegradation(encoding="le")
+        assert data.shape == (1200, 12)
+        assert data.sum().sum() >= 406354.95
+        cat_enc.inverse_transform(data.iloc[:, 9].values.astype(int))
+        an_enc.inverse_transform(data.iloc[:, 10].values.astype(int))
+        data, cat_enc, an_enc = mg_photodegradation(encoding="ohe")
+        assert data.shape == (1200, 31)
+        cat_enc.inverse_transform(data.iloc[:, 9:24].values)
+        an_enc.inverse_transform(data.iloc[:, 24:30].values)
+
+        return
+
+    def test_busan(self):
+        data = busan_beach()
+        assert data.shape == (1446, 14)
         return
 
 

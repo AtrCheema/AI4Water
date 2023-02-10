@@ -4,12 +4,12 @@ from collections import OrderedDict
 
 
 from ._main import BaseModel
-from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn
+from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, MULTI_INPUT_LAYERS
 from .nn_tools import get_call_args
 from .backend import tf, torch, np, os
 import ai4water.backend as K
 
-from .models.torch import LAYERS as TORCH_LAYERS
+from .models._torch import LAYERS as TORCH_LAYERS
 from .tf_attributes import LAYERS
 
 if K.BACKEND == 'tensorflow' and tf is not None:
@@ -68,13 +68,16 @@ class Model(MODEL, BaseModel):
 
         self._go_up = True
         BaseModel.__init__(self,
-                           prefix=prefix, path=path, verbosity=verbosity, model=model,
+                           prefix=prefix,
+                           path=path,
+                           verbosity=verbosity,
+                           model=model,
                            **kwargs)
 
         self.config['backend'] = K.BACKEND
 
         if torch is not None:
-            from .models.torch import Learner
+            from .models._torch import Learner
             self.torch_learner = Learner(
                 model=self,
                 batch_size=self.config['batch_size'],
@@ -410,6 +413,8 @@ class Model(MODEL, BaseModel):
 
                 first_layer = False
 
+            self.jsonize_lyr_config(lyr_config)
+
         # inputs = [] todo, indentify input layers
         # for k,v in lyr_cache.items():
         #     since the model is not build yet and we have access to only output tensors of each list, this is probably
@@ -505,7 +510,7 @@ class Model(MODEL, BaseModel):
                 # this must be an input layer
                 # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
-                    assert all([is_input(_input) for _input in inputs])
+                    assert all([is_input(_input) for _input in inputs]), inputs
                 if isinstance(inputs, tuple):
                     if not run_call:
                         assert all([is_input(_input) for _input in inputs])
@@ -522,30 +527,30 @@ class Model(MODEL, BaseModel):
             else:
                 _inputs = lyr_args.get('inputs', None)
 
-                # inputs have not been explicitly defined by the user so just use previous output
+                # inputs have not been explicitly defined by the user so just
+                # use previous output
                 if _inputs is None:
                     _inputs = prev_output_name
 
                 if idx == 1 and _inputs not in cache:
                     call_args, add_args = inputs, {}
                 else:
-                    call_args, add_args = get_call_args(_inputs, cache, lyr_args['call_args'], lyr)
+                    call_args, add_args = get_call_args(
+                        _inputs,
+                        cache, lyr_args['call_args'], lyr)
 
                 # call the initiated layer
-                outs = lyr_args['layer'](call_args, **add_args)
+                if lyr in MULTI_INPUT_LAYERS:
+                    outs = lyr_args['layer'](*call_args, **add_args)
+                else:
+                    outs = lyr_args['layer'](call_args, **add_args)
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if input_tensor:
                 input_tensor = False
@@ -615,13 +620,7 @@ class Model(MODEL, BaseModel):
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if is_input_tensor:
                 is_input_tensor = False
@@ -630,6 +629,22 @@ class Model(MODEL, BaseModel):
             prev_output_name = lyr
 
         return outs
+
+    @staticmethod
+    def _maybe_handle_multi_outs(lyr_args, cache, outs):
+        if lyr_args['named_outs'] is not None:
+            if isinstance(outs, (list, tuple)):
+                # the layer gives multiple outputs either as list/tuple
+                if len(lyr_args['named_outs']) == len(outs):
+                    for name, out_tensor in zip(lyr_args['named_outs'], outs):
+                        cache[name] = out_tensor
+                else:
+                    # even though the layer gives multiple outputs
+                    # but the user has assigned it to single variable
+                    cache[lyr_args['named_outs']] = outs
+            else:
+                cache[lyr_args['named_outs']] = outs
+        return
 
     def treat_casted_inputs(self, casted_inputs):
         if isinstance(casted_inputs, tuple) or isinstance(casted_inputs, list):
@@ -714,13 +729,7 @@ class Model(MODEL, BaseModel):
                 if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
-                if lyr_args['named_outs'] is not None:
-                    if isinstance(outs, list):
-                        assert len(lyr_args['named_outs']) == len(outs)
-                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
-                            cache[name] = out_tensor
-                    else:
-                        cache[lyr_args['named_outs']] = outs
+                self._maybe_handle_multi_outs(lyr_args, cache, outs)
 
             if input_tensor:
                 input_tensor = False  # cache[_tensor.name] = _tensor
@@ -823,7 +832,7 @@ class Model(MODEL, BaseModel):
         elif self.category == "ML":
             self.build_ml_model()
 
-        if not getattr(self, 'from_check_point', False):
+        if not getattr(self, 'from_check_point', False) and self.verbosity>=0:
             # fit may fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
@@ -904,19 +913,12 @@ class Model(MODEL, BaseModel):
                 config = _config
             else:
                 config_path = _config
-            config, path = BaseModel._get_config_and_path(cls,
-                                                          config=config,
-                                                          config_path=config_path,
-                                                          make_new_path=kwargs.get('make_new_path', False))
-            if 'make_new_path' in kwargs:
-                kwargs.pop('make_new_path')
-
-            if 'verbosity' in kwargs:
-                config['verbosity'] = kwargs.pop('verbosity')
-
-            return cls(**config,
-                       path=path,
-                       **kwargs)
+            return BaseModel._get_config_and_path(
+                cls,
+                config=config,
+                config_path=config_path,
+                **kwargs
+            )
 
         # tf1.15 has from_config so call it
         return super().from_config(*args, **kwargs)
@@ -930,7 +932,7 @@ class Model(MODEL, BaseModel):
         return history
 
     def predict_pytorch(self, x, **kwargs):
-        from .models.torch.utils import to_torch_dataset
+        from .models._torch.utils import to_torch_dataset
         from torch.utils.data import DataLoader
 
         if isinstance(x, torch.utils.data.Dataset):
@@ -986,8 +988,9 @@ def assign_dummy_name(tensor, dummy_name):
     if tf.executing_eagerly():
         setattr(tensor, '__dummy_name', dummy_name)
     else:
-        if "CAST" in tensor.name.upper() or "IteratorGetNext" in tensor.name:
+        if "CAST" in tensor.name.upper() or "IteratorGetNext" in tensor.name or len(getattr(tensor, '_consumers', [1]))==0:
             setattr(tensor, '__dummy_name', dummy_name)
             print(f"assigning name {dummy_name} to {tensor.name} with shape {getattr(tensor, 'shape', None)}")
         else:
             setattr(tensor, '__dummy_name', tensor.name)
+    return

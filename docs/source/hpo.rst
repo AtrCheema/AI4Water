@@ -6,7 +6,7 @@ optimization by minimizing the objective which is defined by a user defined
 objective function. The space of hyperparameters can be defined by 
 using `Categorical`, `Integer` and `Real` classes.
 
-For tutorial on using this class, see this `hpo_tutorial`_ notebook
+For tutorial on using this class, see `tutorials`_
 
 Categorical
 ===========
@@ -39,5 +39,13 @@ HyperOpt
    .. automethod:: __init__
    .. automethod:: __getattr__
 
-.. _hpo_tutorial:
-    https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb
+.. _tutorials:
+    https://ai4water.readthedocs.io/projects/Examples/en/dev/_notebooks/main.html
+
+
+fANOVA
+=======
+.. autoclass:: ai4water.hyperopt.fANOVA
+   :members:
+
+   .. automethod:: __init__

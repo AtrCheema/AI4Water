@@ -4,17 +4,16 @@ import warnings
 from typing import Union, List, Dict
 
 import scipy.stats as stats
-from pandas.plotting._matplotlib.tools import create_subplots
-
 
 from .utils import _missing_vals
 from ai4water.backend import easy_mpl as ep
 from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.utils import find_tot_plots, get_nrows_ncols
+from ai4water.utils.utils import create_subplots
 from ai4water.preprocessing import Transformation
-from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 from ai4water.backend import np, pd, os, plt, sns, mpl
+from ai4water.utils.utils import find_tot_plots, get_nrows_ncols
+from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
 ticker = mpl.ticker
 
@@ -397,7 +396,7 @@ class EDA(Plot):
                     label,
                     ha="center",
                     va="bottom",
-                    rotation="90",
+                    rotation="horizontal",
                     alpha=0.5,
                     fontsize="11",
                 )
@@ -836,25 +835,30 @@ class EDA(Plot):
 
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
+
+        figsize = (5 + len(cols)*0.25, 9 + len(cols)*0.1)
+        if 'figsize' in kwargs:
+            figsize = kwargs.pop('figsize')
         # width x height
-        _, ax = plt.subplots(
-            figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
+        _, ax = plt.subplots(figsize=figsize)
 
-        _kwargs = dict()
-        _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
-        _kwargs['cmap'] = kwargs.get('cmap', "BrBG")
-        _kwargs['vmax'] = kwargs.get('vmax', vmax)
-        _kwargs['vmin'] = kwargs.get('vmin', vmin)
-        _kwargs['linewidths'] = kwargs.get('linewidths', 0.5)
-        _kwargs['annot_kws'] = kwargs.get('annot_kws', {"size": 10})
-        _kwargs['cbar_kws'] = kwargs.get('cbar_kws', {"shrink": 0.95, "aspect": 30})
+        _kwargs = dict(
+            annot= True if len(cols) <= 20 else False,
+            cmap="BrBG",
+            vmax=vmax,
+            vmin=vmin,
+            linewidths=0.5,
+            annot_kws={"size": 10},
+            cbar_kws={"shrink": 0.95, "aspect": 30},
+            fmt='.2f',
+            center=0
+        )
 
-        # pass any keyword argument provided by the user to sns.heatmap
-        for k, v in kwargs.items():
-            if k not in _kwargs and k not in ['figsize']:
-                _kwargs[k] = v
+        if kwargs:
+            # pass any keyword argument provided by the user to sns.heatmap
+            _kwargs.update(kwargs)
 
-        ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
+        ax = sns.heatmap(corr, ax=ax, **_kwargs)
         ax.set(frame_on=True)
 
         self._save_or_show(fname=f"{split if split else ''}_feature_corr_{prefix}")

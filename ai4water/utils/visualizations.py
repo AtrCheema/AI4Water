@@ -42,7 +42,8 @@ class Plot(object):
             x = os.getcwd()
         self._path = x
 
-    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None, bbox_inches='tight',
+    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None,
+                     bbox_inches='tight',
                      close=True, show=False):
 
         if save is None:
@@ -51,7 +52,8 @@ class Plot(object):
         if dpi is None:
             dpi = self.dpi
 
-        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close, show=show)
+        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close,
+                            show=show)
 
 
 def linear_model(
@@ -194,6 +196,7 @@ def murphy_diagram(
         ax.set_ylabel("Difference in scores", fontsize=16)
 
     ax.set_xlabel(xaxis, fontsize=16)
+    ax.set_title("Murphy Diagram", fontsize=16)
 
     if show:
         plt.show()
@@ -364,14 +367,20 @@ def edf_plot(
 
     ax.grid()
 
+    ax_kws = dict(title="Empirical Distribution Function Plot",
+        ylabel="Cumulative Probability",
+        xlabel=xlabel)
+
+    if 'ax_kws' in kwargs:
+        ax_kws.update(ax_kws)
+        kwargs.pop('ax_kws')
+
     ax = em.plot(
         x,
         y_values,
         marker,
         show=False,
-        title="Empirical Distribution Function Plot",
-        ylabel="Cumulative Probability",
-        xlabel=xlabel,
+        ax_kws=ax_kws,
         ax=ax,
         **kwargs
     )

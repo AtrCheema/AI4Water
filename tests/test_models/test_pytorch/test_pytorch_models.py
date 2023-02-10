@@ -33,9 +33,9 @@ class TestPytorchModels(unittest.TestCase):
                            )
         # doping na will be wrong but it is just for test purpose
         model.fit(data=df.dropna())
-        p = model.predict()
+        p = model.predict_on_test_data(data=df.dropna())
         assert isinstance(p, np.ndarray)
-        s = model.evaluate(data='training')
+        s = model.evaluate_on_training_data(data=df.dropna())
         assert math.isfinite(s)
         return
 
@@ -57,9 +57,9 @@ class TestPytorchModels(unittest.TestCase):
                          )
 
         model.fit(data=df)
-        p = model.predict()
+        p = model.predict_on_training_data(data=df)
         assert isinstance(p, np.ndarray)
-        val_score = model.evaluate(data='training')
+        val_score = model.evaluate_on_training_data(data=df)
         assert math.isfinite(val_score)
         model.interpret()
         return

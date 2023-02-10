@@ -9,7 +9,6 @@ import hashlib
 from contextlib import contextmanager
 
 
-
 from .utils import download
 from ai4water.backend import requests, os
 
@@ -64,17 +63,22 @@ def check_hash(filename, checksum):
     return value, digest
 
 
-def download_from_zenodo(outdir,
-                         doi,
-                         cont=False,
-                         error=False,
-                         **kwargs):
+def download_from_zenodo(
+        outdir,
+        doi,
+        cont=False,
+        tolerate_error=False,
+        include:list = None,
+        **kwargs
+):
     """
     to suit the requirements of this package.
     :param outdir: Output directory, created if necessary. Default: current directory.
     :param doi: str, Zenodo DOI
     :param cont: True, Do not continue previous download attempt. (Default: continue.)
-    :param error: False, Continue with next file if error happens.
+    :param tolerate_error: False, Continue with next file if error happens.
+    :param include : files to download. Files which are not in include will not be
+        downloaded.
     :param kwargs:
         sandbox: bool, Use Zenodo Sandbox URL.
         timeout: int, Connection time-out. Default: 15 [sec].
@@ -120,6 +124,12 @@ def download_from_zenodo(outdir,
         if r.ok:
             js = json.loads(r.text)
             files = js['files']
+            if include:
+                assert isinstance(include, list)
+                filenames = [f['key'] for f in files]
+                assert all([file in filenames for file in include]), f"invlid {include}"
+                # only consider those files which are in include
+                files = [file for file in files if file['key'] in include]
             total_size = sum(f['size'] for f in files)
 
             if md5 is not None:
@@ -171,16 +181,16 @@ def download_from_zenodo(outdir,
                     for _ in range(retry + 1):
                         try:
                             filename = download(link)
-                        except Exception:
+                        except Exception as e:
                             print('  Download error.')
                             time.sleep(pause)
                         else:
                             break
                     else:
                         print('  Too many errors.')
-                        if not error:
+                        if not tolerate_error:
                             raise Exception('Download is aborted. Too  many errors')
-                        print('  Download continues with the next file.')
+                        print(f'  Ignoring {filename} and downloading the next file.')
                         continue
 
                     h1, h2 = check_hash(filename, checksum)
@@ -193,7 +203,7 @@ def download_from_zenodo(outdir,
                             os.remove(filename)
                         else:
                             print('  File is NOT deleted!')
-                        if not error:
+                        if not tolerate_error:
                             sys.exit(1)
                 else:
                     print('All files have been downloaded.')

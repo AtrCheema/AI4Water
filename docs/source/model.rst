@@ -11,13 +11,18 @@ This class interacts with pre-processing and post-processing modules.
 The `Model` class uses a python dictionary to build layers of neural networks.
 
 To build Tensorflow based models using python dictionary see the guide
-for :doc:`declarative_def_tf`. To build pytorch based NN models using python dicitonary see the guide
+for :doc:`declarative_def_tf`. To build pytorch based NN models using python dictionary see the guide
 for  :doc:`declarative_def_torch` .
 
 .. autoclass:: ai4water._main.BaseModel
     :members:
         __init__,
+        training_data,
+        validation_data,
+        test_data,
+        all_data,
         fit,
+        fit_on_all_training_data,
         evaluate,
         evaluate_on_training_data,
         evaluate_on_validation_data,
@@ -42,8 +47,7 @@ for  :doc:`declarative_def_torch` .
         explain,
         explain_example,
         shap_values,
-        feature_interaction,
-        prediction_distribution,
+        prediction_analysis,
         partial_dependence_plot,
         optimize_transformations,
         optimize_hyperparameters,
@@ -72,7 +76,8 @@ Model for functional API
         :members:
             __init__,
             add_layers,
-            from_config
+            compile,
+            build,
 
 
 Pytorch Learner
@@ -83,12 +88,17 @@ Thus, this module does not do any pre-processing, model building and post-proces
 
 This module is inspired from fastai's Learner_ and keras's Model_ class.
 
-.. autoclass:: ai4water.models.torch.Learner
-   :members:
+.. autoclass:: ai4water.models._torch.Learner
    :undoc-members:
    :show-inheritance:
-
-   .. automethod:: __init__
+   :members:
+        __init__,
+        fit,
+        evaluate,
+        predict,
+        update_metrics,
+        update_weights,
+        plot_model,
 
 
 

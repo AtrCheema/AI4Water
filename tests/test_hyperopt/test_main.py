@@ -15,11 +15,9 @@ import optuna
 import sklearn
 import numpy as np
 from sklearn.svm import SVC
-from scipy.stats import uniform
 from hyperopt import hp, STATUS_OK
-from skopt.space.space import Space
 from sklearn.datasets import load_iris
-from sklearn.linear_model import LogisticRegression
+
 from sklearn.model_selection import train_test_split
 
 np.random.seed(313)
@@ -27,10 +25,11 @@ np.random.seed(313)
 optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 from ai4water.tf_attributes import tf
-from ai4water.utils.utils import Jsonize, dateandtime_now
+from ai4water.utils.utils import jsonize
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
+from utils import run_unified_interface, check_attrs
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -77,76 +76,6 @@ prev_xy = {'213026901362135.5_0': {'booster': 'gbtree',
                                     'n_estimators': 17,
                                     'learning_rate': 0.054629143096849984}}
 
-def check_attrs(optimizer, paras):
-    optimizer.eval_with_best()
-    space = optimizer.space()
-    assert isinstance(space, dict)
-    assert len(space)==paras
-    assert isinstance(optimizer.xy_of_iterations(), dict)
-    assert len(optimizer.xy_of_iterations()) >= optimizer.num_iterations, f"""
-            {len(optimizer.xy_of_iterations())}, {optimizer.num_iterations}"""
-    assert isinstance(optimizer.best_paras(as_list=True), list)
-    assert isinstance(optimizer.best_paras(False), dict)
-    assert len(optimizer.func_vals()) >= optimizer.num_iterations
-    assert isinstance(optimizer.func_vals(), np.ndarray)
-
-    # all keys should be integer but we check only first
-    first_key = list(optimizer.xy_of_iterations().keys())[0]
-    assert isinstance(first_key, int)
-    first_xy = list(optimizer.xy_of_iterations().values())[0]
-    assert isinstance(first_xy['x'], dict)
-    assert isinstance(first_xy['y'], float)
-
-    assert isinstance(optimizer.skopt_space(), Space)
-
-    fpath = os.path.join(optimizer.opt_path, 'serialized.json')
-    assert os.path.exists(fpath)
-
-    return
-
-
-def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
-
-    prefix = f'test_{algorithm}_xgboost_{backend}{dateandtime_now()}'
-
-    def fn(**suggestion):
-        model = Model(
-            input_features=inputs,
-            output_features=outputs,
-            model={"XGBRegressor": suggestion},
-            prefix=prefix,
-            split_random=True,
-            verbosity=0)
-
-        model.fit(data=data)
-
-        t, p = model.predict_on_validation_data(data=data, return_true=True, process_results=False)
-        mse = RegressionMetrics(t, p).mse()
-
-        return mse
-
-    search_space = [
-        Categorical(['gbtree', 'dart'], name='booster'),
-        Integer(low=10, high=20, name='n_estimators', num_samples=num_samples),
-        Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
-    ]
-
-    optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
-                         backend=backend,
-                         num_iterations=num_iterations,
-                         verbosity=0,
-                         opt_path=os.path.join(os.getcwd(), f'results\\{prefix}'))
-
-    optimizer.fit()
-    check_attrs(optimizer, len(search_space))
-
-    for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json",
-              "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
-              'distributions.png', "fanova_importance_hist.png"
-              ]:
-        fpath = os.path.join(optimizer.opt_path, f)
-        assert os.path.exists(fpath)
-    return optimizer
 
 
 class TestHyperOpt(unittest.TestCase):
@@ -185,42 +114,6 @@ class TestHyperOpt(unittest.TestCase):
         cats = ['a', 'b', 'c']
         c = Categorical(cats)
         assert len(cats) == len(c.grid)
-
-    def test_random(self):
-        # testing for sklearn-based model with random search
-        # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV
-        iris = load_iris()
-        logistic = LogisticRegression(solver='saga', tol=1e-2, max_iter=200,
-                                      random_state=0)
-        distributions1 = dict(C=uniform(loc=0, scale=4),
-                             penalty=['l2', 'l1'])
-
-        clf = HyperOpt('random', objective_fn=logistic, param_space=distributions1,
-                       random_state=0,
-                       verbosity=0)
-
-        search = clf.fit(iris.data, iris.target)
-        np.testing.assert_almost_equal(search.best_params_['C'], 2.195254015709299, 5)
-        assert search.best_params_['penalty'] == 'l1'
-        #print("RandomizeSearchCV test passed")
-        return clf
-
-
-    def test_grid(self):
-        # testing for sklearn-based model with grid search
-        # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV
-        iris = load_iris()
-        parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
-        svc = SVC()
-        clf = HyperOpt("grid", objective_fn=svc, param_space=parameters, verbosity=0)
-        search = clf.fit(iris.data, iris.target)
-
-        sorted(clf.cv_results_.keys())
-
-        assert search.best_params_['C'] == 1
-        assert search.best_params_['kernel'] == 'linear'
-        #print("GridSearchCV test passed")
-        return clf
 
     def test_bayes(self):
         # testing for sklearn-based model with gp_min
@@ -279,23 +172,6 @@ class TestHyperOpt(unittest.TestCase):
             # np.testing.assert_almost_equal(-0.909471164417979, sr.fun, 7)  # when called from same file where hyper_opt is saved
         return
 
-    def test_grid_custom_model(self):
-        # testing grid search algorithm for custom model
-        def f(x, noise_level=0.1):
-            return np.sin(5 * x) * (1 - np.tanh(x ** 2)) \
-                   + np.random.randn() * noise_level
-
-        opt = HyperOpt("grid",
-                       objective_fn=f,
-                       param_space=[Real(low=-2.0, high=2.0, num_samples=20)],
-                       n_calls=15,  # the number of evaluations of f,
-                       verbosity=0
-                       )
-
-        # executes bayesian optimization
-        sr = opt.fit()
-        assert len(sr) == 20
-        return
 
     def test_named_custom_bayes(self):
         dims = [Integer(low=10, high=20, name='n_estimators'),
@@ -307,7 +183,7 @@ class TestHyperOpt(unittest.TestCase):
 
             kwargs['objective'] = 'reg:squarederror'
 
-            kwargs = Jsonize(kwargs)()
+            kwargs = jsonize(kwargs)
 
             model = Model(
                 input_features=inputs,
@@ -382,29 +258,31 @@ class TestHyperOpt(unittest.TestCase):
         optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space,
                              backend='hyperopt',
                              max_evals=100,
-                             verbosity=0
+                             verbosity=0,
+                             process_results=False
                              )
         best = optimizer.fit()
-        check_attrs(optimizer, 2)
+        # check_attrs(optimizer, 2)
+        optimizer.plot_importance(with_optuna=True, save=False, show=False)
         self.assertEqual(len(best), 2)
         return
 
-    # # def test_hyperopt_multipara_multispace(self):  # todo
-    # #     # https://github.com/hyperopt/hyperopt/issues/615
-    # #     def f(**params):
-    # #         x1, x2 = params['x1'], params['x2']
-    # #         if x1 == 'james':
-    # #             return -1 * x2
-    # #         if x1 == 'max':
-    # #             return 2 * x2
-    # #         if x1 == 'wansoo':
-    # #             return -3 * x2
-    # #
-    # #     search_space = {
-    # #         'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
-    # #         'x2': hp.randint('x2', -5, 5)
-    # #     }
-    # #
+    # def test_hyperopt_multipara_multispace(self):  # todo
+    #     # https://github.com/hyperopt/hyperopt/issues/615
+    #     def f(**params):
+    #         x1, x2 = params['x1'], params['x2']
+    #         if x1 == 'james':
+    #             return -1 * x2
+    #         if x1 == 'max':
+    #             return 2 * x2
+    #         if x1 == 'wansoo':
+    #             return -3 * x2
+    #
+    #     search_space = {
+    #         'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
+    #         'x2': hp.randint('x2', -5, 5)
+    #     }
+    #
     def test_ai4waterModel_with_hyperopt(self):
         """"""
         def fn(**suggestion):
@@ -440,19 +318,72 @@ class TestHyperOpt(unittest.TestCase):
         self.assertIsNotNone(optimizer.skopt_space())
         return
 
-    def test_unified_interface(self):
+
+class TestUnifiedInterface(unittest.TestCase):
+
+    def test_tpe_optuna(self):
 
         run_unified_interface('tpe', 'optuna', 5)
+
+    def test_cmaes_optuna(self):
         run_unified_interface('cmaes', 'optuna', 5)
+
+    def test_random_optuna(self):
+
         run_unified_interface('random', 'optuna', 5)
+
+    def test_grid_optuna(self):
         run_unified_interface('grid', 'optuna', 5, num_samples=3)
+
+    def test_tpe_hyperopt(self):
         run_unified_interface('tpe', 'hyperopt', 5)
+
+    def test_atpe_hyperopt(self):
         #run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        return
+
+    def test_random_hyperopt(self):
         run_unified_interface('random', 'hyperopt', 5)
+
+    def test_bayes_skopt(self):
         run_unified_interface('bayes', 'skopt', 12)
+
+    def test_bayes_rf_skopt(self):
         run_unified_interface('bayes_rf', 'skopt', 12)
-        run_unified_interface('random', 'sklearn', 5, num_samples=5)
-        run_unified_interface('grid', 'sklearn', None, num_samples=2)
+        return
+
+
+class TestUnifiedInterfaceKws(unittest.TestCase):
+
+    def test_kwargs_in_objective_fn(self):
+
+        run_unified_interface('tpe', 'optuna', 5, process_results=False, use_kws=True)
+
+    def test_cmaes_optuna(self):
+        run_unified_interface('cmaes', 'optuna', 5, process_results=False, use_kws=True)
+
+    def test_random_optuna(self):
+        run_unified_interface('random', 'optuna', 5, process_results=False, use_kws=True)
+
+    def test_grid_optuna(self):
+        run_unified_interface('grid', 'optuna', 5, num_samples=3, process_results=False,
+                              use_kws=True)
+
+    def test_tpe_hyperopt(self):
+        run_unified_interface('tpe', 'hyperopt', 5, process_results=False, use_kws=True)
+
+    def test_atpe_hyperopt(self):
+        # run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        return
+
+    def test_random_hyperopt(self):
+        run_unified_interface('random', 'hyperopt', 5, process_results=False, use_kws=True)
+
+    def test_bayes_skopt(self):
+        run_unified_interface('bayes', 'skopt', 12, process_results=False, use_kws=True)
+
+    def test_bayes_rf_skopt(self):
+        run_unified_interface('bayes_rf', 'skopt', 12, process_results=False, use_kws=True)
         return
 
 

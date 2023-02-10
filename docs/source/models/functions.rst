@@ -1,9 +1,9 @@
 .. _nn_funcs:
 
-functional interface for neural networ architectures
-****************************************************
+functional interface for neural network architectures
+******************************************************
 
-Following are functions which proide an easy and fast interface
+Following are functions which provide an easy and fast interface
 to build neural networks. These functions return configuration of
 neural network which can directly be fed to Model class.
 
@@ -41,3 +41,14 @@ TFT
 ===
 .. automodule:: ai4water.models
    :members: TFT
+
+FTTransformer
+==============
+.. automodule:: ai4water.models
+   :members: FTTransformer
+
+
+TabTransformer
+==============
+.. automodule:: ai4water.models
+   :members: TabTransformer

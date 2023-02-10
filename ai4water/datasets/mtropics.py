@@ -14,7 +14,7 @@ except (ModuleNotFoundError, OSError):
 from ai4water.backend import os, shapefile, xr, np, pd, fiona
 
 from .utils import check_attributes, check_st_en
-from .datasets import Datasets, _maybe_download
+from ._datasets import Datasets, maybe_download
 
 from ai4water.preprocessing.resample import Resampler
 from ai4water.preprocessing.spatial_utils import find_records
@@ -66,6 +66,14 @@ class MtropicsLaos(Datasets):
 "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=f06cb605-7e59-4ba4-8faf-1beee35d2162",
         "surf_feat.zip":
 "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=72d9e532-8910-48d2-b9a2-6c8b0241825b",
+        "ecoli_source.csv":
+            "https://dataverse.ird.fr/api/access/datafile/37737",
+        "ecoli_source_readme.txt":
+            "https://dataverse.ird.fr/api/access/datafile/37736",
+        "ecoli_suro_gw.csv":
+            "https://dataverse.ird.fr/api/access/datafile/37735",
+        "ecoli_suro_gw_readme.txt":
+            "https://dataverse.ird.fr/api/access/datafile/37734"
     }
 
     physio_chem_features = {
@@ -81,14 +89,23 @@ class MtropicsLaos(Datasets):
                             }
 
     weather_station_data = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
-    inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
+    inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm', "Ecoli_source"]
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            path=None,
+            save_as_nc:bool = True,
+            convert_to_csv:bool = False,
+            **kwargs):
 
         if xr is None:
-            raise ModuleNotFoundError("xarray must be installed to use datasets sub-module")
+            raise ModuleNotFoundError(
+                "xarray must be installed to use datasets sub-module")
 
-        super().__init__(**kwargs)
+        super().__init__(path=path, **kwargs)
+        self.save_as_nc = save_as_nc
+        self.ds_dir = path
+        self.convert_to_csv = convert_to_csv
         self._download()
 
         # we need to pre-process the land use shapefiles
@@ -111,7 +128,8 @@ class MtropicsLaos(Datasets):
             en: Union[str, int, pd.Timestamp] = '2016-11-12',
     )->pd.DataFrame:
         """soil surface features data"""
-        fname = os.path.join(self.ds_dir, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
+        fname = os.path.join(
+            self.ds_dir, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
         df = pd.read_excel(fname, sheet_name="Soil surface features")
 
         df.index = pd.to_datetime(df.pop('Date'))
@@ -127,7 +145,8 @@ class MtropicsLaos(Datasets):
     def fetch_suro(
             self,
     )->pd.DataFrame:
-        """returns surface runoff and soil detachment data from Houay pano, Laos PDR.
+        """returns surface runoff and soil detachment data from Houay pano,
+         Laos PDR.
 
         Returns
         -------
@@ -139,7 +158,8 @@ class MtropicsLaos(Datasets):
             >>> laos = MtropicsLaos()
             >>> suro = laos.fetch_suro()
         """
-        fname = os.path.join(self.ds_dir, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
+        fname = os.path.join(
+            self.ds_dir, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
         df = pd.read_excel(fname, sheet_name="Surface runoff soil detachment")
 
         return df.dropna()
@@ -172,14 +192,14 @@ class MtropicsLaos(Datasets):
                 The physio-chemical features to fetch. Following features
                 are available
 
-                - 'T',
-                - 'EC',
-                - 'DOpercent',
-                - 'DO',
-                - 'pH',
-                - 'ORP',
-                - 'Turbidity',
-                - 'TSS'
+                - ``T``
+                - ``EC``
+                - ``DOpercent``
+                - ``DO``
+                - ``pH``
+                - ``ORP``
+                - ``Turbidity``
+                - ``TSS``
 
         Returns
         -------
@@ -222,7 +242,8 @@ class MtropicsLaos(Datasets):
         Fetches E. coli data collected at the outlet. See Ribolzi_ et al., 2021
         and Boithias_ et al., 2021 for reference.
         NaNs represent missing values. The data is randomly sampled between 2011
-        to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+        to 2021 during rainfall events. Total 368 E. coli observation points are
+        available now.
 
         Parameters
         ----------
@@ -258,9 +279,12 @@ class MtropicsLaos(Datasets):
         df.index = pd.to_datetime(df['Date_Time'])
 
         available_features = {
-            "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
-            "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
-            "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
+            # Lower limit of the confidence interval
+            "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",
+            # Stream water Escherichia coli concentration
+            "Ecoli_mpn100": "E-coli_4dilutions",
+            # Upper limit of the confidence interval
+            "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"
         }
         if isinstance(features, list):
             _features = []
@@ -322,27 +346,47 @@ class MtropicsLaos(Datasets):
         """
         # todo, does nan means 0 rainfall?
         fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
-        if not os.path.exists(fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
-            df = pd.DataFrame()
-            for f in files:
-                _df = pd.read_excel(f, sheet_name='Daily',
-                                    usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
-                                    keep_default_na=False)
-                df = pd.concat([df, _df])
-
-            for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
-
-            df = df.reset_index(drop=True)  # index is of type Int64Index
-            df.to_xarray().to_netcdf(fname)
+        if not os.path.exists(fname) or not self.save_as_nc:
+            df = self._load_rain_gauge_from_xl_files()
 
         else:  # feather file already exists so load from it
-            df = xr.load_dataset(fname).to_dataframe()
+            try:
+                df = xr.load_dataset(fname).to_dataframe()
+            except AttributeError:
+                df = self._load_rain_gauge_from_xl_files()
 
         df.index = pd.date_range('20010101', periods=len(df), freq='D')
 
         return df[st:en]
+
+    def _load_rain_gauge_from_xl_files(self):
+        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
+        dfs = []
+        for f in files:
+            df = pd.read_excel(
+                f, sheet_name='Daily',
+                usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
+                                keep_default_na=False)
+
+            if os.path.basename(f) in ['OMPrawdataLaos2014.xlsx']:
+                df = pd.read_excel(
+                    f, sheet_name='Daily',
+                    usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
+                    keep_default_na=False, nrows=366)
+                df = df.dropna()
+
+            dfs.append(df)
+
+        df = pd.concat(dfs)
+
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+
+        df = df.reset_index(drop=True)  # index is of type Int64Index
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(fname)
+        return df
 
     def fetch_weather_station_data(
             self,
@@ -370,47 +414,15 @@ class MtropicsLaos(Datasets):
             https://doi.org/10.1038/s41598-017-04385-2
         """
 
-        nc_fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
-        if not os.path.exists(nc_fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
-
-            vbsfile = os.path.join(self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
-            create_vbs_script(vbsfile)
-
-            dataframes = []
-            for xlsx_file in files:
-
-                if not xlsx_file.startswith("~"):
-
-                    if os.name == "nt":
-                        data_dir = os.path.join(self.ds_dir, "weather_station")
-                        df = to_csv_and_read(xlsx_file,
-                                             data_dir,
-                                             sheed_id='2',
-                                             usecols=['Date', 'Time', 'T', 'H', 'W', 'Gr'],
-                                             parse_dates={'datetime': ['Date', 'Time']})
-                    else:
-                        df = pd.read_excel(xlsx_file,
-                                           sheet_name='Hourly',
-                                           usecols=['Date', 'T', 'H', 'W', 'Gr'],
-                                           parse_dates={'datetime': ['Date']},
-                                           keep_default_na=False)
-                    df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
-                    df = df.dropna(how="all")
-                    df.index = pd.to_datetime(df.pop('datetime'))
-                    dataframes.append(df)
-
-            df = pd.concat(dataframes)
-            del dataframes
-
-            # non-numertic dtype causes problem in converting/saving netcdf
-            for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
-
-            df = df.reset_index()  # index is of type Int64Index
-            df.to_xarray().to_netcdf(nc_fname)
+        nc_fname = os.path.join(
+            self.ds_dir, 'weather_station', 'weather_stations.nc')
+        if not os.path.exists(nc_fname) or not self.save_as_nc:
+            df = self._load_weather_stn_from_xl_files()
         else:  # feather file already exists so load from it
-            df = xr.load_dataset(nc_fname).to_dataframe()
+            try:
+                df = xr.load_dataset(nc_fname).to_dataframe()
+            except AttributeError:
+                df = self._load_weather_stn_from_xl_files()
 
         df.index = pd.to_datetime(df.pop('datetime'))
 
@@ -421,6 +433,53 @@ class MtropicsLaos(Datasets):
         df = df.bfill()
 
         return check_st_en(df, st, en)
+
+    def _load_weather_stn_from_xl_files(self):
+        nc_fname = os.path.join(
+            self.ds_dir, 'weather_station', 'weather_stations.nc')
+        files = glob.glob(
+            f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
+
+        vbsfile = os.path.join(
+            self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
+        create_vbs_script(vbsfile)
+
+        dataframes = []
+        for xlsx_file in files:
+
+            if not xlsx_file.startswith("~"):
+
+                if os.name == "nt":
+                    data_dir = os.path.join(self.ds_dir, "weather_station")
+                    df = to_csv_and_read(
+                        xlsx_file,
+                         data_dir,
+                         sheed_id='2',
+                         usecols=['Date', 'Time', 'T', 'H', 'W', 'Gr'],
+                         parse_dates={'datetime': ['Date', 'Time']})
+                else:
+                    df = pd.read_excel(xlsx_file,
+                                       sheet_name='Hourly',
+                                       usecols=['Date', 'T', 'H', 'W', 'Gr'],
+                                       parse_dates={'datetime': ['Date']},
+                                       keep_default_na=False)
+                df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+                df = df.dropna(how="all")
+                df.index = pd.to_datetime(df.pop('datetime'))
+                dataframes.append(df)
+
+        df = pd.concat(dataframes)
+        del dataframes
+
+        # non-numertic dtype causes problem in converting/saving netcdf
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+
+        df = df.reset_index()  # index is of type Int64Index
+
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(nc_fname)
+        return df
 
     def fetch_pcp(self,
                   st: Union[str, pd.Timestamp] = '20010101 00:06:00',
@@ -451,22 +510,32 @@ class MtropicsLaos(Datasets):
 
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         # feather file does not exist
-        if not os.path.exists(fname):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
-            df = pd.DataFrame()
-            for f in files:
-                _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
-                df = pd.concat([df, _df])
-
-            df = df.reset_index(drop=True)
-            df.to_xarray().to_netcdf(fname)
-        else:  # feather file already exists so load from it
-            df = xr.load_dataset(fname).to_dataframe()
+        if not os.path.exists(fname) or not self.save_as_nc:
+            df = self._load_pcp_from_excel_files()
+        else:  # nc file already exists so load from it
+            try:
+                df = xr.load_dataset(fname).to_dataframe()
+                # on linux, it is giving error
+            except AttributeError:  # 'EntryPoints' object has no attribute 'get'
+                df = self._load_pcp_from_excel_files()
 
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
         df.columns = ['pcp']
 
         return df[st:en]
+
+    def _load_pcp_from_excel_files(self):
+        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
+        df = pd.DataFrame()
+        for f in files:
+            _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
+            df = pd.concat([df, _df])
+
+        df = df.reset_index(drop=True)
+        if self.save_as_nc:
+            df.to_xarray().to_netcdf(fname)
+        return df
 
     def fetch_hydro(
             self,
@@ -490,66 +559,109 @@ class MtropicsLaos(Datasets):
         """
         wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
         spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
-        if not os.path.exists(wl_fname):
-            print("reading data from xlsx files and saving them in netcdf format.")
-            print("This will happen only once but will save io time.")
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
-            wl = pd.DataFrame()
-            spm = pd.DataFrame()
-            for f in files:
-
-                _df = pd.read_excel(f, sheet_name='Aperiodic')
-                _wl = _df[['Date', 'Time', 'RWL04']]
-
-                if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx"]:
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-                if os.path.basename(f) in [ "OMPrawdataLaos2006.xlsx"]:
-                    _wl = _wl.iloc[0:-1]
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-                if os.path.basename(f) in [ "OMPrawdataLaos2008.xlsx"]:
-                    _wl = _wl.dropna()
-                if os.path.basename(f) in [ "OMPrawdataLaos2009.xlsx",
-                                            "OMPrawdataLaos2010.xlsx",
-                                            "OMPrawdataLaos2011.xlsx",
-                    "OMPrawdataLaos2015.xlsx", "OMPrawdataLaos2016.xlsx",
-                    "OMPrawdataLaos2017.xlsx", "OMPrawdataLaos2018.xlsx",
-                    "OMPrawdataLaos2019.xlsx",
-                                            ]:
-                    _wl = _wl.dropna(how="all")
-                    _wl['Time'].iloc[-1] = datetime.time(0)
-
-                _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
-                _spm = _df[['Date.1', 'Time.1', 'SPM04']]
-                _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
-                if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
-                    _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
-                    _spm.iloc[247] = ['2016-07-23', '12:57:47', 8.15714]
-                    _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
-                    _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
-                if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
-                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str))
-                else:
-                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str) + ' ' + _spm['Time.1'].astype(str))
-                wl = pd.concat([wl, _wl['RWL04']])
-                spm = pd.concat([spm, _spm['SPM04']])
-
-            wl.columns = ['water_level']
-            #wl = wl.reset_index()
-            wl.to_xarray().to_netcdf(wl_fname)
-            spm.columns = ['susp_pm']
-            #spm = spm.reset_index()
-            spm.to_xarray().to_netcdf(spm_fname)
+        if not os.path.exists(wl_fname) or not self.save_as_nc:
+            wl, spm = self._load_hydro_from_xl_files()
         else:
-            wl = xr.load_dataset(wl_fname).to_dataframe()
-            spm = xr.load_dataset(spm_fname).to_dataframe()
+            try:
+                wl = xr.load_dataset(wl_fname).to_dataframe()
+                spm = xr.load_dataset(spm_fname).to_dataframe()
+            except AttributeError:
+                wl, spm = self._load_hydro_from_xl_files()
 
-        # wl.index = pd.to_datetime(wl.pop('index'))
-        # spm.index = pd.to_datetime(spm.pop('index'))
         wl = wl[~wl.index.duplicated(keep='first')]
         spm = spm[~spm.index.duplicated(keep='first')]
 
-        # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
+        # FutureWarning: Value based partial slicing on non-monotonic
+        # DatetimeIndexes
         return wl.loc[st:en], spm.loc[st:en]
+
+    def _load_hydro_from_xl_files(self):
+        """
+        Most of the files are saved as a peace of shit in excel.
+        I wish I had never consdered reading those files
+        """
+
+        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
+        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
+
+        print("reading data from xlsx files and saving them in netcdf format.")
+        print("This will happen only once but will save io time.")
+        files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
+        wls = []
+        spms = []
+        for f in files:
+
+            _df = pd.read_excel(f, sheet_name='Aperiodic')
+            _wl = _df[['Date', 'Time', 'RWL04']]
+
+            correct_time(_wl, 'Time')
+
+            if os.path.basename(f) in ["OMPrawdataLaos2005.xlsx", "OMPrawdataLaos2001.xlsx",
+                                       "OMPrawdataLaos2006.xlsx",
+                                       "OMPrawdataLaos2012.xlsx",
+                                       "OMPrawdataLaos2013.xlsx",
+                                       "OMPrawdataLaos2014.xlsx"]:
+                _wl = _wl.iloc[0:-1]
+            if os.path.basename(f) in ["OMPrawdataLaos2011.xlsx"]:
+                _wl = _wl.iloc[0:-1]
+
+            if os.path.basename(f) in ["OMPrawdataLaos2008.xlsx"]:
+                _wl = _wl.dropna()
+            if os.path.basename(f) in ["OMPrawdataLaos2009.xlsx",
+                                       "OMPrawdataLaos2010.xlsx",
+                                       "OMPrawdataLaos2011.xlsx",
+                                       "OMPrawdataLaos2015.xlsx",
+                                       "OMPrawdataLaos2016.xlsx",
+                                       "OMPrawdataLaos2017.xlsx",
+                                       "OMPrawdataLaos2018.xlsx",
+                                       "OMPrawdataLaos2019.xlsx",
+                                       ]:
+                _wl = _wl.dropna()
+
+            index = _wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str)
+            _wl.index = pd.to_datetime(index)
+
+            _spm = _df[['Date.1', 'Time.1', 'SPM04']]
+
+            correct_time(_spm, 'Time.1')
+            _spm = _spm.dropna()
+
+            _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
+
+            if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
+                _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
+                _spm.iloc[247] = ['2016-07-23', '12:57:47', 8.15714]
+                _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
+                _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
+
+            if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
+                _spm.index = pd.to_datetime(_spm['Date.1'].astype(str))
+            else:
+                index = _spm['Date.1'].astype(str) + ' ' + _spm['Time.1'].astype(str)
+                _spm.index = pd.to_datetime(index)
+
+            wls.append(_wl['RWL04'])
+            spms.append(_spm['SPM04'])
+
+        wl = pd.DataFrame(pd.concat(wls))
+        spm = pd.DataFrame(pd.concat(spms))
+        wl.columns = ['water_level']
+        spm.columns = ['susp_pm']
+
+        if self.save_as_nc:
+            try:
+                wl.to_xarray().to_netcdf(wl_fname)
+            except (ValueError, AttributeError):
+                if os.path.exists(wl_fname):
+                    os.remove(wl_fname)
+
+            try:
+                spm.to_xarray().to_netcdf(spm_fname)
+            except (ValueError, AttributeError):
+                if os.path.exists(spm_fname):
+                    os.remove(spm_fname)
+
+        return wl, spm
 
     def make_classification(
             self,
@@ -562,7 +674,7 @@ class MtropicsLaos(Datasets):
             lookback_steps: int = None,
     ) -> pd.DataFrame:
         """
-        Makes a classification problem.
+        Returns data for a classification problem.
 
         Parameters
         ----------
@@ -571,7 +683,7 @@ class MtropicsLaos(Datasets):
             output_features :
                 feature/features to consdier as target/output/label
             st :
-                starting date of data
+                starting date of data. The default starting date is 20110525
             en :
                 end date of data
             freq :
@@ -628,10 +740,11 @@ class MtropicsLaos(Datasets):
             st: Union[None, str] = "20110525 14:00:00",
             en: Union[None, str] = "20181027 00:00:00",
             freq: str = "6min",
-            lookback_steps: int = None
+            lookback_steps: int = None,
+            replace_zeros_in_target:bool=True,
     ) -> pd.DataFrame:
         """
-        Makes a regression problem using hydrological, environmental,
+        Returns data for a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.
 
         Parameters
@@ -647,6 +760,7 @@ class MtropicsLaos(Datasets):
                 - ``water_level``
                 - ``pcp``
                 - ``susp_pm``
+                - ``Ecoli_source``
 
             output_features : feature/features to consdier as target/output/label
             st :
@@ -654,10 +768,12 @@ class MtropicsLaos(Datasets):
             en :
                 end date of data
             freq : frequency of data
-            lookback_steps:
+            lookback_steps : int, default=None
                 the number of previous steps to use. If this argument is used,
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
+            replace_zeros_in_target : bool, default=True
+                Replace the zeroes in target column with 1s.
 
         Returns
         -------
@@ -674,13 +790,18 @@ class MtropicsLaos(Datasets):
 
         todo add HRU definition
         """
-        data = self._make_ml_problem(input_features, output_features, st, en, freq)
+        data = self._make_ml_problem(
+            input_features, output_features, st, en, freq,
+        replace_zeros_in_target=replace_zeros_in_target)
 
         if lookback_steps:
             return consider_lookback(data, lookback_steps, output_features)
         return data
 
-    def _make_ml_problem(self, input_features, output_features, st, en, freq):
+    def _make_ml_problem(
+            self, input_features, output_features, st, en, freq,
+            replace_zeros_in_target:bool = True
+    ):
         inputs = check_attributes(input_features, self.inputs)
         target = check_attributes(output_features, self.target)
         features_to_fetch = inputs + target
@@ -705,15 +826,22 @@ class MtropicsLaos(Datasets):
         ecoli = self.fetch_ecoli(st=st, en=en)
         ecoli = ecoli.dropna()
         ecoli_6min = ecoli.resample(freq).mean()
+        if replace_zeros_in_target:
+            ecoli_6min.loc[ecoli_6min['Ecoli_mpn100']==0.0] = 1.0
 
         wl, spm = self.fetch_hydro(st=st, en=en)
         wl_6min = wl.resample(freq).first().interpolate(method="linear")
         spm_6min = spm.resample(freq).first().interpolate(method='linear')
 
+        # backfilling because for each month the value is given for last day of month
+        src = self.fetch_source().loc[:, 'NB_E. coli_total'].asfreq("6min").bfill()
+        src.name = "Ecoli_source"
+
         data = pd.concat([w_6min.loc[st:en],
                           pcp.loc[st:en],
                           wl_6min.loc[st:en],
                           spm_6min.loc[st:en],
+                          src[st:en],
                           ecoli_6min.loc[st:en],
                           ], axis=1)
 
@@ -727,17 +855,36 @@ class MtropicsLaos(Datasets):
 
         return data.loc[st:en, features_to_fetch]
 
+    def fetch_source(
+            self
+    )->pd.DataFrame:
+        """
+        returns monthly source data for E. coli at from 2001 to 2021 obtained from
+        `here <https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/7XJ3TB>`_
+
+        Returns
+        --------
+        pd.DataFrame of shape (252, 19)
+
+        """
+        fname = os.path.join(self.ds_dir, "ecoli_source.csv")
+        df = pd.read_csv(fname, sep="\t")
+        df.index = pd.date_range("20010101", "20211231", freq="M")
+        df.pop('Time')
+        df.index.freq =pd.infer_freq(df.index)
+        return df
+
 
 class MtropcsThailand(Datasets):
     url = {
         "pcp.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=27c65b5f-59cb-87c1-4fdf-628e6143d8c4",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=27c65b5f-59cb-87c1-4fdf-628e6143d8c4",
         # "hydro.zip":
-        #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=9e6f7144-8984-23bd-741a-06378fabd72",
+#"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=9e6f7144-8984-23bd-741a-06378fabd72",
         "rain_gauge.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0a12ffcf-42bc-0289-1c55-a769ef19bb16",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0a12ffcf-42bc-0289-1c55-a769ef19bb16",
         "weather_station.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=fa0bca5f-caee-5c68-fed7-544fe121dcf5 "
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=fa0bca5f-caee-5c68-fed7-544fe121dcf5 "
     }
 
     def __init__(self, **kwargs):
@@ -748,15 +895,15 @@ class MtropcsThailand(Datasets):
 class MtropicsVietnam(Datasets):
     url = {
         "pcp.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=d74ab1b0-379b-71cc-443b-662a73b7f596",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=d74ab1b0-379b-71cc-443b-662a73b7f596",
         "hydro.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=85fb6717-4095-a2a2-34b5-4f1b70cfd304",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=85fb6717-4095-a2a2-34b5-4f1b70cfd304",
         # "lu.zip":
-        #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=c3724992-a043-4bbf-8ac1-bc6f9a608c1c",
+#"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=c3724992-a043-4bbf-8ac1-bc6f9a608c1c",
         "rain_guage.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3d3382d5-08c1-2595-190b-8568a1d2d6af",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3d3382d5-08c1-2595-190b-8568a1d2d6af",
         "weather_station.zip":
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=8df40086-4232-d8d0-a1ed-56c860818989"
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=8df40086-4232-d8d0-a1ed-56c860818989"
     }
 
     def __init__(self, **kwargs):
@@ -800,7 +947,8 @@ def _process_laos_shpfiles(shape_file, out_path):
 
     # Define a polygon feature geometry with one attribute
     schema = {
-        'geometry': 'Polygon' if os.path.basename(shape_file) in ['LU2000.shp', 'LU2001.shp'] else 'MultiPolygon',
+        'geometry': 'Polygon' if os.path.basename(shape_file) in [
+            'LU2000.shp', 'LU2001.shp'] else 'MultiPolygon',
         'properties': {'id': 'int',
                        'NAME': 'str',
                        'area': 'float'},
@@ -861,7 +1009,8 @@ def ecoli_mekong(
         overwrite=False
 )->pd.DataFrame:
     """
-    E. coli data from Mekong river (Houay Pano) area from 2011 to 2021 Boithias et al., 2022 [1]_.
+    E. coli data from Mekong river (Houay Pano) area from 2011 to 2021
+    Boithias et al., 2022 [1]_.
 
     Parameters
     ----------
@@ -895,7 +1044,9 @@ def ecoli_mekong(
     Examples
     --------
         >>> from ai4water.datasets import ecoli_mekong
-        >>> ecoli = ecoli_mekong()
+        >>> ecoli_data = ecoli_mekong()
+        >>> ecoli_data.shape
+        (1602, 10)
 
     .. [1]
         https://essd.copernicus.org/preprints/essd-2021-440/
@@ -935,6 +1086,8 @@ def ecoli_mekong_2016(
     --------
         >>> from ai4water.datasets import ecoli_mekong_2016
         >>> ecoli = ecoli_mekong_2016()
+        >>> ecoli.shape
+        (58, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/ZRSBM4
@@ -989,6 +1142,8 @@ def ecoli_houay_pano(
     --------
         >>> from ai4water.datasets import ecoli_houay_pano
         >>> ecoli = ecoli_houay_pano()
+        >>> ecoli.shape
+        (413, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
@@ -1031,6 +1186,8 @@ def ecoli_mekong_laos(
     --------
         >>> from ai4water.datasets import ecoli_mekong_laos
         >>> ecoli = ecoli_mekong_laos()
+        >>> ecoli.shape
+        (1131, 10)
 
     .. url_
         https://dataverse.ird.fr/file.xhtml?fileId=9229&version=3.0
@@ -1045,7 +1202,7 @@ def ecoli_mekong_laos(
 
 def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
 
-    _maybe_download(ds_dir, overwrite, url, _name=_name)
+    maybe_download(ds_dir, overwrite=overwrite, url=url, name=_name)
     all_files = os.listdir(ds_dir)
     assert len(all_files)==1
     fname = os.path.join(ds_dir, all_files[0])
@@ -1130,3 +1287,14 @@ oBook.SaveAs dest_file, csv_format
 oBook.Close False
 oExcel.Quit
 """
+
+def correct_time(df, col_name):
+    time = df[col_name].astype(str)
+    ctime  = []
+    for i in time:
+        if '1899' in i:
+            ctime.append(i[11:])
+        else:
+            ctime.append(i)
+    df[col_name] = ctime
+    return df

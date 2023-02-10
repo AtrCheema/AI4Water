@@ -15,4 +15,4 @@ To build docs locally follow the steps
 
     ``make html``
 
-5) If everythin works, then go to ``build`` folder and double click on ``index.html`` file
+5) If everything works, then go to ``build`` folder and double click on ``index.html`` file

@@ -34,7 +34,7 @@ class MLRegressionExperiments(Experiments):
                  exp_name='MLRegressionExperiments',
                  num_samples=5,
                  verbosity=1,
-                 **model_kwargs):
+                 **model_kws):
         """
         Initializes the class
 
@@ -44,7 +44,7 @@ class MLRegressionExperiments(Experiments):
             x0 list: initial values of the parameters which are to be optimized.
                 These can be overwritten in `models`
             exp_name str: name of experiment, all results will be saved within this folder
-            model_kwargs dict: keyword arguments which are to be passed to `Model`
+            model_kws dict: keyword arguments which are to be passed to `Model`
                 and are not optimized.
 
         Examples:
@@ -58,29 +58,33 @@ class MLRegressionExperiments(Experiments):
             ...       input_features=inputs, output_features=outputs,
             ...       nan_filler= {'method': 'KNNImputer', 'features': inputs} )
             >>> comparisons.fit(data=data,run_type="dry_run")
-            >>> comparisons.compare_errors('r2')
+            >>> comparisons.compare_errors('r2', data=data)
             >>> # find out the models which resulted in r2> 0.5
             >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater',
-            ...                                                cutoff_val=0.3)
-            >>> best_models = [m[1] for m in best_models.values()]
+            ...                                                cutoff_val=0.3, data=data)
             >>> # now build a new experiment for best models and otpimize them
             >>> comparisons = MLRegressionExperiments(
-            ...     inputs_features=inputs, output_features=outputs,
+            ...     input_features=inputs, output_features=outputs,
             ...     nan_filler= {'method': 'KNNImputer', 'features': inputs},
             ...     exp_name="BestMLModels")
-            >>> comparisons.fit(data=data, run_type="optimize", include=best_models)
-            >>> comparisons.compare_errors('r2')
+            >>> comparisons.fit(data=data, run_type="optimize", include=best_models.index)
+            >>> comparisons.compare_errors('r2', data=data)
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
 
         """
         self.param_space = param_space
         self.x0 = x0
-        self.model_kws = model_kwargs
 
         if exp_name == "MLRegressionExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
 
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
+        super().__init__(
+            cases=cases,
+            exp_name=exp_name,
+            num_samples=num_samples,
+            verbosity=verbosity,
+            **model_kws
+        )
 
         self.spaces = regression_space(num_samples=num_samples)
 
@@ -90,6 +94,7 @@ class MLRegressionExperiments(Experiments):
             self.models.remove('model_LGBMRegressor')
         if xgboost is None:
             self.models.remove('model_XGBRFRegressor')
+            self.models.remove('model_XGBRegressor')
 
         sk_maj_ver = int(sklearn.__version__.split('.')[0])
         sk_min_ver = int(sklearn.__version__.split('.')[1])
@@ -104,6 +109,10 @@ class MLRegressionExperiments(Experiments):
         except (ModuleNotFoundError, ImportError):
             TPOTRegressor = None
         return TPOTRegressor
+
+    @property
+    def category(self)->str:
+        return "ML"
 
     @property
     def mode(self):
@@ -503,7 +512,7 @@ class MLRegressionExperiments(Experiments):
 
         return {'model': {'TweedieRegressor': kwargs}}
 
-    def model_TheilsenRegressor(self, **kwargs):
+    def model_TheilSenRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
 
         self.path = "sklearn.linear_model.TheilSenRegressor"

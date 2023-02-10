@@ -72,13 +72,16 @@ class Plots(object):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        axis, im = ep.imshow(img,
+        im = ep.imshow(img,
                           aspect="auto",
                           interpolation=interpolation,
                           cmap=cmap,
-                          xlabel=kwargs.get('xlabel', 'inputs'),
-                          show=False,
-                          title=label)
+                          ax_kws=dict(
+                              xlabel=kwargs.get('xlabel', 'inputs'),
+                              title=label),
+                          show=False)
+
+        axis = im.axes
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -104,11 +107,21 @@ class Plots(object):
 
         return
 
-    def plot1d(self, array, label: str = '', show=False, fname=None, rnn_args=None, where=''):
+    def plot1d(self,
+               array,
+               label: str = '',
+               show=False,
+               fname=None,
+               rnn_args=None,
+               where='',
+               **kwargs):
+
         plt.close('all')
-        plt.plot(array)
-        plt.xlabel("Examples")
-        plt.title(label)
+
+        ax = ep.plot(array,
+                ax_kws=dict(title=label, xlabel="Examples"),
+                show=False,
+                **kwargs)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -120,7 +133,7 @@ class Plots(object):
 
         self.save_or_show(save=True, fname=fname, where=where, show=show)
 
-        return
+        return ax
 
     def save_or_show(self, *args, **kwargs):
 

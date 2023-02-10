@@ -10,7 +10,7 @@ from ai4water.utils.utils import TrainTestSplit
 from ai4water.utils.plotting_tools import Plots
 from ai4water.preprocessing.imputation import Imputation
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index, print_something
-from ai4water.backend import np, pd, plt, os, mpl, sklearn
+from ai4water.backend import np, pd, plt, os, mpl, sklearn, h5py
 
 from .utils import check_for_classification
 from .utils import consider_intervals, decode
@@ -369,7 +369,7 @@ class DataSet(_DataSet):
 
         self._input_features = copy(input_features)
 
-        if save:
+        if save and h5py:
             self.to_disk()
 
         _DataSet.__init__(self, config=self.config, path=os.getcwd())
@@ -1252,12 +1252,16 @@ class DataSet(_DataSet):
         `(train_x, train_y), (test_x, test_y)`
         Note: only `training_data` and `validation_data` are used to make kfolds.
 
-        Example:
-            >>> data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
-            >>> data_set = DataSet(data=data, config={'lookback': 1})
-            >>> kfold_splits = data_set.KFold_splits()
-            >>> for (train_x, train_y), (test_x, test_y) in kfold_splits:
-            ...     print(train_x, train_y, test_x, test_y)
+        Example
+        ---------
+        >>> import numpy as np
+        >>> import pandas as pd
+        >>> from ai4water.preprocessing import DataSet
+        >>> data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
+        >>> data_set = DataSet(data=data)
+        >>> kfold_splits = data_set.KFold_splits()
+        >>> for (train_x, train_y), (test_x, test_y) in kfold_splits:
+        ...     print(train_x, train_y, test_x, test_y)
 
         """
         if self.teacher_forcing:

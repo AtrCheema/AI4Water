@@ -11,7 +11,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 
 from ai4water.utils import tf_losses
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+from SeqMetrics import RegressionMetrics
 
 tf_losses.reset_graph()
 _true = np.random.random(10)

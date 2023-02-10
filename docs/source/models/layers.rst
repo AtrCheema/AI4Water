@@ -3,7 +3,7 @@ Tensorflow Layers
 
 MCLSTM
 ========
-.. autoclass:: ai4water.models.tensorflow.MCLSTM
+.. autoclass:: ai4water.models._tensorflow.MCLSTM
    :members:
    :undoc-members:
    :show-inheritance:
@@ -13,7 +13,7 @@ MCLSTM
 
 Conditionalize
 ==============
-.. autoclass:: ai4water.models.tensorflow.Conditionalize
+.. autoclass:: ai4water.models._tensorflow.Conditionalize
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,10 +23,49 @@ Conditionalize
 
 EALSTM
 ========
-.. autoclass:: ai4water.models.tensorflow.EALSTM
+.. autoclass:: ai4water.models._tensorflow.EALSTM
    :members:
    :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
 
+
+TransformerBlocks
+==================
+.. autoclass:: ai4water.models._tensorflow.TransformerBlocks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+Transformer
+==================
+.. autoclass:: ai4water.models._tensorflow.Transformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+TabTransformer
+==================
+.. autoclass:: ai4water.models._tensorflow.private_layers.TabTransformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+FTTransformer
+==================
+.. autoclass:: ai4water.models._tensorflow.private_layers.FTTransformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

@@ -5,7 +5,7 @@ import gc
 from SeqMetrics import RegressionMetrics
 
 from ai4water.backend import easy_mpl as ep
-from ai4water.backend import os, np, plt, torch
+from ai4water.backend import os, np, plt, torch, pd
 
 try:
     import wandb
@@ -40,7 +40,8 @@ F = {
 
 class AttributeContainer(object):
 
-    def __init__(self, num_epochs, to_monitor=None, use_cuda=None, path=None):
+    def __init__(self, num_epochs, to_monitor=None, use_cuda=None,
+                 path=None, verbosity=1):
         self.to_monitor = get_metrics_to_monitor(to_monitor)
         self.num_epochs = num_epochs
 
@@ -55,9 +56,10 @@ class AttributeContainer(object):
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.best_epoch = 0  # todo,
         self.use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
+        self.verbosity = verbosity
 
         def_path = path if path is not None else os.path.join(os.getcwd(), 'results', dateandtime_now())
-        if not os.path.exists(def_path):
+        if not os.path.exists(def_path) and verbosity >= 0:
             if not os.path.isdir(def_path):
                 os.makedirs(def_path)
             else:
@@ -146,8 +148,8 @@ class Learner(AttributeContainer):
         -------
             >>> from torch import nn
             >>> import torch
-            >>> from ai4water.models.torch import Learner
-
+            >>> from ai4water.models._torch import Learner
+            ...
             >>> class Net(nn.Module):
             >>>    def __init__(self, D_in, H, D_out):
             ...        super(Net, self).__init__()
@@ -180,7 +182,9 @@ class Learner(AttributeContainer):
             >>> metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
             >>> t = learner.predict(X, y=Y, name='training')
         """
-        super().__init__(num_epochs, to_monitor, path=path, use_cuda=use_cuda)
+        super().__init__(num_epochs, to_monitor, path=path,
+                         use_cuda=use_cuda,
+                         verbosity=verbosity)
 
         if self.use_cuda:
             model = model.to(self._device())
@@ -190,7 +194,6 @@ class Learner(AttributeContainer):
         self.shuffle = shuffle
         self.patience = patience
         self.wandb_config = wandb_config
-        self.verbosity = verbosity
 
     def fit(
             self,
@@ -209,7 +212,7 @@ class Learner(AttributeContainer):
                 - an instance of torch.Dataset, y will be ignored
                 - an instance of torch.DataLoader, y will be ignored
                 - a torch tensor containing input data for each example
-                - a numpy array
+                - a numpy array or pandas DataFrame
                 - a list of torch tensors or numpy arrays
             y :
                 if `x` is torch tensor, then `y` is the label/target for
@@ -620,13 +623,23 @@ class Learner(AttributeContainer):
             else:
                 dataset = to_torch_dataset(x, y)
 
-        elif isinstance(x, np.ndarray):
+        elif isinstance(x, (np.ndarray, pd.DataFrame)):
             if y is not None:
-                assert isinstance(y, np.ndarray)
+
+                # if x is numpy array or DataFrame, so should y
+                assert isinstance(y, (np.ndarray, pd.DataFrame, pd.Series))
+
+                # if it is DataFrame or Series
+                if hasattr(y, 'values'):
+                    y = y.values
+
                 if len(y.shape) == 1:
                     num_outs = 1
                 else:
                     num_outs = y.shape[-1]
+
+            if isinstance(x, pd.DataFrame):
+                x = x.values
 
             dataset = to_torch_dataset(x, y)
 

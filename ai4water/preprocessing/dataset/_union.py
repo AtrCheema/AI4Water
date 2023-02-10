@@ -39,6 +39,22 @@ class DataSetUnion(_DataSet):
         named_datasets : 
             DataSets to be concatenated in parallel.
 
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> from ai4water.preprocessing import DataSet, DataSetUnion
+        >>> df1 = pd.DataFrame(np.random.random((100, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> df2 = pd.DataFrame(np.random.random((200, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> ds1 = DataSet(df1)
+        >>> ds2 = DataSet(df2)
+        >>> ds = DataSetUnion(ds1, ds2)
+        >>> train_x, train_y = ds.training_data()
+        >>> val_x, val_y = ds.validation_data()
+        >>> test_x, test_y = ds.test_data()
+
         Note
         ----
         DataSets must be provided either as positional arguments or as keyword arguments
@@ -72,6 +88,23 @@ class DataSetUnion(_DataSet):
         self.examples = {}
 
         _DataSet.__init__(self, config={}, path=os.getcwd())
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            item = self._datasets[self.index]
+        except KeyError:
+            self.index = 0
+            raise StopIteration
+
+        self.index += 1
+        return item
+
+    def __getitem__(self, item: int):
+        return self._datasets[item]
 
     @property
     def mode(self):

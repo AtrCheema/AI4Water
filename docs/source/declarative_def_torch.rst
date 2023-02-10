@@ -1,7 +1,7 @@
 declarative model definition for pytorch
 ****************************************
 
-This page describes how to build Neural Networks for pytorch using pythron dictionary in `ai4water`.
+This page describes how to build Neural Networks for pytorch using python dictionary in `ai4water`.
 The user can use any layer provided by pytorch such as `Linear` or `LSTM`. Similarly the user
 can use any input argument allowed by the particular layer e.g. `bidirectional` for 
 LSTM_ and `out_features` for
@@ -36,8 +36,8 @@ multi-layer perceptron
     )
 
 
-If we want to do slicing of the outputs of one layer, we can use pythons's `lambda` function. 
-In fact any `callable` object can be proivded
+If we want to do slicing of the outputs of one layer, we can use python's `lambda` function.
+In fact any `callable` object can be provided
 
 LSTM based model
 =================

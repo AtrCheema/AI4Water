@@ -6,6 +6,8 @@ site.addsitedir(ai4_dir)
 
 import unittest
 
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
@@ -15,9 +17,6 @@ from ai4water.postprocessing.visualize import Visualize
 data = busan_beach()
 input_features = data.columns.tolist()[0:-1]
 output_features = data.columns.tolist()[-1:]
-
-
-
 
 
 class TestVisualize(unittest.TestCase):
@@ -40,14 +39,14 @@ class TestVisualize(unittest.TestCase):
         vis = Visualize(model, save=False, show=False)
 
         for lyr in ['LSTM_0', 'LSTM_1']:
-            vis.activations(layer_names=lyr, examples_to_use=range(24))
-            vis.activations(layer_names=lyr, examples_to_use=30)
+            vis.activations(layer_names=lyr, data=data, examples_to_use=range(24))
+            vis.activations(layer_names=lyr, data=data, examples_to_use=30)
 
-            vis.activation_gradients(lyr, examples_to_use=range(30))
+            vis.activation_gradients(lyr, data=data, examples_to_use=range(30))
 
             vis.weights(layer_names=lyr)
 
-            vis.weight_gradients(layer_names=lyr)
+            vis.weight_gradients(layer_names=lyr, data=data)
 
         return
 

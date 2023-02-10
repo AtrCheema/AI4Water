@@ -1,6 +1,7 @@
 
-from typing import Callable
+from typing import Callable, Union, List
 
+from easy_mpl import plot
 
 from ai4water.backend import np, os, plt, pd
 from ._explain import ExplainerMixin
@@ -121,8 +122,23 @@ class PartialDependencePlot(ExplainerMixin):
                 whether to show the distribution of data as histogram or not
             show_minima:
                 whether to show the function minima or not
+
         Returns:
             matplotlib Figure
+
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PartialDependencePlot
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> x, _ = model.training_data()
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        ...                            num_points=14)
+        >>> pdp.nd_interactions(show_dist=True)
         """
 
         n_dims = len(self.features)
@@ -142,7 +158,7 @@ class PartialDependencePlot(ExplainerMixin):
                     else:
                         ax_ = ax
 
-                    self._plot_pdp_1dim(*self._pdp_for_2d(self.data, self.features[i]),
+                    self._plot_pdp_1dim(*self.calc_pdp_1dim(self.data, self.features[i]),
                                         self.data,
                                         self.features[i],
                                         show_dist=show_dist,
@@ -239,10 +255,7 @@ class PartialDependencePlot(ExplainerMixin):
         >>> x, _ = model.training_data()
         >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
         ...                            num_points=14)
-        >>> pdp.nd_interactions(show_dist=True)
-
-        specifying features whose interaction is to be calculated and plotted.
-
+        ... # specifying features whose interaction is to be calculated and plotted.
         >>> axis = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         """
 
@@ -345,7 +358,7 @@ class PartialDependencePlot(ExplainerMixin):
 
     def plot_1d(
             self,
-            feature,
+            feature:Union[str, List[str]],
             show_dist: bool = True,
             show_dist_as: str = "hist",
             ice: bool = True,
@@ -355,6 +368,10 @@ class PartialDependencePlot(ExplainerMixin):
             show_minima: bool = False,
             ice_only: bool = False,
             ice_color: str = "lightblue",
+            feature_name:str = None,
+            pdp_line_kws: dict = None,
+            ice_lines_kws: dict = None,
+            hist_kws:dict = None
     ):
         """partial dependence plot in one dimension
 
@@ -362,6 +379,7 @@ class PartialDependencePlot(ExplainerMixin):
         ----------
             feature :
                 the feature name for which to plot the partial dependence
+                For one hot encoded categorical features, provide a list
             show_dist :
                 whether to show actual distribution of data or not
             show_dist_as :
@@ -381,14 +399,56 @@ class PartialDependencePlot(ExplainerMixin):
             ice_color :
                 color for ice lines. It can also be a valid maplotlib
                 `colormap <https://matplotlib.org/3.5.1/tutorials/colors/colormaps.html>`_
+            feature_name : str
+                name of the feature. If not given, then value of ``feature`` is used.
+            pdp_line_kws : dict
+                any keyword argument for axes.plot when plotting pdp lie
+            ice_lines_kws : dict
+                any keyword argument for axes.plot when plotting ice lines
+            hist_kws :
+                any keyword arguemnt for axes.hist when plotting histogram
+
+        Examples
+        ---------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> model = Model(model="XGBRegressor")
+        >>> data = busan_beach()
+        >>> model.fit(data=data)
+        >>> x, _ = model.training_data(data=data)
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        ...                            num_points=14)
+        >>> pdp.plot_1d("tide_cm")
+
+        with categorical features
+
+        >>> from ai4water.datasets import mg_photodegradation
+        >>> data, cat_enc, an_enc  = mg_photodegradation(encoding="ohe")
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=data)
+        >>> x, _ = model.training_data(data=data)
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        ...                                num_points=14)
+        >>> feature = [f for f in model.input_features if f.startswith('Catalyst_type')]
+        >>> pdp.plot_1d(feature)
+        >>> pdp.plot_1d(feature, show_dist_as="grid")
+        >>> pdp.plot_1d(feature, show_dist=False)
+        >>> pdp.plot_1d(feature, show_dist=False, ice=False)
+        >>> pdp.plot_1d(feature, show_dist=False, ice=False, model_expected_value=True)
+        >>> pdp.plot_1d(feature, show_dist=False, ice=False, feature_expected_value=True)
+
         """
-        if isinstance(feature, list) or isinstance(feature, tuple):
+        if isinstance(feature, tuple):
             raise NotImplementedError
         else:
             if self.single_source:
                 if self.data_is_2d:
+
+                    pdp_vals, ice_vals = self.calc_pdp_1dim(self.data, feature)
+
                     ax = self._plot_pdp_1dim(
-                        *self._pdp_for_2d(self.data, feature),
+                        pdp_vals,
+                        ice_vals,
                         self.data, feature,
                         show_dist=show_dist,
                         show_dist_as=show_dist_as,
@@ -399,11 +459,18 @@ class PartialDependencePlot(ExplainerMixin):
                         show=self.show,
                         save=self.save,
                         ice_only=ice_only,
-                        ice_color=ice_color)
+                        ice_color=ice_color,
+                        feature_name=feature_name,
+                        ice_lines_kws=ice_lines_kws,
+                        pdp_line_kws=pdp_line_kws,
+                        hist_kws=hist_kws
+                    )
                 elif self.data_is_3d:
                     for lb in range(self.data.shape[1]):
+                        pdp_vals, ice_vals = self.calc_pdp_1dim(self.data, feature, lb)
                         ax = self._plot_pdp_1dim(
-                            *self._pdp_for_2d(self.data, feature, lb),
+                            pdp_vals,
+                            ice_vals,
                             data=self.data,
                             feature=feature,
                             lookback=lb,
@@ -417,16 +484,19 @@ class PartialDependencePlot(ExplainerMixin):
                             show=self.show,
                             save=self.save,
                             ice_only=ice_only,
-                            ice_color=ice_color)
+                            ice_color=ice_color,
+                        ice_lines_kws=ice_lines_kws,
+                        pdp_line_kws=pdp_line_kws,
+                        hist_kws=hist_kws)
                 else:
                     raise ValueError(f"invalid data shape {self.data.shape}")
             else:
                 for data in self.data:
                     if self.data_is_2d:
-                        ax = self._pdp_for_2d(data, feature)
+                        ax = self.calc_pdp_1dim(data, feature)
                     else:
                         for lb in []:
-                            ax = self._pdp_for_2d(data, feature, lb)
+                            ax = self.calc_pdp_1dim(data, feature, lb)
         return ax
 
     def xv(self, data, feature, lookback=None):
@@ -441,13 +511,20 @@ class PartialDependencePlot(ExplainerMixin):
 
     def grid(self, data, feature, lookback=None):
         """generates the grid for evaluation of model"""
+        if isinstance(feature, list):
+            # one hot encoded feature
+            self.num_points = len(feature)
+            xs = pd.get_dummies(feature)
+            return [repeat(xs.iloc[i].values, len(data)) for i in range(len(xs))]
+
         xmin, xmax = compute_bounds(self.xmin,
                                     self.xmax,
                                     self.xv(data, feature, lookback))
 
         return np.linspace(xmin, xmax, self.num_points)
 
-    def _pdp_for_2d(self, data, feature, lookback=None):
+    def calc_pdp_1dim(self, data, feature, lookback=None):
+        """calculates partial dependence for 1 dimension data"""
         ind = self._feature_to_ind(feature)
 
         xs = self.grid(data, feature, lookback)
@@ -486,13 +563,19 @@ class PartialDependencePlot(ExplainerMixin):
 
         return pd_vals, ice_vals
 
-    def _feature_to_ind(self, feature) -> int:
+    def _feature_to_ind(
+            self,
+            feature:Union[str, List[str]]
+    ) -> int:
         ind = feature
         if isinstance(feature, str):
             if self.single_source:
                 ind = self.features.index(feature)
             else:
                 raise NotImplementedError
+        elif isinstance(feature, list):
+            ind = [self.features.index(i) for i in feature]
+
         elif not isinstance(feature, int):
             raise ValueError
 
@@ -500,7 +583,10 @@ class PartialDependencePlot(ExplainerMixin):
 
     def _plot_pdp_1dim(
             self,
-            pd_vals, ice_vals, data, feature,
+            pd_vals,
+            ice_vals,
+            data,
+            feature,
             lookback=None,
             show_dist=True, show_dist_as="hist",
             ice=True, show_ci=False,
@@ -509,7 +595,11 @@ class PartialDependencePlot(ExplainerMixin):
             model_expected_value=False,
             show=True, save=False, ax=None,
             ice_color="lightblue",
-            ice_only=False,
+            ice_only:bool = False,
+            feature_name:str = None,
+            pdp_line_kws:dict = None,
+            ice_lines_kws:dict = None,
+            hist_kws:dict = None,
     ):
 
         xmin, xmax = compute_bounds(self.xmin,
@@ -520,9 +610,16 @@ class PartialDependencePlot(ExplainerMixin):
             fig = plt.figure()
             ax = fig.add_axes((0.1, 0.3, 0.8, 0.6))
 
-        xs = self.grid(data, feature, lookback)
+        if isinstance(feature, list):
+            xs = np.arange(len(feature))
+            if feature_name is None:
+                feature_name = f"Feature"
+        else:
+            if feature_name is None:
+                feature_name = feature
+            xs = self.grid(data, feature, lookback)
 
-        ylabel = "E[f(x) | " + feature + "]"
+        ylabel = "E[f(x) | " + feature_name + "]"
         if ice:
             n = ice_vals.shape[1]
             if ice_color in plt.colormaps():
@@ -530,11 +627,14 @@ class PartialDependencePlot(ExplainerMixin):
             else:
                 colors = [ice_color for _ in range(n)]
 
-            ice_linewidth = min(1, 50 / n)  # pylint: disable=unsubscriptable-object
+            _ice_lines_kws = dict(linewidth=min(1, 50 / n), alpha=1)
+            if ice_lines_kws is not None:
+                _ice_lines_kws.update(ice_lines_kws)
+
             for _ice in range(n):
                 ax.plot(xs, ice_vals[:, _ice], color=colors[_ice],
-                        linewidth=ice_linewidth, alpha=1)
-            ylabel = "f(x) | " + feature
+                        **_ice_lines_kws)
+            ylabel = "f(x) | " + feature_name
 
         if show_ci:
             std = np.std(ice_vals, axis=1)
@@ -548,8 +648,11 @@ class PartialDependencePlot(ExplainerMixin):
             ax.fill_between(xs, upper, lower, alpha=0.14, color=color)
 
         # the line plot
+        _pdp_line_kws = dict(color='blue', linewidth=2, alpha=1)
         if not ice_only:
-            ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
+            if pdp_line_kws is not None:
+                _pdp_line_kws.update(pdp_line_kws)
+            plot(xs, pd_vals, show=False, ax=ax, **_pdp_line_kws)
 
         title = None
         if lookback is not None:
@@ -560,20 +663,26 @@ class PartialDependencePlot(ExplainerMixin):
                      right_spine=False,
                      top_spine=False,
                      tick_params=dict(labelsize=11),
-                     xlabel=feature,
+                     xlabel=feature_name,
                      xlabel_kws=dict(fontsize=20),
                      title=title)
+
+        if isinstance(feature, list):
+            ax.set_xticks(xs)
+            ax.set_xticklabels(feature, rotation=90)
         ax.xaxis.set_ticks_position('bottom')
         ax.yaxis.set_ticks_position('left')
 
         ax2 = ax.twinx()
 
         if show_dist:
+            _hist_kws = dict(density=False, facecolor='black', alpha=0.1)
+            if hist_kws is not None:
+                _hist_kws.update(hist_kws)
             xv = self.xv(data, feature, lookback)
             if show_dist_as == "hist":
 
-                ax2.hist(xv, 50, density=False, facecolor='black', alpha=0.1,
-                         range=(xmin, xmax))
+                ax2.hist(xv, 50, range=(xmin, xmax), **_hist_kws)
             else:
                 _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature,
                                   xlabel_kws=dict(fontsize=20))
@@ -589,7 +698,9 @@ class PartialDependencePlot(ExplainerMixin):
         ax2.yaxis.set_ticks([])
 
         if feature_expected_value:
-            self._add_feature_exp_val(ax2, ax, xmin, xmax, data, feature, lookback)
+            self._add_feature_exp_val(ax2, ax, xmin, xmax, data, feature,
+                                      lookback=lookback,
+                                      feature_name=feature_name)
 
         if model_expected_value:
             self._add_model_exp_val(ax2, ax, data)
@@ -600,7 +711,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         if save:
             lookback = lookback or ''
-            fname = os.path.join(self.path, f"pdp_{feature}_{lookback}")
+            fname = os.path.join(self.path, f"pdp_{feature_name}_{lookback}")
             plt.savefig(fname, bbox_inches="tight", dpi=400)
 
         if show:
@@ -627,7 +738,9 @@ class PartialDependencePlot(ExplainerMixin):
                               linestyle="--", linewidth=1)
         return
 
-    def _add_feature_exp_val(self, ax, original_axis, xmin, xmax, data, feature,
+    def _add_feature_exp_val(self, ax, original_axis, xmin, xmax, data,
+                             feature,
+                             feature_name=None,
                              lookback=None):
 
         xv = self.xv(data=data, feature=feature, lookback=lookback)
@@ -637,7 +750,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         process_axis(ax3,
                      xlim=(xmin, xmax),
-                     xticks=[mval], xticklabels=["E[" + feature + "]"],
+                     xticks=[mval], xticklabels=["E[" + feature_name + "]"],
                      tick_params={'length': 0, 'labelsize': 11}, top_spine=False,
                      right_spine=False)
         original_axis.axvline(mval, color="#999999", zorder=-1, linestyle="--",
@@ -733,3 +846,8 @@ def _add_surface(ax, x0, x1, pd_vals, cmap, feature0, feature2, **kwargs):
     ax.set_zlabel(f"E[f(x) | {feature0} {feature2} ]", fontsize=11)
 
     return
+
+
+def repeat(array, n:int):
+    # (len(array),) -> (len(array), n)
+    return np.tile(array, n).reshape(-1, len(array))

@@ -6,9 +6,10 @@ from .backend import tf, plt, np, os
 from .backend import keras
 from .functional import Model as FModel
 from ai4water.utils.utils import print_something
+from .utils.utils import DataNotFound
 from ai4water.nn_tools import check_act_fn
 from ai4water.preprocessing import DataSet
-from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
+from ai4water.models._tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
 
 layers = keras.layers
@@ -46,9 +47,9 @@ class DualAttentionModel(FModel):
         >>> model = DualAttentionModel(lookback=5,
         ...                            input_features=data.columns.tolist()[0:-1],
         ...                            output_features=data.columns.tolist()[-1:])
-        If you do not wish to feed previous output as input to the model, you
-        can set teacher forcing to False. The drop_remainder argument must be
-        set to True in such a case.
+        ... #If you do not wish to feed previous output as input to the model, you
+        ... #can set teacher forcing to False. The drop_remainder argument must be
+        ... #set to True in such a case.
         >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4,
         ...                            drop_remainder=True, ts_args={'lookback':5})
         >>> model.fit(data=data)
@@ -126,11 +127,6 @@ class DualAttentionModel(FModel):
         super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
         setattr(self, 'category', "DL")
-
-    @property
-    def mode(self) ->str:
-        self.config['mode'] = "regression"
-        return self.config['mode']
 
     def build(self, input_shape=None):
 
@@ -325,7 +321,7 @@ class DualAttentionModel(FModel):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def fetch_data(self, x, y, source, **kwargs):
+    def fetch_data(self, x, y, source, data=None, **kwargs):
 
         if self.teacher_forcing:
             x, prev_y, labels = getattr(self.dh_, f'{source}_data')(**kwargs)
@@ -361,19 +357,17 @@ class DualAttentionModel(FModel):
 
     def training_data(self, x=None, y=None, data='training', key=None):
 
-        if x is not None:
-            return x, y
-
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='training', key=key)
+        return self.fetch_data(x=x, y=y, source='training', data=data, key=key)
 
     def validation_data(self, x=None, y=None, data='validation', **kwargs):
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='validation', **kwargs)
+
+        return self.fetch_data(x=x, y=y, source='validation', data=data, **kwargs)
 
     def test_data(self, x=None, y=None, data='test',  **kwargs):
         self._maybe_dh_not_set(data=data)
-        return self.fetch_data(x=x, y=y, source='test', **kwargs)
+        return self.fetch_data(x=x, y=y, source='test', data=data, **kwargs)
 
     def _maybe_dh_not_set(self, data):
         """if dh_ has not been set yet, try to create it using data argument if
@@ -384,20 +378,24 @@ class DualAttentionModel(FModel):
             self.dh_ = DataSet(data=data, **self.data_config)
         return
 
-    def interpret(self, data='training', **kwargs):
-        import matplotlib
-        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
+    def interpret(
+            self,
+            data=None,
+            data_type='training',
+            **kwargs):
 
-        self.plot_act_along_inputs(f'attn_weight_{self.lookback - 1}_1',
-                                   data=data,
-                                   **kwargs)
-        return
+        return self.plot_act_along_inputs(
+            data=data,
+            layer_name=f'attn_weight_{self.lookback - 1}_1',
+            data_type=data_type,
+            **kwargs)
 
     def get_attention_weights(
             self,
             layer_name: str=None,
             x = None,
-            data = 'training',
+            data = None,
+            data_type = 'training',
     )->np.ndarray:
         """
         Parameters
@@ -407,13 +405,15 @@ class DualAttentionModel(FModel):
                 layer will be used.
             x : optional
                 input data, if given, then ``data`` must not be given
-            data : str, optional
+            data :
+            data_type : str, optional
                 the data to make forward pass to get attention weghts. Possible
                 values are
 
                 - ``training``
                 - ``validation``
                 - ``test``
+                - ``all``
 
         Returns
         -------
@@ -421,7 +421,7 @@ class DualAttentionModel(FModel):
         """
         if x is not None:
             # default value
-            assert data=="training"
+            assert data_type in ("training", "test", "validation", "all")
 
         layer_name = layer_name or f'attn_weight_{self.lookback - 1}_1'
 
@@ -434,10 +434,13 @@ class DualAttentionModel(FModel):
         kwargs = {}
         if self.config['drop_remainder']:
             kwargs['batch_size'] = self.config['batch_size']
-        activation = Visualize(model=self).get_activations(layer_names=layer_name,
-                                                           x=x,
-                                                           data=data,
-                                                           **kwargs)
+
+        activation = Visualize(model=self).get_activations(
+            layer_names=layer_name,
+            x=x,
+            data=data,
+            data_type=data_type,
+            **kwargs)
 
         activation = activation[layer_name]  # (num_examples, lookback, num_ins)
 
@@ -445,68 +448,70 @@ class DualAttentionModel(FModel):
 
     def plot_act_along_inputs(
             self,
+            data,
             layer_name: str,
-            name: str = None,
+            data_type='training',
             vmin=None,
             vmax=None,
-            data='training',
             show=False
     ):
 
         if not os.path.exists(self.act_path):
             os.makedirs(self.act_path)
 
-        data_name = name or data
-
-        activation = self.get_attention_weights(layer_name=layer_name, data=data)
+        activation = self.get_attention_weights(
+            layer_name=layer_name,
+            data=data,
+            data_type=data_type,
+        )
 
         act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
 
         lookback = self.config['ts_args']['lookback']
-        x, observations = getattr(self, f'{data}_data')()
+        x, observations = getattr(self, f'{data_type}_data')(data=data)
 
         if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
-            raise ValueError(f"no {data} data found.")
+            raise ValueError(f"no {data_type} data found.")
 
-        predictions = self.predict(process_results=False, x=x)
+        predictions = self.predict(x=x, process_results=False)
 
         plt.close('all')
 
         fig, axis = plt.subplots()
 
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        _, im = imshow(act_avg_over_examples,
+        im = imshow(act_avg_over_examples,
                        ax=axis,
                        aspect="auto",
                        yticklabels=ytick_labels,
-                       ylabel='lookback steps',
+                       ax_kws=dict(ylabel='lookback steps'),
                        show=False
                        )
 
         axis.set_xticks(np.arange(self.num_ins))
         axis.set_xticklabels(self.input_features, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
+        plt.savefig(
+            os.path.join(self.act_path, f'acts_avg_over_examples_{data_type}'),
                     dpi=400, bbox_inches='tight')
         plt.close('all')
 
-        data = self.inputs_for_attention(x)
+        x = self.inputs_for_attention(x)
 
-        plot_activations_along_inputs(
-            data=data,
+        return plot_activations_along_inputs(
+            data=x,
             activations=activation,
             observations=observations,
             predictions=predictions,
             in_cols=self.input_features,
             out_cols=self.output_features,
             lookback=lookback,
-            name=data_name,
+            name=data_type,
             path=self.act_path,
             vmin=vmin,
             vmax=vmax,
             show=show
         )
-        return
 
     def plot_act_along_lookback(self, activations, sample=0):
 
@@ -553,6 +558,30 @@ class DualAttentionModel(FModel):
             transformation.insert(1, self.config['y_transformation'])
         return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
 
+    def _fetch_data(self, source:str, x=None, y=None, data=None):
+        """The main idea is that the user should be able to fully customize
+        training/test data by overwriting training_data and test_data methods.
+        However, if x is given or data is DataSet then the training_data/test_data
+        methods of this(Model) class will not be called."""
+
+        x, y, prefix, key, user_defined_x = super()._fetch_data(source, x, y, data)
+        if isinstance(x, np.ndarray):
+            if not self.config['drop_remainder']:
+                n_s_feature_dim = self.config['enc_config']['n_s']
+                n_h_feature_dim = self.config['enc_config']['n_h']
+
+                s0 = np.zeros((x.shape[0], n_s_feature_dim))
+                h0 = np.zeros((x.shape[0], n_h_feature_dim))
+
+                if self.__class__.__name__ == "DualAttentionModel":
+                    p_feature_dim = self.dec_config['p']
+                    h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
+                    x = [x, s0, h0, h_de0, s_de0]
+                else:
+                    x = [x, s0, h0]
+
+        return x, y, prefix, key, user_defined_x
+
 
 class InputAttentionModel(DualAttentionModel):
     """
@@ -595,9 +624,24 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def fetch_data(self, x, y, source, **kwargs):
+    def fetch_data(self, source, x=None, y=None, data=None, **kwargs):
 
-        data = getattr(self.dh_, f'{source}_data')(**kwargs)
+        if x is None:
+            if isinstance(data, str):
+                if data in ("training", "test", "validation"):
+                    if hasattr(self, 'dh_'):
+                        data = getattr(self.dh_, f'{data}_data')(**kwargs)
+                    else:
+                        raise DataNotFound(source)
+                else:
+                    raise ValueError
+            else:
+                dh = DataSet(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                data = getattr(dh, f'{source}_data')(**kwargs)
+        else:
+            data = x, y
+
         if self.teacher_forcing:
             x, prev_y, labels = data
         else:
@@ -630,12 +674,20 @@ class InputAttentionModel(DualAttentionModel):
     def _fit_transform_x(self, x):
         """transforms x and puts the transformer in config witht he key name
         for conformity we need to add feature names of initial states and their transformations
-        will always be None."""
-        feature_names = [
-            self.input_features,
-            [f"{i}" for i in range(self.enc_config['n_s'])],
-            [f"{i}" for i in range(self.enc_config['n_h'])]
-        ]
-        transformation = [self.config['x_transformation'], None, None]
-        return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
+        will always be None.
+        """
+        # x can be array when the user does not provide input conditions!
+        if isinstance(x, list):
+            assert len(x) == 3
+            feature_names = [
+                self.input_features,
+                [f"{i}" for i in range(self.enc_config['n_s'])],
+                [f"{i}" for i in range(self.enc_config['n_h'])]
+            ]
+            transformation = [self.config['x_transformation'], None, None]
+            return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
+        else:
+            transformation = self.config['x_transformation']
+            return self._fit_transform(x, 'x_transformer_', transformation,
+                                       self.input_features)
 

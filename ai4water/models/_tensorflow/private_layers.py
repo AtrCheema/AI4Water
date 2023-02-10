@@ -1,4 +1,6 @@
 
+from typing import Union
+
 from ai4water.backend import tf
 
 layers = tf.keras.layers
@@ -319,68 +321,615 @@ class EncoderLayer(tf.keras.layers.Layer):
         return out2, attn_weights
 
 
-class TransformerEncoder(tf.keras.layers.Layer):
+class TransformerBlocks(tf.keras.layers.Layer):
+    """
+    This layer stacks Transformers on top of each other.
 
-    def __init__(self, num_layers, d_model, num_heads, dff,
-                 maximum_position_encoding,
-                 rate=0.1, return_weights=False, **kwargs):
-        super(TransformerEncoder, self).__init__(**kwargs)
+    Example
+    -------
+    >>> import numpy as np
+    >>> from tensorflow.keras.models import Model
+    >>> from tensorflow.keras.layers import Input, Dense
+    >>> from ai4water.models._tensorflow import TransformerBlocks
+    >>> inp = Input(shape=(10, 32))
+    >>> out, _ = TransformerBlocks(4, 4, 32)(inp)
+    >>> out = Dense(1)(out)
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(optimizer="Adam", loss="mse")
+    >>> x = np.random.random((100, 10, 32))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x,y)
+    """
+    def __init__(
+            self,
+            num_blocks:int,
+            num_heads:int,
+            embed_dim:int,
+            name:str = "TransformerBlocks",
+            **kwargs
+    ):
+        """
+        Parameters
+        -----------
+        num_blocks : int
+        num_heads : int
+        embed_dim : int
+        **kwargs :
+            additional keyword arguments for :class:`ai4water.models.tensorflow.Transformer`
+        """
 
-        self.d_model = d_model
-        self.num_layers = num_layers
+        super(TransformerBlocks, self).__init__(name=name)
+        self.num_blocks = num_blocks
         self.num_heads = num_heads
-        self.dff = dff
-        self.maximum_position_encoding = maximum_position_encoding
-        self.rate = rate
-        self.return_weights = return_weights
+        self.embed_dim = embed_dim
 
-        #         self.pos_encoding = positional_encoding(self.maximum_position_encoding,
-        #                                                 self.d_model)
-        #         self.embedding = tf.keras.layers.Dense(self.d_model)
-        self.pos_emb = tf.keras.layers.Embedding(input_dim=self.maximum_position_encoding,
-                                                 output_dim=self.d_model)
+        self.blocks = []
+        for n in range(num_blocks):
+            self.blocks.append(Transformer(num_heads, embed_dim, **kwargs))
 
-        self.enc_layers = [EncoderLayer(self.d_model, self.num_heads, self.dff, self.rate)
-                           for _ in range(self.num_layers)]
-
-        self.dropout = tf.keras.layers.Dropout(self.rate)
-
-        self.attn_weights = None
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'num_layers': self.num_layers,
-            'd_model': self.d_model,
-            'num_heads': self.num_heads,
-            'dff': self.dff,
-            'maximum_position_encoding': self.maximum_position_encoding,
-            'dropout': self.dropout,
-        })
+    def get_config(self)->dict:
+        config = {
+            "num_blocks": self.num_blocks,
+            "num_heads": self.num_heads,
+            "embed_dim": self.embed_dim
+        }
         return config
 
-    # def call(self, x, training, mask=None):
-    def __call__(self, x, training=True, mask=None, *args, **kwargs):
+    def __call__(self, inputs, *args, **kwargs):
 
-        seq_len = tf.shape(x)[1]
+        attn_weights_list = []
+        for transformer in self.blocks:
+            inputs, attn_weights = transformer(inputs)
+            attn_weights_list.append(tf.reduce_sum(attn_weights[:, :, 0, :]))
 
-        # adding embedding and position encoding.
-        #         x += self.pos_encoding[:, :seq_len, :]
-        #         x = self.embedding(x)
-        positions = tf.range(start=0, limit=seq_len, delta=1)
-        x += self.pos_emb(positions)
+        importances = tf.reduce_sum(tf.stack(attn_weights_list), axis=0) / (
+                self.num_blocks * self.num_heads)
 
-        x = self.dropout(x, training=training)
-        self.attn_weights = []
+        return inputs, importances
 
-        for i in range(self.num_layers):
-            x, _w = self.enc_layers[i](x, training, mask)
-            self.attn_weights.append(_w)
 
-        if self.return_weights:
-            return x, self.attn_weights
+class Transformer(tf.keras.layers.Layer):
+    """
+    A basic transformer block consisting of
+    LayerNormalization -> Add -> MultiheadAttention -> MLP ->
 
-        return x  # (batch_size, input_seq_len, d_model)
+    Example
+    -------
+    >>> import numpy as np
+    >>> from tensorflow.keras.models import Model
+    >>> from tensorflow.keras.layers import Input, Dense
+    >>> from ai4water.models._tensorflow import Transformer
+    >>> inp = Input(shape=(10, 32))
+    >>> out, _ = Transformer(4, 32)(inp)
+    >>> out = Dense(1)(out)
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(optimizer="Adam", loss="mse")
+    >>> x = np.random.random((100, 10, 32))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x,y)
+    """
+    def __init__(
+            self,
+            num_heads:int = 4,
+            embed_dim:int=32,
+            dropout=0.1,
+            post_norm:bool = True,
+            prenorm_mlp:bool = False,
+            num_dense_lyrs:int = 1,
+            seed:int = 313,
+            *args,
+            **kwargs
+    ):
+        """
+
+        Parameters
+        -----------
+        num_heads : int
+            number of attention heads
+        embed_dim : int
+            embedding dimension. This value is also used for units/neurons in MLP blocl
+        dropout : float
+            dropout rate in MLP blocl
+        post_norm : bool (default=True)
+            whether to apply LayerNormalization on the outputs or not.
+        prenorm_mlp : bool
+            whether to apply LayerNormalization on inputs of MLP or not
+        num_dense_lyrs : int
+            number of Dense layers in MLP block.
+        """
+        super(Transformer, self).__init__(*args, **kwargs)
+
+        self.num_heads = num_heads
+        self.embed_dim = embed_dim
+        self.dropout = dropout
+        self.post_norm = post_norm
+        self.prenorm_mlp = prenorm_mlp
+        self.seed = seed
+
+        assert num_dense_lyrs <= 2
+        self.num_dense_lyrs = num_dense_lyrs
+
+        self.att = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_heads, key_dim=embed_dim,
+            dropout=dropout
+        )
+        self.skip1 = tf.keras.layers.Add()
+        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.ffn = self._make_mlp()
+
+        self.skip2 = tf.keras.layers.Add()
+        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+
+    def _make_mlp(self):
+        lyrs = []
+
+        if self.prenorm_mlp:
+            lyrs += [tf.keras.layers.LayerNormalization(epsilon=1e-6)]
+
+
+        lyrs += [
+            Dense(self.embed_dim, activation=tf.keras.activations.gelu),
+            tf.keras.layers.Dropout(self.dropout, seed=self.seed),
+        ]
+
+        if self.num_dense_lyrs>1:
+            lyrs += [tf.keras.layers.Dense(self.embed_dim)]
+
+        return tf.keras.Sequential(lyrs)
+
+    def get_config(self)->dict:
+        config = {
+            "num_heads": self.num_heads,
+            "embed_dim": self.embed_dim,
+            "dropout": self.dropout,
+            "post_norm": self.post_norm,
+            "pre_norm_mlp": self.prenorm_mlp,
+            "seed": self.seed,
+            "num_dense_lyrs": self.num_dense_lyrs
+        }
+        return config
+
+    def __call__(self, inputs, *args, **kwargs):
+
+        inputs = self.layernorm1(inputs)
+        attention_output, att_weights = self.att(
+            inputs, inputs, return_attention_scores=True
+        )
+
+        attention_output = self.skip1([inputs, attention_output])
+        feedforward_output = self.ffn(attention_output)
+        outputs = self.skip2([feedforward_output, attention_output])
+
+        if self.post_norm:
+            return self.layernorm2(outputs), att_weights
+
+        return outputs, att_weights
+
+
+class NumericalEmbeddings(layers.Layer):
+
+    def __init__(
+            self,
+            num_features,
+            emb_dim,
+            *args,
+            **kwargs
+    ):
+
+        self.num_features = num_features
+        self.emb_dim = emb_dim
+        super(NumericalEmbeddings, self).__init__(*args, **kwargs)
+
+    def build(self, input_shape):
+        w_init = tf.random_normal_initializer()
+        # features, n_bins, emb_dim
+        self.linear_w = tf.Variable(
+            initial_value=w_init(
+                shape=(self.num_features, 1, self.emb_dim), dtype='float32'
+            ), trainable=True, name="NumEmbeddingWeights")
+
+        # features, n_bins, emb_dim
+        self.linear_b = tf.Variable(
+            w_init(
+                shape=(self.num_features, 1), dtype='float32'
+            ), trainable=True, name="NumEmbeddingBias")
+        return
+
+    def get_config(self)->dict:
+        config = {
+            "num_features": self.num_features,
+            "emb_dim": self.emb_dim
+        }
+        return config
+
+    def call(self, X, *args, **kwargs):
+        embs = tf.einsum('f n e, b f -> bfe', self.linear_w, X)
+        embs = tf.nn.relu(embs + self.linear_b)
+        return embs
+
+
+class CatEmbeddings(layers.Layer):
+    """
+    The layer to encode categorical features.
+
+    Parameters
+    -----------
+    vocabulary : dict
+    embed_dim : int
+        dimention of embedding for each categorical feature
+    lookup_kws : dict
+        keyword arguments that will go to StringLookup layer
+
+    """
+    def __init__(
+            self,
+            vocabulary:dict,
+            embed_dim:int = 32,
+            lookup_kws:dict = None,
+            *args,
+            **kwargs
+    ):
+        super(CatEmbeddings, self).__init__(*args, **kwargs)
+
+        self.vocabulary = vocabulary
+        self.embed_dim = embed_dim
+        self.lookup_kws = lookup_kws
+        self.lookups = {}
+        self.embedding_lyrs = {}
+        self.feature_names = []
+
+        _lookup_kws = dict(mask_token=None,
+                num_oov_indices=0,
+                output_mode="int")
+
+        if lookup_kws is not None:
+            _lookup_kws.update(lookup_kws)
+
+        for feature_name, vocab in vocabulary.items():
+
+            lookup = layers.StringLookup(
+                vocabulary=vocab,
+                **_lookup_kws
+            )
+
+            self.lookups[feature_name] = lookup
+
+            embedding = layers.Embedding(
+                input_dim=len(vocab), output_dim=embed_dim
+            )
+
+            self.embedding_lyrs[feature_name] = embedding
+
+            self.feature_names.append(feature_name)
+
+    def get_config(self)->dict:
+        config = {
+            "lookup_kws": self.lookup_kws,
+            "embed_dim": self.embed_dim,
+            "vocabulary": self.vocabulary
+        }
+        return config
+
+    def call(self, inputs, *args, **kwargs):
+        """
+        The tensors in `inputs` list must be in same
+        order as in the `vocabulary` dictionary.
+
+        Parameters
+        -------------
+        inputs : list
+            a list of tensors of shape (None,)
+
+        Returns
+        -------
+            a tensor of shape (None, num_cat_features, embed_dim)
+        """
+
+        encoded_features = []
+        for idx, feat_name in enumerate(self.feature_names):
+            feat_input = inputs[:, idx]
+            lookup = self.lookups[feat_name]
+            encoded_feature = lookup(feat_input)
+
+            embedding = self.embedding_lyrs[feat_name]
+            encoded_categorical_feature = embedding(encoded_feature)
+            encoded_features.append(encoded_categorical_feature)
+
+        cat_embeddings = tf.stack(encoded_features, axis=1)
+
+        return cat_embeddings
+
+
+class TabTransformer(layers.Layer):
+    """
+    tensorflow/keras layer which implements logic of TabTransformer model.
+
+    The TabTransformer layer converts categorical features into contextual embeddings
+    by passing them into Transformer block. The output of Transformer block is
+    concatenated with numerical features and passed through an MLP to
+    get the final model output.
+
+    It is available only in tensorflow >= 2.6
+    """
+    def __init__(
+            self,
+            num_numeric_features: int,
+            cat_vocabulary: dict,
+            hidden_units=32,
+            lookup_kws:dict=None,
+            num_heads: int = 4,
+            depth: int = 4,
+            dropout: float = 0.1,
+            num_dense_lyrs: int = 2,
+            prenorm_mlp: bool = True,
+            post_norm: bool = True,
+            final_mlp_units = 16,
+            final_mpl_activation:str = "selu",
+            seed: int = 313,
+            *args, **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        num_numeric_features : int
+            number of numeric features to be used as input.
+        cat_vocabulary : dict
+            a dictionary whose keys are names of categorical features and values
+            are lists which consist of unique values of categorical features.
+            You can use the function :py:meth:`ai4water.models.utils.gen_cat_vocab`
+            to create this for your own data. The length of dictionary should be
+            equal to number of categorical features. If it is None, then this
+            layer expects only numeri features
+        hidden_units : int, optional (default=32)
+            number of hidden units
+        num_heads : int, optional (default=4)
+            number of attention heads
+        depth : int (default=4)
+            number of transformer blocks to be stacked on top of each other
+        dropout : int, optional (default=0.1)
+            droput rate in transformer
+        post_norm : bool (default=True)
+        prenorm_mlp : bool (default=True)
+        num_dense_lyrs : int (default=2)
+            number of dense layers in MLP block inside the Transformer
+        final_mlp_units : int (default=16)
+            number of units/neurons in final MLP layer i.e. the MLP layer
+            after Transformer block
+        """
+        super(TabTransformer, self).__init__(*args, **kwargs)
+
+        self.cat_vocabulary = cat_vocabulary
+        self.num_numeric_inputs = num_numeric_features
+        self.hidden_units = hidden_units
+        self.lookup_kws = lookup_kws
+        self.num_heads = num_heads
+        self.depth = depth
+        self.dropout = dropout
+        self.final_mlp_units = final_mlp_units
+        self.final_mpl_activation = final_mpl_activation
+        self.seed = seed
+
+        self.cat_embs = CatEmbeddings(
+            vocabulary=cat_vocabulary,
+            embed_dim=hidden_units,
+            lookup_kws=lookup_kws
+        )
+
+        # layer normalization of numerical features
+        self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)
+
+        self.transformers = TransformerBlocks(
+            embed_dim=hidden_units,
+            num_heads=num_heads,
+            num_blocks=depth,
+            num_dense_lyrs=num_dense_lyrs,
+            post_norm=post_norm,
+            prenorm_mlp=prenorm_mlp,
+            dropout=dropout,
+            seed=seed
+        )
+
+        self.flatten = layers.Flatten()
+
+        self.concat = layers.Concatenate()
+
+        self.mlp = self.create_mlp(
+            activation=self.final_mpl_activation,
+            normalization_layer=layers.BatchNormalization(),
+            name="MLP",
+        )
+
+    # Implement an MLP block
+    def create_mlp(
+            self,
+            activation,
+            normalization_layer,
+            name=None
+    ):
+        if isinstance(self.final_mlp_units, int):
+            hidden_units = [self.final_mlp_units]
+        else:
+            assert isinstance(self.final_mlp_units, list)
+            hidden_units = self.final_mlp_units
+
+        mlp_layers = []
+        for units in hidden_units:
+            mlp_layers.append(normalization_layer),
+            mlp_layers.append(layers.Dense(units, activation=activation))
+            mlp_layers.append(layers.Dropout(self.dropout, seed=self.seed))
+
+        return tf.keras.Sequential(mlp_layers, name=name)
+
+    def __call__(self, inputs:list, *args, **kwargs):
+        """
+        inputs :
+            list of 2. The first tensor is numerical inputs and second
+            tensor is categorical inputs
+        """
+        num_inputs = inputs[0]
+        cat_inputs = inputs[1]
+
+        cat_embs = self.cat_embs(cat_inputs)
+        transformer_outputs, imp = self.transformers(cat_embs)
+        flat_transformer_outputs = self.flatten(transformer_outputs)
+
+        num_embs = self.lyr_norm(num_inputs)
+
+        x = self.concat([num_embs, flat_transformer_outputs])
+
+        return self.mlp(x), imp
+
+
+class FTTransformer(layers.Layer):
+    """
+    tensorflow/keras layer which implements logic of FTTransformer model.
+
+    In FTTransformer, both categorical and numerical features are passed
+    through transformer block and then passed through MLP layer to get
+    the final model prediction.
+
+    """
+    def __init__(
+            self,
+            num_numeric_features: int,
+            cat_vocabulary: Union[dict, None] = None,
+            hidden_units=32,
+            num_heads: int = 4,
+            depth: int = 4,
+            dropout: float = 0.1,
+            lookup_kws:dict = None,
+            num_dense_lyrs: int = 2,
+            post_norm: bool = True,
+            final_mlp_units: int = 16,
+            with_cls_token:bool = False,
+            seed: int = 313,
+            *args,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        num_numeric_features : int
+            number of numeric features to be used as input.
+        cat_vocabulary : dict/None
+            a dictionary whose keys are names of categorical features and values
+            are lists which consist of unique values of categorical features.
+            You can use the function :py:meth:`ai4water.models.utils.gen_cat_vocab`
+            to create this for your own data. The length of dictionary should be
+            equal to number of categorical features.  If it is None, then this
+            layer expects only numeri features
+        hidden_units : int, optional (default=32)
+            number of hidden units
+        num_heads : int, optional (default=4)
+            number of attention heads
+        depth : int (default=4)
+            number of transformer blocks to be stacked on top of each other
+        dropout : float, optional (default=0.1)
+            droput rate in transformer
+        lookup_kws : dict
+            keyword arguments for lookup layer
+        post_norm : bool (default=True)
+        num_dense_lyrs : int (default=2)
+            number of dense layers in MLP block inside the Transformer
+        final_mlp_units : int (default=16)
+            number of units/neurons in final MLP layer i.e. the MLP layer
+            after Transformer block
+        with_cls_token : bool (default=False)
+            whether to use cls token or not
+        seed : int
+            seed for reproducibility
+        """
+        super(FTTransformer, self).__init__(*args, **kwargs)
+
+        self.cat_vocabulary = cat_vocabulary
+        self.num_numeric_inputs = num_numeric_features
+        self.hidden_units = hidden_units
+        self.num_heads = num_heads
+        self.depth = depth
+        self.dropout = dropout
+        self.final_mlp_units = final_mlp_units
+        self.with_cls_token = with_cls_token
+        self.seed = seed
+
+        if cat_vocabulary is not None:
+            self.cat_embs = CatEmbeddings(
+                vocabulary=cat_vocabulary,
+                embed_dim=hidden_units,
+                lookup_kws=lookup_kws
+            )
+
+        self.num_embs = NumericalEmbeddings(
+            num_features=num_numeric_features,
+            emb_dim=hidden_units
+        )
+
+        if cat_vocabulary is not None:
+            self.concat =  layers.Concatenate(axis=1)
+
+        self.transformers = TransformerBlocks(
+            embed_dim=hidden_units,
+            num_heads=num_heads,
+            num_blocks=depth,
+            num_dense_lyrs=num_dense_lyrs,
+            post_norm=post_norm,
+            dropout=dropout,
+            seed=seed
+        )
+
+        self.lmbda = tf.keras.layers.Lambda(lambda x: x[:, 0, :])
+
+        self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)
+        self.mlp = layers.Dense(final_mlp_units)
+
+    def build(self, input_shape):
+        if self.with_cls_token:
+            # CLS token
+            w_init = tf.random_normal_initializer()
+            self.cls_weights = tf.Variable(
+                initial_value=w_init(shape=(1, self.hidden_units), dtype="float32"),
+                trainable=True,
+            )
+        return
+
+    def __call__(self, inputs:list, *args, **kwargs):
+        """
+        inputs :
+            If categorical variables are considered then inputs is a list of 2.
+            The first tensor is numerical inputs and second tensor is categorical inputs.
+            If categorical variables are not considered then inputs is just a single
+            tensor!
+        """
+
+        if self.cat_vocabulary is None:
+            if isinstance(inputs, list):
+                assert len(inputs) == 1
+                num_inputs = inputs[0]
+            else:
+                num_inputs = inputs
+        else:
+            assert len(inputs) == 2
+
+            num_inputs = inputs[0]
+            cat_inputs = inputs[1]
+
+        # cls_tokens = tf.repeat(self.cls_weights, repeats=tf.shape(inputs[self.numerical[0]])[0], axis=0)
+        # cls_tokens = tf.expand_dims(cls_tokens, axis=1)
+
+        num_embs = self.num_embs(num_inputs)
+
+        if self.cat_vocabulary is None:
+            embs = num_embs
+        else:
+            cat_embs = self.cat_embs(cat_inputs)
+            embs = self.concat([num_embs, cat_embs])
+
+        x, imp = self.transformers(embs)
+
+        x = self.lmbda(x)
+
+        x = self.lyr_norm(x)
+
+        return self.mlp(x), imp
 
 
 class Conditionalize(tf.keras.layers.Layer):
@@ -389,32 +938,61 @@ class Conditionalize(tf.keras.layers.Layer):
 
     Example
     --------
-    >>> from ai4water.models.tensorflow import Conditionalize
+    >>> from ai4water.models._tensorflow import Conditionalize
     >>> from tensorflow.keras.layers import Input, LSTM
     >>> i = Input(shape=(10, 3))
     >>> raw_conditions = Input(shape=(14,))
     >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
     >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
+
+    This layer can also be used in ai4water model when defining the model
+    using declarative model definition style
+
+    >>> from ai4water import Model
+    >>> import numpy as np
+    >>> model = Model(model={"layers": {
+    ...    "Input": {"shape": (10, 3)},
+    ...    "Input_cat": {"shape": (10,)},
+    ...    "Conditionalize": {"config": {"units": 32, "name": "h_state"},
+    ...                       "inputs": "Input_cat"},
+    ...    "LSTM": {"config": {"units": 32},
+    ...             "inputs": "Input",
+    ...                   'call_args': {'initial_state': ['h_state', 'h_state']}},
+    ...    "Dense": {"units": 1}}},
+    ...    ts_args={"lookback": 10}, verbosity=0, epochs=1)
+    ... # define the input and call the .fit method
+    >>> x1 = np.random.random((100, 10, 3))
+    >>> x2 = np.random.random((100, 10))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x=[x1, x2], y=y)
     """
-    def __init__(self, units, max_num_cond=10, **kwargs):
+    def __init__(self, units,
+                 max_num_cond=10,
+                 use_bias:bool = True,
+                 **kwargs):
         self.units = units
         super().__init__(**kwargs)
 
         # single cond
-        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units, name="conditional_dense")
+        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units,
+                                                                use_bias=use_bias,
+                                                                name="conditional_dense")
 
         # multi cond
         self.multi_cond_to_init_state_dense = []
 
         for i in range(max_num_cond):
-            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(units=self.units, name=f"conditional_dense{i}"))
+            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(
+                units=self.units,
+                use_bias=use_bias,
+                name=f"conditional_dense{i}"))
 
         self.multi_cond_p = tf.keras.layers.Dense(1, activation=None, use_bias=True, name="conditional_dense_out")
 
     @staticmethod
     def _standardize_condition(initial_cond):
 
-        assert len(initial_cond.shape) == 2
+        assert len(initial_cond.shape) == 2, initial_cond.shape
 
         return initial_cond
 
@@ -423,16 +1001,17 @@ class Conditionalize(tf.keras.layers.Layer):
         if args or kwargs:
             raise ValueError(f"Unrecognized input arguments\n args: {args} \nkwargs: {kwargs}")
 
-        if inputs.__class__.__name__ == "Tensor":
+        if inputs.__class__.__name__ in ("Tensor", "KerasTensor"):
             inputs = [inputs]
 
-        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
+        assert isinstance(inputs, (list, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
 
         cond = inputs
         if len(cond) > 1:  # multiple conditions.
             init_state_list = []
-            for ii, c in enumerate(cond):
-                init_state_list.append(self.multi_cond_to_init_state_dense[ii](self._standardize_condition(c)))
+            for idx, c in enumerate(cond):
+                init_state_list.append(self.multi_cond_to_init_state_dense[idx](self._standardize_condition(c)))
+
             multi_cond_state = tf.stack(init_state_list, axis=-1)  # -> (?, units, num_conds)
             multi_cond_state = self.multi_cond_p(multi_cond_state)  # -> (?, units, 1)
             cond_state = tf.squeeze(multi_cond_state, axis=-1)  # -> (?, units)
@@ -567,6 +1146,8 @@ class MCLSTM(Layer):
 
     Examples
     --------
+    >>> from ai4water.models._tensorflow import MCLSTM
+    >>> import tensorflow as tf
     >>> inputs = tf.range(150, dtype=tf.float32)
     >>> inputs = tf.reshape(inputs, (10, 5, 3))
     >>> mc = MCLSTM(1, 2, 8, 1)
@@ -695,7 +1276,7 @@ class EALSTM(Layer):
 
     Examples
     --------
-    >>> from ai4water.models.tensorflow import EALSTM
+    >>> from ai4water.models._tensorflow import EALSTM
     >>> import tensorflow as tf
     >>> batch_size, lookback, num_dyn_inputs, num_static_inputs, units = 10, 5, 3, 2, 8
     >>> inputs = tf.range(batch_size*lookback*num_dyn_inputs, dtype=tf.float32)
@@ -710,7 +1291,7 @@ class EALSTM(Layer):
     >>> h_n = lstm(inputs, stat_inputs)  # -> (batch, lookback, units)
     ...
     ... # with return sequences and return_state
-    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True)
+    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True, return_state=True)
     >>> h_n, [c_n, y_hat] = lstm(inputs, stat_inputs)  # -> (batch, lookback, units), [(), ()]
     ...
     ... # end to end Keras model
@@ -943,9 +1524,13 @@ class PrivateLayers(object):
 
     class layers:
 
-        TransformerEncoder = TransformerEncoder
         BasicBlock = BasicBlock
         CONDRNN = ConditionalRNN
         Conditionalize = Conditionalize
         MCLSTM = MCLSTM
         EALSTM = EALSTM
+        CatEmbeddings = CatEmbeddings
+        TransformerBlocks = TransformerBlocks
+        NumericalEmbeddings = NumericalEmbeddings
+        TabTransformer = TabTransformer
+        FTTransformer = FTTransformer

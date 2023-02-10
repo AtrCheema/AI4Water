@@ -1,5 +1,5 @@
 import os
-import sys
+import json
 import time
 import random
 import warnings
@@ -18,9 +18,10 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
+from ai4water.utils import jsonize
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, busan_beach
-from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data, Jsonize
+from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data
 
 
 seed = 313
@@ -741,6 +742,16 @@ class TestUtils(unittest.TestCase):
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
 
+    def test_negative_verbosity(self):
+        # when verbosity is -ve, no directory should be created
+        before = os.listdir(os.path.join(os.getcwd(), 'results'))
+        model = Model(model="RandomForestRegressor", verbosity=-1)
+        model.fit(data=busan_beach)
+        _ = model.predict(data=busan_beach, process_results=False)
+        model.evaluate(data=busan_beach, metrics='r2')
+        assert len(os.listdir(os.path.join(os.getcwd(), 'results'))) == len(before)
+        return
+
 
 class TestTSFeatures(unittest.TestCase):
 
@@ -867,27 +878,124 @@ class TestPrepareData(unittest.TestCase):
         return
 
 
+
 class TestJsonize(unittest.TestCase):
 
-    def test_jsonize(self):
-        a = [np.array([2.0])]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], float))
+    def test_1(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize('a'), fp)
         return
 
-    def test_jsonize_nested_dict(self):
-        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, dict))
-        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+    def test_2(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(1), fp)
         return
 
-    def test_jsonize_none(self):
-        a = [None]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], type(None)))
+    def test_3(self):
+
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(1.0), fp)
+        return
+
+    def test_4(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(['1', 2, 2.0]), fp)
+        return
+
+    def test_5(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(np.array(1.0)), fp)
+        return
+
+    def test_6(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(['1', 2, np.array([1.0, 2.0])]), fp)
+        return
+
+    def test_7(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(['1', 2, [np.array([1.0, 2.0])]]), fp)
+        return
+
+    def test_8(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]]), fp)
+        return
+
+    def test_9(self):
+        # lambda function
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(lambda i: i**i), fp)
+        return
+
+    def test_10(self):
+        # named function
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(jsonize), fp)
+        return
+
+    def test_11(self):
+        # dictionary with function as key and value
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize({jsonize: jsonize}), fp)
+        return
+
+    def test_12(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize({1: ['1', 2, np.array([1.0, 2.0])]}), fp)
+        return
+
+    def test_13(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize({1: ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]],
+                           2: {'a': ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]]}}), fp)
+        return
+
+    def test_14(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize({1: ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]],
+                               2: {'a': ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]],
+                                   jsonize: [np.array(1.0), jsonize]}}), fp)
+        return
+
+    def test_15(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize({1: ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]],
+                               2: {'a': ['1', [1,2,3, [np.array(1.0)]], [np.array([1.0, 2.0])]],
+                                   jsonize: [np.array(1.0), jsonize, list, busan_beach]}}), fp)
+        return
+
+    def test_type(self):
+        for _type in [list, str, dict, tuple]:
+            with open('jsonize.json', 'w') as fp:
+                json.dump(jsonize(_type), fp)
+        return
+
+    def test_tuple1(self):
+        assert isinstance(jsonize((1,2,3)), tuple)
+        return
+
+    def test_list1(self):
+        assert isinstance(jsonize([1,2,3]), list)
+        return
+
+    def test_df(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(busan_beach), fp)
+        return
+
+    def test_series(self):
+        with open('jsonize.json', 'w') as fp:
+            json.dump(jsonize(busan_beach.iloc[0]), fp)
+        return
+
+    def test_bool(self):
+        assert isinstance(jsonize(True), bool)
+        return
+
+    def test_none(self):
+        # None should be None
+        assert jsonize(None) is None
         return
 
 

@@ -7,6 +7,7 @@ from ai4water import Model
 from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water.models import MLP, LSTM, CNN, CNNLSTM, LSTMAutoEncoder, TFT
+from ai4water.models import AttentionLSTM, FTTransformer
 from sklearn.datasets import make_classification
 
 
@@ -28,7 +29,8 @@ X, y = make_classification(n_classes=4,
                            n_repeated=0)
 y = y.reshape(-1, 1)
 
-multi_cls_data = pd.DataFrame(np.concatenate([X, y], axis=1), columns=multi_cls_inp + multi_cls_out)
+multi_cls_data = pd.DataFrame(np.concatenate([X, y], axis=1),
+                              columns=multi_cls_inp + multi_cls_out)
 
 class TestModels(unittest.TestCase):
 
@@ -49,6 +51,25 @@ class TestModels(unittest.TestCase):
                       ts_args={'lookback': 5},
                       verbosity=0)
         assert model.category == "DL"
+        return
+
+    def test_attenlstm(self):
+        model = Model(model=AttentionLSTM(32),
+                      input_features=input_features,
+                      output_features=output_features,
+                      ts_args={'lookback': 5},
+                      verbosity=0)
+        assert model.category == "DL"
+        model.fit(data=data)
+        return
+
+    def test_fttransformer(self):
+        model = Model(model=FTTransformer(len(input_features)),
+                      input_features=input_features,
+                      output_features=output_features,
+                      verbosity=0)
+        assert model.category == "DL"
+        model.fit(data=data)
         return
 
     def test_cnn(self):
@@ -72,7 +93,7 @@ class TestModels(unittest.TestCase):
     def test_mlp_for_cls_binary(self):
         model = Model(model=MLP(32,
                                 mode="classification",
-                                output_features=2),
+                                num_outputs=2),
                       input_features=input_features_cls,
                       output_features=output_features_cls,
                       epochs=2,
@@ -85,7 +106,7 @@ class TestModels(unittest.TestCase):
     def test_mlp_for_cls_binary_softmax(self):
         model = Model(model=MLP(32,
                                 mode="classification",
-                                output_features=2,
+                                num_outputs=2,
                                 output_activation="softmax",
                                 ),
                       input_features=input_features_cls,
@@ -100,7 +121,7 @@ class TestModels(unittest.TestCase):
 
     def test_mlp_for_cls_multicls(self):
         model = Model(model=MLP(32, mode="classification",
-                                output_features=4),
+                                num_outputs=4),
                       input_features=multi_cls_inp,
                       output_features=multi_cls_out,
                       epochs=2,
@@ -112,7 +133,36 @@ class TestModels(unittest.TestCase):
 
     def test_tft(self):
         model = FModel(model=TFT(input_shape=(14, 13)),
-                       ts_args={"lookback": 14}, verbosity=0)
+                       ts_args={"lookback": 14}, verbosity=-1,
+                       epochs=1)
+        model.fit(data=busan_beach(), verbose=0)
+        return
+
+    def test_lstm_autoencoder_1lyr(self):
+
+        lookback_steps = 9
+        # get configuration of CNNLSTM as dictionary which can be given to Model
+        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, 32, 32)
+        # build the model
+        model = Model(model=model_config, input_features=input_features,
+                      output_features=output_features, ts_args={"lookback": lookback_steps},
+                      verbosity=0)
+        # train the model
+        model.fit(data=data, verbose=0, epochs=1)
+
+        return
+
+    def test_lstm_autoencoder_2lyr(self):
+        lookback_steps = 9
+        # specify neurons in each of encoder and decoder LSTMs
+
+        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, [64, 32], [32, 64])
+        # build the model
+        model = Model(model=model_config, input_features=input_features,
+                      output_features=output_features, ts_args={"lookback": lookback_steps},
+                      verbosity=0)
+        # train the model
+        model.fit(data=data, verbose=0, epochs=1)
         return
 
 if __name__ == "__main__":

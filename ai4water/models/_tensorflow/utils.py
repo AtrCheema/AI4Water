@@ -3,7 +3,8 @@ from tensorflow.python.ops import sparse_ops
 from tensorflow.python.ops.ragged import ragged_tensor
 from tensorflow.python.ops import array_ops
 import tensorflow.keras.backend as K
-from tensorflow.keras.layers import TimeDistributed, Dense, Dropout, Add, Activation, Lambda, Multiply
+from tensorflow.keras.layers import Layer, Multiply
+from tensorflow.keras.layers import TimeDistributed, Dense, Dropout, Add, Activation, Lambda
 
 from ai4water.backend import tf
 
@@ -74,7 +75,9 @@ def apply_gating_layer(x,
                        activation=None,
                        activation_kernel_constraint=None,
                        gating_kernel_constraint=None,
-                       name=None):
+                       name=None,
+                       seed=313,
+                       ):
   """Applies a Gated Linear Unit (GLU) to an input.
 
   Args:
@@ -93,7 +96,7 @@ def apply_gating_layer(x,
   """
 
   if dropout_rate is not None:
-    x = Dropout(dropout_rate, name=f'Dropout_{name}')(x)
+    x = Dropout(dropout_rate, name=f'Dropout_{name}', seed=seed)(x)
 
   if use_time_distributed:
     activation_layer = TimeDistributed(Dense(hidden_layer_size,
@@ -154,7 +157,8 @@ def gated_residual_network(
         gating_kernel_constraint1=None,
         gating_kernel_constraint2=None,
         norm=True,
-        name='GRN'
+        name='GRN',
+        seed=313,
 ):
   """Applies the gated residual network (GRN) as defined in paper.
 
@@ -224,7 +228,8 @@ def gated_residual_network(
       activation=None,
       activation_kernel_constraint=gating_kernel_constraint1,
       gating_kernel_constraint=gating_kernel_constraint2,
-      name=name
+      name=name,
+      seed=seed
   )
 
   if return_gate:
@@ -255,8 +260,8 @@ class ScaledDotProductAttention(tf.keras.layers.Layer):
       softmax by default)
   """
 
-  def __init__(self, attn_dropout=0.0, **kwargs):
-      self.dropout = Dropout(attn_dropout, name="ScaledDotProdAtten_dropout")
+  def __init__(self, attn_dropout=0.0, seed=313, **kwargs):
+      self.dropout = Dropout(attn_dropout, name="ScaledDotProdAtten_dropout", seed=seed)
       self.activation = Activation('softmax', name="ScaledDotProdAtten_softmax")
       super().__init__(**kwargs)
 
@@ -273,8 +278,9 @@ class ScaledDotProductAttention(tf.keras.layers.Layer):
       Tuple of (layer outputs, attention weights)
     """
     temper = tf.sqrt(tf.cast(tf.shape(k)[-1], dtype='float32'))
-    attn = Lambda(lambda x: K.batch_dot(x[0], x[1], axes=[2, 2]) / temper, name=f"ScaledDotProdAttenLambda{idx}")(
-        [q, k])  # shape=(batch, q, k)
+
+    attn = MyLambda(name=f"ScaledDotProdAttenLambda{idx}")([q, k], temper=temper)
+
     if mask is not None:
       mmask = Lambda(lambda x: (-1e+9) * (1. - K.cast(x, 'float32')), name=f"ScaledDotProdAttenLambdaMask{idx}")(
           mask)  # setting to infinity
@@ -283,6 +289,16 @@ class ScaledDotProductAttention(tf.keras.layers.Layer):
     attn = self.dropout(attn)
     output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name=f"ScaledDotProdAttenOutput{idx}")([attn, v])
     return output, attn
+
+
+class MyLambda(Layer):
+
+    def __init__(self, name="ScaledDotProdAttenLambda", *args, **kwargs):
+
+        super(MyLambda, self).__init__(*args, name=name, **kwargs)
+
+    def call(self, x, temper, *args, **kwargs):
+        return K.batch_dot(x[0], x[1], axes=[2, 2]) / temper
 
 
 class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
@@ -301,7 +317,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
       state size
   """
 
-  def __init__(self, n_head, d_model, dropout, **kwargs):
+  def __init__(self, n_head, d_model, dropout, seed=313, **kwargs):
     """Initialises layer.
 
     Args:
@@ -313,6 +329,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
     self.n_head = n_head
     self.d_k = self.d_v = d_k = d_v = d_model // n_head
     self.dropout = dropout
+    self.seed=seed
 
     self.qs_layers = []
     self.ks_layers = []
@@ -326,7 +343,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
       self.ks_layers.append(Dense(d_k, use_bias=False))
       self.vs_layers.append(vs_layer)  # use same vs_layer
 
-    self.attention = ScaledDotProductAttention(name="ScaledDotProdAtten")
+    self.attention = ScaledDotProductAttention(name="ScaledDotProdAtten", seed=seed)
     self.w_o = Dense(d_model, use_bias=False, name="MH_atten_output")
 
     super().__init__(**kwargs)
@@ -355,7 +372,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
       vs = self.vs_layers[i](v)
       head, attn = self.attention(qs, ks, vs, mask, i)
 
-      head_dropout = Dropout(self.dropout)(head)
+      head_dropout = Dropout(self.dropout, seed=self.seed)(head)
       heads.append(head_dropout)
       attns.append(attn)
     head = array_ops.stack(heads, axis=0, name="MultiHeadAtten_heads") if n_head > 1 else heads[0]
@@ -363,7 +380,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
 
     _outputs = K.mean(head, axis=0) if n_head > 1 else head
     _outputs = self.w_o(_outputs)
-    _outputs = Dropout(self.dropout, name="MHA_output_do")(_outputs)  # output dropout
+    _outputs = Dropout(self.dropout, name="MHA_output_do", seed=self.seed)(_outputs)  # output dropout
 
     return _outputs, attn
 

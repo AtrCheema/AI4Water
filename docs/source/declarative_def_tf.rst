@@ -7,7 +7,7 @@ We can construct a normal layered model using keras layers by placing the layers
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 
 differentiate it from other similar layers in the model. For example `Dense_0` and `Dense_1` are two 
 Dense_ layers.
-The input/initializating arguments in the layer must be
+The input/initializing arguments in the layer must be
 enclosed in a dictionary within the layer. To find out what input/initializing arguments can be used, check
 documentation of corresponding layer in Tensorflow_  docs.
 It should be noted that the layer name is case-sensitive. Therefore, Dense layer cannot be DENSE.
@@ -73,7 +73,7 @@ second `LSTM` layer.
 
 1d CNN based model
 ====================
-If a layer does not receive any input arguments for its initialization, still an empty dictioanry must be provided.  
+If a layer does not receive any input arguments for its initialization, still an empty dictionary must be provided.
 Activation functions can also be used as a separate layer.
 
 .. code-block:: python
@@ -131,8 +131,9 @@ when the input is > 3d or the number of inputs are more than one.
 
 CNN -> LSTM
 ==========================
-If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed by `TimeDistributed` as shown below.
-In following, 3 `Conv1D` layers are enclosed in `TimeDistributed` layer. Similary `Flatten` and `MaxPool1D` are also 
+If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed
+by `TimeDistributed` as shown below. In following, 3 `Conv1D` layers are enclosed
+in `TimeDistributed` layer. Similarly `Flatten` and `MaxPool1D` are also
 wrapped in `TimeDistributed` layer.
 
 .. code-block:: python
@@ -187,8 +188,9 @@ LSTM based auto-encoder
 
 TCN layer
 =========
-You can use third party layers such as `tcn`_  which is currently not supported by Tensorflow. Provided you have
-installed `tcn`, the layer along with its arguments can be used as following
+You can use third party layers such as `tcn`_  which is currently not supported by
+Tensorflow. Provided you have installed `tcn`, the layer along with its arguments
+can be used as following
 
 .. code-block:: python
 
@@ -210,10 +212,12 @@ installed `tcn`, the layer along with its arguments can be used as following
 
 Multiple Inputs
 ===============
-In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
-for the layer and specify which inputs the layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
-case whose members must be the names of the layers which must have been defined earlier. The input/initializating 
-arguments in the layer must be enclosed in a `config` dictionary within the layer in such cases.
+In order to build more complex models, where a layer takes more than one inputs,
+you can specify the `inputs` key for the layer and specify which inputs the
+layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
+case whose members must be the names of the layers which must have been defined
+earlier. The input/initializing arguments in the layer must be enclosed in a
+`config` dictionary within the layer in such cases.
 
 .. code-block:: python
 
@@ -221,7 +225,7 @@ arguments in the layer must be enclosed in a `config` dictionary within the laye
     >>> class MyModel(Model):
     ...
     >>>     def training_data(self, **kwargs) -> (list, list):
-    ...         """ write code which returns x and y where x consits of [(samples, 5, 10), (samples, 10)] and y consits of
+    ...         """ write code which returns x and y where x consists of [(samples, 5, 10), (samples, 10)] and y consists of
     ...             list [(samples, 1)]
     ...          """
     >>>         return
@@ -258,10 +262,11 @@ from `Model` class
 
 Multiple Output Layers
 =======================
-In some cases a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
-models can be built by specifying the outputs from a layer using `outputs` key. The `value` of the `outputs` key can a
-string or a list of strings specifying the names of of outputs, the layer is returning. We can use these names as inputs
-to any other layer later in the model. 
+In some cases a layer returns more than one output and we want to use each of
+those outputs in a separate layer. Such models can be built by specifying the
+outputs from a layer using `outputs` key. The `value` of the `outputs` key can a
+string or a list of strings specifying the names of of outputs, the layer is
+returning. We can use these names as inputs to any other layer later in the model.
 
 .. code-block:: python
 
@@ -290,10 +295,12 @@ to any other layer later in the model.
 
 Additional call args
 ==========================
-We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's LSTM_ layer, we can
-provide `initial state` of an LSTM. Suppose we want to use hidden and cell state of one LSTM as initial state for next
-LSTM. In such cases we can make use of `call_args` as `key`. The value of `call_args` must a dictionary. In this way
-we can provide `keyword` arguments while calling a layer.
+We might be tempted to provide additional call arguments to a layer. For example,
+in tensorflow's LSTM_ layer, we can provide `initial state` of an LSTM. Suppose
+we want to use hidden and cell state of one LSTM as initial state for next
+LSTM. In such cases we can make use of `call_args` as `key`. The value of
+`call_args` must a dictionary. In this way we can provide `keyword` arguments
+while calling a layer.
 
 .. code-block:: python
 
@@ -345,13 +352,40 @@ lambda layer definition in the `config` as following:
     ...     "Dense": {"config": {"units": 1}}
     >>> }
 
-    ... # The model can be seelessly loaded from the saved json file using
+    ... # The model can be seamlessly loaded from the saved json file using
 
     >>> config_path = "path like"
     >>> model = Model.from_config(config_path=config_path)
 
 
 .. image:: imgs/lambda.png
+
+Custom Layers
+==============
+You can also use your own custom layers which inherit from tensorflow.keras.layers.Layer.
+All you need to do is to register your layer in ai4water.tf_attributes.LAYERS as shown
+in the example below
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from tensorflow.keras.layers import Dense
+    >>> # Define a custom Dense layer
+    >>> class MyDense(Dense):
+            pass
+    >>> # register your custom layer
+    >>> import ai4water.tf_attributes as attributes
+    >>> attributes.LAYERS['CustomDense'] = MyDense
+    # import Model from ai4water
+    >>> from ai4water import Model
+    # build Model using your custom layer
+    >>> layers = {"Input": {"shape": (10,)},
+                  "CustomDense": 1}
+    >>> model = Model(model={"layers": layers})
+    >>> inp = np.random.random((100, 10))
+    >>> y = np.random.random(100)
+    >>> h = model.fit(x=inp, y=y, epochs=1)
+
 
 For more examples see `examples`.
 

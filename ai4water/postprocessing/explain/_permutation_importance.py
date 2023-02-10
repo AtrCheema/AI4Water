@@ -10,6 +10,7 @@ from ai4water.utils.utils import reset_seed, ERROR_LABELS
 
 imshow = easy_mpl.imshow
 bar_chart = easy_mpl.bar_chart
+boxplot = easy_mpl.boxplot
 
 
 class PermutationImportance(ExplainerMixin):
@@ -31,7 +32,7 @@ class PermutationImportance(ExplainerMixin):
         >>> model = Model(model="XGBRegressor", verbosity=0)
         >>> model.fit(data=data)
         >>> x_val, y_val = model.validation_data()
-
+        ... # initialize the PermutationImportance class
         >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
         >>> fig = pimp.plot_1d_pimp()
 
@@ -47,6 +48,7 @@ class PermutationImportance(ExplainerMixin):
             scoring: Union[str, Callable] = "r2",
             n_repeats: int = 14,
             noise: Union[str, np.ndarray] = None,
+            cat_map:dict = None,
             use_noise_only: bool = False,
             feature_names: list = None,
             path: str = None,
@@ -117,6 +119,7 @@ class PermutationImportance(ExplainerMixin):
         self.y = target
         self.scoring = scoring
         self.noise = noise
+        self.cat_map = cat_map
 
         if use_noise_only:
             if noise is None:
@@ -244,33 +247,30 @@ class PermutationImportance(ExplainerMixin):
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
 
-        figsize=None
-        if "figsize" in kwargs:
-            figsize = kwargs.pop("figsize")
-        fig, axis = plt.subplots(figsize=figsize)
-
         lookback = imp.shape[0]
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis, im = imshow(
+        im = imshow(
             imp,
-            ax=axis,
             yticklabels=ytick_labels,
             xticklabels=self.features if len(self.features) <= 14 else None,
-            ylabel="Lookack steps",
-            xlabel="Input Features",
+            ax_kws=dict(
+                ylabel="Lookack steps",
+                xlabel="Input Features",
+                title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
+                ),
             annotate=annotate,
-            title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
+            colorbar=True,
             show=False,
             **kwargs
         )
-        axis.set_xticklabels(axis.get_xticklabels(), rotation=90)
 
-        fig.colorbar(im, orientation='vertical')
+        axes = im.axes
+        axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
 
         if self.show:
             plt.show(
             )
-        return axis
+        return axes
 
     def plot_1d_pimp(
             self,
@@ -292,10 +292,12 @@ class PermutationImportance(ExplainerMixin):
         """
 
         if isinstance(self.importances, np.ndarray):
-            fig, ax = plt.subplots()
+            if self.cat_map is not None:
+                feats = make_feature_list(self.features, self.cat_map)
+            else:
+                feats = self.features
             ax = self._plot_pimp(self.importances,
-                            self.features,
-                            ax,
+                            feats,
                             plot_type=plot_type,
                             **kwargs)
         else:
@@ -331,28 +333,31 @@ class PermutationImportance(ExplainerMixin):
             inp_idx = 0
 
         permuted_x = inputs[inp_idx].copy()
-        # reset seed for reproducibility
-        reset_seed(self.seed, np=np)
 
         feat_dim = 1  # feature dimension (0, 1, 2)
         if time_step is not None:
             feat_dim = 2
 
+        col_indices = list(range(permuted_x.shape[feat_dim]))
+        if self.cat_map is not None:
+            col_indices = create_index(col_indices, self.cat_map)
+
         # empty container to keep results
         # (num_features, n_repeats)
-        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)
+        results = np.full((len(col_indices), self.n_repeats), np.nan)
 
         # todo, instead of having two for loops, we can perturb the
         #  inputs at once and concatenate
         # them as one input and thus call the `model` only once
 
-        for col_index in range(permuted_x.shape[feat_dim]):
+        for col_idx, col_index in enumerate(col_indices):
 
             # instead of calling the model/func for each n_repeat, prepare the data
             # for all n_repeats and stack it and call the model/func once.
             # This reduces calls to model from num_inputs * n_repeats -> num_inputs
-            ermuted_inp = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
+            permuted_inputs = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
             st, en = 0, len(permuted_x)
+            rng = np.random.default_rng(self.seed)
 
             for n_round in range(self.n_repeats):
 
@@ -360,33 +365,37 @@ class PermutationImportance(ExplainerMixin):
                 # also sklearn sets the RandomState insite a function therefore
                 # the results from this function will not be reproducible with
                 # sklearn and vice versa
+
+                # We should make a fresh copy because the permuted_x from previous
+                # iteration has been modified
+                permuted_x_ = permuted_x.copy()
                 if time_step is None:
-                    perturbed_feature = np.random.permutation(
-                        permuted_x[:, col_index])
+                    permuted_feature = rng.permutation(
+                        permuted_x_[:, col_index])
                 else:
-                    perturbed_feature = np.random.permutation(
-                        permuted_x[:, time_step, col_index]
+                    permuted_feature = rng.permutation(
+                        permuted_x_[:, time_step, col_index]
                     )
 
                 if self.noise is not None:
                     if self.use_noise_only:
-                        perturbed_feature = self.noise
+                        permuted_feature = self.noise
                     else:
-                        perturbed_feature += self.noise
+                        permuted_feature += self.noise
 
                 if time_step is None:
-                    permuted_x[:, col_index] = perturbed_feature
+                    permuted_x_[:, col_index] = permuted_feature
                 else:
-                    permuted_x[:, time_step, col_index] = perturbed_feature
+                    permuted_x_[:, time_step, col_index] = permuted_feature
 
-                ermuted_inp[st:en] = permuted_x
+                permuted_inputs[st:en] = permuted_x_
                 st = en
                 en += len(permuted_x)
 
-            results[col_index] = self._eval(original_inp_idx,
+            results[col_idx] = self._eval(original_inp_idx,
                                             inputs,
                                             inp_idx,
-                                            ermuted_inp,
+                                            permuted_inputs,
                                             len(permuted_x),
                                             **kwargs)
 
@@ -456,24 +465,25 @@ class PermutationImportance(ExplainerMixin):
             plot_type="boxplot",
             **kwargs
     ):
-        if axes is None:
-            axes = plt.gca()
+
+        ax_kws = dict(xlabel=ERROR_LABELS.get(self.scoring, self.scoring),
+                      title=f"Base Score {round(self.base_score, 3)}")
 
         importances_mean = np.mean(imp, axis=1)
         perm_sorted_idx = importances_mean.argsort()
         if plot_type == "boxplot":
-            axes.boxplot(
+            axes, _ = boxplot(
                 imp[perm_sorted_idx].T,  # (num_features, n_repeats) -> (n_repeats, num_features)
                 vert=False,
                 labels=np.array(features)[perm_sorted_idx],
+                ax=axes,
+                show=False,
+                ax_kws=ax_kws,
                 **kwargs
             )
         else:
-            bar_chart(importances_mean, features, show=False, ax=axes, **kwargs)
-
-        axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
-
-        axes.set_title(f"Base Score {round(self.base_score, 3)}")
+            axes = bar_chart(importances_mean, features, show=False, ax=axes,
+                      ax_kws=ax_kws, sort=True, **kwargs)
 
         if self.save:
             name = name or ''
@@ -485,7 +495,12 @@ class PermutationImportance(ExplainerMixin):
 
         return axes
 
-    def _eval(self, original_inp_idx, inputs, inp_idx, permuted_inp, batch_size,
+    def _eval(self,
+              original_inp_idx,
+              inputs,
+              inp_idx,
+              permuted_inp,
+              batch_size,
               **kwargs):
         """batch size here refers to number of examples in one `n_round`."""
         # don't disturb the original input data, create new one
@@ -515,3 +530,38 @@ class PermutationImportance(ExplainerMixin):
         gc.collect()
 
         return scores
+
+
+def create_index(index:list, cat_mapper:dict)->list:
+    """
+    mp = [[1,2,3], [8,9,10]]
+    ci = [0,1,2,3,4,5,6,7,8,9,10]
+    result will be
+    [0, [1,2,3], 4, 5,6,7,[8,9,10]]
+    """
+    mp = list(cat_mapper.values())
+    ci = index.copy()
+
+    for sub_list in mp:
+        for element in sub_list:
+            if element in ci:
+                ci.insert(ci.index(element), sub_list)
+                for i in sub_list:
+                    ci.remove(i)
+                break
+    return ci
+
+
+def make_feature_list(featur_list:list, cat_map:dict)->list:
+    """
+    mp = [[1,2,3], [8,9,10]]
+    ci = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
+    out = ['a', 'x', 'e', 'f', 'g', 'h', 'y']
+    """
+    featur_list = featur_list.copy()
+    for key, index_list in cat_map.items():
+        for index in index_list:
+            featur_list.pop(index)
+            featur_list.insert(index, key)
+
+    return list(dict.fromkeys(featur_list))

@@ -45,7 +45,7 @@ from optuna.trial import TrialState
 from optuna.importance._fanova import FanovaImportanceEvaluator
 from optuna.visualization._utils import _check_plot_args
 from optuna.importance import get_param_importances
-
+#from optuna.importance._fanova import FanovaImportanceEvaluator
 try:
     from optuna.visualization._plotly_imports import go
     from optuna.visualization._plotly_imports import _imports
@@ -65,7 +65,7 @@ def _get_distributions(study, params):
     return OrderedDict(trial.distributions)
 
 
-class ImportanceEvaluator(FanovaImportanceEvaluator):
+class ImportanceEvaluator1(FanovaImportanceEvaluator):
 
     def evaluate(
             self,
@@ -143,7 +143,12 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         importances = {}
         variance = {}
         for i, name in enumerate(distributions.keys()):
-            _mean, _std = evaluator.get_importance((i,))
+            try:
+                _mean, _std = evaluator.get_importance((i,))
+            except TypeError:
+                # in newer optuna versions, it requires integer not list
+                _mean, _std = evaluator.get_importance(i)
+
             importances[name] = _mean
             variance[name] = {'mean': _mean, 'std': _std}
 
@@ -157,7 +162,8 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
             )
         )
 
-        return sorted_importances, variance
+        self.importance_paras = variance
+        return sorted_importances
 
 
 def plot_param_importances(
@@ -187,9 +193,9 @@ def plot_param_importances(
         return go.Figure(data=[], layout=layout)
 
     if evaluator is None:
-        evaluator = ImportanceEvaluator()
+        evaluator = ImportanceEvaluator1()
     try:
-        importances, importance_paras = get_param_importances(
+        importances = get_param_importances(
             study, evaluator=evaluator, params=params, target=target
         )
     except RuntimeError:  # sometimes it is returning error e.g. when number of trials are < 4
@@ -203,7 +209,7 @@ def plot_param_importances(
                    ax_kws={'title':"fANOVA hyperparameter importance",
                    'xlabel':"Relative Importance"})
 
-    return importances, importance_paras, ax
+    return importances, evaluator.importance_paras, ax
 
 
 def _get_distribution(param_name: str, study: Study):

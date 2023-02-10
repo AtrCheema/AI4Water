@@ -1,48 +1,47 @@
+
 import math
 import json
 import time
 import warnings
+from types import MethodType
 from pickle import PicklingError
 from typing import Union, Callable, Tuple, List
-from types import MethodType
 
-import joblib  # since sklearn is required, this will automatically come in
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-try:
-    from scipy.stats import median_abs_deviation as mad
-except ImportError:
-    from scipy.stats import median_absolute_deviation as mad
-
 from .nn_tools import NN
-from .backend import sklearn_models
+
+from .utils.utils import mad
 from .utils.utils import make_model
-from .postprocessing import ProcessPredictions
-from .postprocessing import prediction_distribution_plot
-from .preprocessing.transformations import Transformations
-from .utils.utils import maybe_three_outputs, get_version_info
-from .models.tensorflow.custom_training import train_step, test_step
+from .utils.utils import AttribtueSetter
+from .utils.utils import get_values
+from .utils.utils import DataNotFound
 from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
+from .utils.utils import maybe_three_outputs, get_version_info
+
+from .postprocessing.utils import LossCurve
+from .postprocessing import ProcessPredictions
+from .postprocessing import feature_interaction
+from .postprocessing import prediction_distribution_plot
+
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
-from ai4water.backend import easy_mpl
-from ai4water.backend import np, pd, plt, os, mpl, random, h5py
-from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
+from .preprocessing.transformations import Transformations
+
+from .models._tensorflow.custom_training import train_step, test_step
+
 import ai4water.backend as K
+from .backend import sklearn_models
+from ai4water.backend import wandb, WandbCallback
+from ai4water.backend import np, pd, plt, os, random
+from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif K.BACKEND == 'pytorch' and torch is not None:
-    from ai4water.models.torch import LOSSES, OPTIMIZERS
-
-try:
-    from wandb.keras import WandbCallback
-    import wandb
-except ModuleNotFoundError:
-    WandbCallback = None
-    wandb = None
+    from ai4water.models._torch import LOSSES, OPTIMIZERS
 
 
 class BaseModel(NN):
@@ -120,11 +119,12 @@ class BaseModel(NN):
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
-                see_ `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/declarative_model_def_tf.html>`_
+                `see examples <https://ai4water.readthedocs.io/en/dev/declarative_def_tf.html>`_
             x_transformation:
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
-                ai4water.utils.transformations.py. The user can specify more than
+                :py:class:`ai4water.preprocessing.transformations.Transformation` .
+                The user can specify more than
                 one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
@@ -225,13 +225,13 @@ class BaseModel(NN):
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> df = busan_beach()
-            >>> model_ = Model(input_features=df.columns.tolist()[0:-1],
+            >>> ann = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
             ...              output_features=df.columns.tolist()[-1:],
-            ...              model={'layers': {'LSTM': 64, 'Dense': 1}},
+            ...              model={'layers': {'Dense': 64, 'Dense': 1}},
             ... )
-            >>> history = model_.fit(data=df)
-            >>> y, obs = model_.predict()
+            >>> history = ann.fit(data=df)
+            >>> y = ann.predict()
 
         .. _sklearn:
             https://scikit-learn.org/stable/modules/classes.html
@@ -247,9 +247,6 @@ class BaseModel(NN):
 
         .. _transformation:
             https://stats.stackexchange.com/q/555839/314919
-
-        .. _see:
-            https://ai4water.readthedocs.io/en/latest/build_dl_models/
 
         .. _RegressionMetrics:
             https://seqmetrics.readthedocs.io/en/latest/rgr.html#regressionmetrics
@@ -299,10 +296,15 @@ class BaseModel(NN):
 
             NN.__init__(self, config=maker.config)
 
-            self.path = maybe_create_path(path=path, prefix=prefix)
+            self.path = None
+            if verbosity >= 0:
+                self.path = maybe_create_path(path=path, prefix=prefix)
+
             self.config['path'] = self.path
             self.verbosity = verbosity
             self.category = self.config['category']
+
+            self.mode = self.config.get('mode', None)
 
             self.info = {}
 
@@ -322,10 +324,17 @@ class BaseModel(NN):
             return list(model_def.keys())[0]
 
     @property
-    def mode(self)->str:
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, _mode=None):
         from .experiments.utils import regression_models, classification_models
-        if self.config.get('mode', None):
-            return self.config['mode']
+
+        if _mode:
+            pass
+        elif self.config['mode']:
+            _mode =  self.config['mode']
         elif self.is_custom_model:
             if self.config['loss'] in ['sparse_categorical_crossentropy',
                                        'categorical_crossentropy',
@@ -350,11 +359,13 @@ class BaseModel(NN):
                 # todo
                 _mode = "regression"
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f" Can't determine mode for {self.model_name}")
+
         elif self.config['loss'] in ['sparse_categorical_crossentropy',
                                      'categorical_crossentropy',
                                      'binary_crossentropy']:
             _mode = "classification"
+
         elif self.model_name == "layers":
             # todo
             _mode = "regression"
@@ -363,7 +374,7 @@ class BaseModel(NN):
         # so that next time don't have to go through all these ifelse statements
         self.config['mode'] = _mode
         self.data_config['mode'] = _mode
-        return _mode
+        self._mode = _mode
 
     @property
     def _estimator_type(self):
@@ -411,43 +422,6 @@ class BaseModel(NN):
         if hasattr(self, 'dh_'):
             return self.dh_.ts_args['forecast_step']
         return self.config['ts_args']['forecast_step']
-
-    @property
-    def is_binary(self):
-        if hasattr(self, 'dh_'):
-            return self.dh_.is_binary
-        return None
-
-    @property
-    def is_multiclass(self)->bool:
-        if self.mode == "classification":
-            if hasattr(self, 'dh_'):
-                return self.dh_.is_multiclass
-            if len(self.classes_)>2:
-                return True
-        return False
-
-    @property
-    def classes_(self):
-        if self.mode == "classification" and  hasattr(self, 'dh_'):
-            return self.dh_.classes
-        elif self.category == "ML" and self.mode == "classification":
-            return self._model.classes_
-        raise NotImplementedError
-
-    @property
-    def num_classes(self):
-        if hasattr(self, 'dh_'):
-            return self.dh_.num_classes
-        raise NotImplementedError
-
-    @property
-    def is_multilabel(self):
-        if hasattr(self, 'dh_'):
-            #if self.dh_.data is None:
-            #    return None
-            return self.dh_.is_multilabel
-        return None
 
     def _get_dummy_input_shape(self):
         raise NotImplementedError
@@ -593,7 +567,7 @@ class BaseModel(NN):
         _monitor = 'val_loss' if val_data is not None else 'loss'
         fname = "{val_loss:.5f}.hdf5" if val_data is not None else "{loss:.5f}.hdf5"
 
-        if self.config['save_model']:
+        if self.config['save_model'] and self.verbosity>=0:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
                 filepath=self.w_path + f"{os.sep}weights_" + "{epoch:03d}_" + fname,
                 save_weights_only=True,
@@ -648,7 +622,7 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:  # x,y is numpy array
-                if not user_defined and self.is_binary:
+                if not user_defined and self.is_binary_:
                     if y.shape[1] > self.output_shape[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
@@ -826,9 +800,9 @@ class BaseModel(NN):
         else:
             history = self._model.history
 
-        self.save_config(history.history)
-
         if self.verbosity >= 0:
+            self.save_config(history.history)
+
             # save all the losses or performance metrics
             df = pd.DataFrame.from_dict(history.history)
             df.to_csv(os.path.join(self.path, "losses.csv"))
@@ -914,7 +888,7 @@ class BaseModel(NN):
                 kwargs['random_state'] = self.config['seed']
             if kwargs.get('boosting_type', None) == "rf" and 'bagging_freq' not in kwargs:
                 # https://github.com/microsoft/LightGBM/issues/1333
-                print('entering')
+                # todo, user must be notified
                 kwargs['bagging_freq'] = 1
                 kwargs['bagging_fraction'] = 0.5
 
@@ -995,6 +969,7 @@ class BaseModel(NN):
 
             using your own data for training
 
+            >>> import numpy as np
             >>> new_inputs = np.random.random((100, 10))
             >>> new_outputs = np.random.random(100)
             >>> model.fit(x=new_inputs, y=new_outputs)
@@ -1012,7 +987,7 @@ class BaseModel(NN):
                  callbacks=None,
                  **kwargs):
 
-        visualizer = ProcessPredictions(mode=self.mode, path=self.path, show=bool(self.verbosity))
+        visualizer = LossCurve(path=self.path, show=bool(self.verbosity), save=bool(self.verbosity))
         self.is_training = True
 
         source = 'training'
@@ -1020,6 +995,11 @@ class BaseModel(NN):
             source = data
 
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
+
+        if 'Dataset' in inputs.__class__.__name__:
+            pass
+        else:
+            AttribtueSetter(self, outputs)
 
         num_examples = _find_num_examples(inputs)
         if num_examples:  # for tf.data, we can't find num_examples
@@ -1029,6 +1009,37 @@ class BaseModel(NN):
         inputs = self._fit_transform_x(inputs)
         outputs = self._fit_transform_y(outputs)
 
+        outputs = self._verify_output_shape(outputs)
+
+        self.info['training_start'] = dateandtime_now()
+
+        if self.category == "DL":
+
+            history = self._fit(inputs,
+                                outputs,
+                                callbacks=callbacks,
+                                **kwargs)
+
+            if self.verbosity >= 0:
+                visualizer.plot_loss(history.history)
+
+                # for -ve verbosity, weights are not saved! # todo should raise warning
+                self.load_best_weights()
+        else:
+            history = self.fit_ml_models(inputs, outputs, **kwargs)
+
+        self.info['training_end'] = dateandtime_now()
+
+        if self.verbosity >= 0:
+
+            self.save_config()
+            dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
+
+        self.is_training = False
+        return history
+
+    def _verify_output_shape(self, outputs):
+        """verifies that shape of target/true/labels is correct"""
         if isinstance(outputs, np.ndarray) and self.category == "DL":
 
             if isinstance(self.ai4w_outputs, list):
@@ -1038,43 +1049,24 @@ class BaseModel(NN):
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
-                elif self.mode == 'classification' and not user_defined_x:
+                elif self.mode == 'classification':
                     activation = self.layers[-1].get_config()['activation']
-                    if self.is_binary:
+                    if self.is_binary_:
                         if activation == "softmax":
-                            assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
-                                    {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                            assert model_output_shape[0] == self.num_classes_, f"""inferred number of classes are 
+                                        {self.num_classes_} while model's output has {model_output_shape[0]} nodes """
                         else:
                             if outputs.shape[1] > model_output_shape[0]:
                                 outputs = np.argmax(outputs, 1).reshape(-1, 1)
 
                     assert model_output_shape[0] == outputs.shape[1]
-                else:
+
+                elif len(model_output_shape) != len(outputs.shape):
                     assert model_output_shape == outputs.shape[1:], f"""
-    ShapeMismatchError: Shape of model's output is {model_output_shape}
-    while the prepared targets have shape {outputs.shape[1:]}."""
+        ShapeMismatchError: Shape of model's output is {model_output_shape}
+        while the prepared targets have shape {outputs.shape[1:]}."""
+        return outputs
 
-        self.info['training_start'] = dateandtime_now()
-
-        if self.category == "DL":
-
-            history = self._fit(inputs, outputs, callbacks=callbacks, **kwargs)
-
-            if self.verbosity >= 0:
-                visualizer.plot_loss(history.history)
-
-            self.load_best_weights()
-        else:
-            history = self.fit_ml_models(inputs, outputs, **kwargs)
-
-        self.info['training_end'] = dateandtime_now()
-        self.save_config()
-
-        if self.verbosity >= 0:
-            dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
-
-        self.is_training = False
-        return history
 
     def load_best_weights(self) -> None:
         if self.config['backend'] != 'pytorch':
@@ -1105,12 +1097,15 @@ class BaseModel(NN):
             # by default feature_names of booster as set to f0, f1,...
             self._model.get_booster().feature_names = self.input_features
 
-        self._save_ml_model()
+        if self.verbosity >= 0:
+            self._save_ml_model()
 
         return history
 
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
+        import joblib  # some modules don't have joblibe in their requires
+
         fname = os.path.join(self.w_path, self.model_name)
 
         if "tpot" not in self.model_name:
@@ -1159,7 +1154,7 @@ class BaseModel(NN):
         -------
             >>> from ai4water.datasets import busan_beach
             >>> from ai4water import Model
-            >>> model = Model(model="XGBRegressor",
+            >>> model = Model(model="RandomForestRegressor",
             >>>               cross_validator={"KFold": {"n_splits": 5}})
             >>> model.cross_val_score(data=busan_beach())
 
@@ -1230,11 +1225,12 @@ class BaseModel(NN):
             if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_scores}')
 
-        # save all the scores as json in model path`
-        cv_name = str(cross_validator)
-        fname = os.path.join(self.path, f'{cv_name}_scores.json')
-        with open(fname, 'w') as fp:
-            json.dump(scores, fp)
+        if self.verbosity >= 0:
+            # save all the scores as json in model path`
+            cv_name = str(cross_validator)
+            fname = os.path.join(self.path, f'{cv_name}_scores.json')
+            with open(fname, 'w') as fp:
+                json.dump(scores, fp, indent=True)
 
         ## set it as class attribute so that it can be used
         setattr(self, f'cross_val_scores', scores)
@@ -1242,9 +1238,10 @@ class BaseModel(NN):
         if refit:
             self.fit_on_all_training_data(data=data)
 
-        # Even if we do not run .fit(), then we should still have model saved in
-        # the disk so that it can be used.
-        self._save_ml_model()
+        if self.verbosity >= 0:
+            # Even if we do not run .fit(), then we should still have model saved in
+            # the disk so that it can be used.
+            self._save_ml_model()
 
         scores = np.array(scores)
         cv_scores_ = np.nanmean(scores, axis=0)
@@ -1274,8 +1271,32 @@ class BaseModel(NN):
 
         return cv_scores
 
-    def fit_on_all_training_data(self, data=None, **kwargs):
-        """trains the model on training+validation data"""
+    def fit_on_all_training_data(self, x=None, y=None, data=None, **kwargs):
+        """
+        This function trains the model on training + validation data.
+
+        Parameters
+        ----------
+            x :
+                x data which is supposed to be consisting of training and validation.
+                If not given, then ``data`` must be given.
+            y :
+                label/target data corresponding to x data.
+            data :
+                raw data which will be passed to `py:meth:ai4water.preprocessing.DataSet`
+                 to get training and validation x,y pairs.
+                The x data from training and validation is concatenated.
+                Similarly, y data from training and validation is concatenated
+            **kwargs
+                any keyword arguments for ``fit`` method.
+
+        """
+        if data is None:
+            assert x is not None, f"""
+            if data is not given, both x, y pairs must be given.
+            The provided x,y pairs are of type {type(x)}, {type(y)} respectively."""
+            return self.fit(x=x, y=y, **kwargs)
+
         x_train, y_train = self.training_data(data=data)
         x_val, y_val = self.validation_data()
 
@@ -1302,7 +1323,12 @@ class BaseModel(NN):
         else:
             raise NotImplementedError
 
-        if self.is_binary:
+        if 'Dataset' in x.__class__.__name__:
+            pass
+        else:
+            AttribtueSetter(self, y)
+
+        if self.is_binary_:
             if len(y) != y.size: # when sigmoid is used for binary
                 # convert the output to 1d
                 y = np.argmax(y, 1).reshape(-1, 1)
@@ -1321,7 +1347,7 @@ class BaseModel(NN):
         return
 
     def score(self, x=None, y=None, data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn as backend must also be able to apply preprocessing on inputs
         before calculating score from sklearn. Currently it just calls the
         `score` function of sklearn by first transforming x and y."""
@@ -1333,7 +1359,7 @@ class BaseModel(NN):
         raise NotImplementedError(f"can not calculate score")
 
     def predict_proba(self, x=None,  data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn/xgboost/catboost/lgbm as backend must also be able to apply
         preprocessing on inputs before calling predict_proba from underlying library.
         Currently it just calls the `predict_proba` function of underlying library
@@ -1346,7 +1372,7 @@ class BaseModel(NN):
         raise NotImplementedError(f"can not calculate proba")
 
     def predict_log_proba(self, x=None,  data='test', **kwargs):
-        """since preprocesisng is part of Model, so the trained model with
+        """since preprocessing is part of Model, so the trained model with
         sklearn/xgboost/catboost/lgbm as backend must also be able to apply
         preprocessing on inputs before calling predict_log_proba from underlying library.
         Currently it just calls the `log_proba` function of underlying library
@@ -1367,7 +1393,7 @@ class BaseModel(NN):
             **kwargs
     ):
         """
-        Evalutes the performance of the model on a given data.
+        Evaluates the performance of the model on a given data.
         calls the ``evaluate`` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
 
@@ -1404,19 +1430,24 @@ class BaseModel(NN):
 
         Examples
         --------
+            >>> import numpy as np
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
 
             for evaluation on test data
 
-            >>> model.evaluate(data=busan_beach())
+            >>> model.evaluate(data=data)
             ...
 
             evaluate on any metric from SeqMetrics_ library
 
-            >>> model.evaluate(data=busan_beach(), metrics='pbias')
+            >>> model.evaluate(data=data, metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
             >>> new_inputs = np.random.random((10, 13))
@@ -1444,30 +1475,177 @@ class BaseModel(NN):
     def evaluate_on_training_data(self, data, metrics=None, **kwargs):
         """evaluates the model on training data.
 
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
         Examples
         --------
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
             ... # for evaluation on training data
-            >>> model.evaluate_on_training_data(data=busan_beach())
+            >>> model.evaluate_on_training_data(data=data)
+            >>> model.evaluate(data=data, metrics='pbias')
         """
         x, y = self.training_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_validation_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on validation data."""
+        """evaluates the model on validation data.
+
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.models import MLP
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
+            ... # for evaluation on validation data
+            >>> model.evaluate_on_validation_data(data=data)
+            >>> model.evaluate_on_validation_data(data=data, metrics='pbias')
+        """
+
         x, y = self.validation_data(data=data)
+
+        if not _find_num_examples(x):
+            raise DataNotFound("Validation")
+
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_test_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on test data."""
+        """evaluates the model on test data.
+
+        Parameters
+        ----------
+            data:
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
+                to prepare x and y. If ``x`` and ``y`` are given, this argument will have no meaning.
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - ``minimal``
+                    - ``all``
+                    - ``hydro_metrics``
+
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
+                model.
+
+        Returns
+        -------
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned as float
+            or dictionary
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.models import MLP
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
+            ... # for evaluation on test data
+            >>> model.evaluate_on_test_data(data=data)
+            >>> model.evaluate_on_test_data(data=data, metrics='pbias')
+        """
         x, y = self.test_data(data=data)
+        if not _find_num_examples(x):
+            raise DataNotFound("Test")
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def evaluate_on_all_data(self, data, metrics=None, **kwargs):
-        """evaluates the model on all i.e. training+validation+test data."""
+        """evaluates the model on all i.e. training+validation+test data.
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.models import MLP
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
+            ... # for evaluation on all data
+            >>> print(model.evaluate_on_all_data(data=data)))
+            >>> print(model.evaluate_on_all_data(data=data, metrics='pbias'))
+        """
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
@@ -1501,6 +1679,9 @@ class BaseModel(NN):
                 source = data
                 x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
 
+        if not getattr(self, 'is_fitted', True):
+            AttribtueSetter(self, y)
+
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
@@ -1529,7 +1710,7 @@ class BaseModel(NN):
 
             errs = RegressionMetrics(t, p)
         else:
-            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass)
+            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass_)
 
         if isinstance(metrics, str):
 
@@ -1597,7 +1778,7 @@ class BaseModel(NN):
         --------
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
-        >>> model = Model(model="XGBRegressor")
+        >>> model = Model(model="RandomForestRegressor")
         >>> model.fit(data=busan_beach())
         >>> pred = model.predict(data=busan_beach())
 
@@ -1615,7 +1796,8 @@ class BaseModel(NN):
 
         using your own data
 
-        >>> new_input = np.random.random(10, 14)
+        >>> import numpy as np
+        >>> new_input = np.random.random((10, 13))
         >>> pred = model.predict(x = new_input)
         """
 
@@ -1654,6 +1836,15 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1694,11 +1885,23 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
 
         x, y = self.validation_data(data=data)
+
+        if not _find_num_examples(x):
+            raise DataNotFound("Validation")
 
         return self.call_predict(
             x=x,
@@ -1734,11 +1937,26 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
             **kwargs :
                 any keyword argument for .predict method.
         """
 
-        x, y = self.test_data(data=data)
+        if isinstance(data, _DataSet):
+            x, y = data.test_data()
+        else:
+            x, y = self.test_data(data=data)
+
+        if not _find_num_examples(x):
+            raise DataNotFound(f"test")
 
         return self.call_predict(
             x=x,
@@ -1775,6 +1993,16 @@ class BaseModel(NN):
                 the metrics to calculate during post-processing
             plots : optional (default=None)
                 The kind of of plots to draw. Only valid if post_process is True
+                Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+                    ``edf``
+
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1847,6 +2075,10 @@ class BaseModel(NN):
                     y=y,
                     data=data)
 
+        if not getattr(self, 'is_fitted', True):
+            # prediction without fitting
+            AttribtueSetter(self, y)
+
         prefix = prefix or _prefix
 
         inputs = self._transform_x(inputs)
@@ -1885,7 +2117,10 @@ class BaseModel(NN):
                 return true_outputs, predicted
             return predicted
 
-        dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
+        if isinstance(true_outputs, dict):
+            dt_index = np.arange(set([len(v) for v in true_outputs.values()]).pop())
+        else:
+            dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
 
         if not user_defined_data:
             dt_index = self.dh_.indexes[transformation_key]
@@ -1897,50 +2132,17 @@ class BaseModel(NN):
         if true_outputs is None:
             process_results = False
 
-        # initialize post-processes
-        pp = ProcessPredictions(
-            mode = self.mode,
-            path=self.path,
-            forecast_len=self.forecast_len,
-            output_features=self.output_features,
-            is_multiclass=self.is_multiclass,
-            is_multilabel=self.is_multilabel,
-            plots=plots,
-            show=bool(self.verbosity),
-        )
-
-        if self.quantiles is None:
-
-            # it true_outputs and predicted are dictionary of len(1) then just get the values
-            true_outputs = get_values(true_outputs)
-            predicted = get_values(predicted)
-
-            if process_results: # if mode has not been inferred yet, try to infer it
-                if self.mode is None:  # because metrics cannot be calculated with wrong mode
-                    if len(self.classes_) == 0:
-                        pp.mode = "regression"
-
-                pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs)
-                if self.mode == 'classification':
-
-                    if self.category == 'ML':  # todo, also plot for DL
-                        # if model does not have predict_proba method, we can't plot following
-                        if hasattr(self._model, 'predict_proba'):
-                            # if data is user defined, we don't know whether it is binary or not
-                            if not user_defined_data and self.is_binary:
-                                pp.precision_recall_curve(self, x=inputs, y=true_outputs)
-                                pp.roc_curve(self, x=inputs, y=true_outputs)
-        else:
-            assert self.num_outs == 1
-
-            if true_outputs.ndim == 2:  # todo, this should be avoided
-                true_outputs = np.expand_dims(true_outputs, axis=-1)
-
-            pp.quantiles = self.quantiles
-
-            pp.plot_quantiles1(true_outputs, predicted)
-            pp.plot_quantiles2(true_outputs, predicted)
-            pp.plot_all_qs(true_outputs, predicted)
+        if process_results:
+            # initialize post-processes
+            pp = ProcessPredictions(
+                mode=self.mode,
+                path=self.path,
+                forecast_len=self.forecast_len,
+                output_features=self.output_features,
+                plots=plots,
+                show=bool(self.verbosity),
+            )
+            pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs, model=self)
 
         if return_true:
             return true_outputs, predicted
@@ -2024,7 +2226,8 @@ class BaseModel(NN):
     def view(
             self,
             layer_name: Union[list, str] = None,
-            data: str = 'training',
+            data = None,
+            data_type: str = 'training',
             x=None,
             y=None,
             examples_to_view=None,
@@ -2037,16 +2240,17 @@ class BaseModel(NN):
                 the layer to view. If not given, all the layers will be viewed.
                 This argument is only required when the model consists of layers of neural
                 networks.
-            data:
+            data :
                 the data to use when making calls to model for activation calculation
-                or for gradient calculation. It can either ``training``, ``validation`` or
-                ``test``.
+                or for gradient calculation.
+            data_type : str
+                It can either ``training``, ``validation`` or ``test`` or ``all``.
             x:
                 input, alternative to data. If given it will override `data` argument.
             y:
                 target/observed/label, alternative to data. If given it will
                 override `data` argument.
-            examples_to_view:
+            examples_to_view :
                 the examples to view.
             show:
                 whether to show the plot or not!
@@ -2060,6 +2264,7 @@ class BaseModel(NN):
 
         visualizer(layer_name,
                    data=data,
+                   data_type=data_type,
                    x=x,
                    y=y,
                    examples_to_use=examples_to_view
@@ -2091,8 +2296,16 @@ class BaseModel(NN):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the :py:meth:ai4water.postprocessing.explain.explain_model` function
+        """Calls the :py:func:ai4water.postprocessing.explain.explain_model` function
          to explain the model.
+         Example
+         -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> model = Model(model="RandomForestRegressor")
+        >>> model.fit(data=data)
+        >>> model.explain(total_data=data, examples_to_explain=2)
          """
         from ai4water.postprocessing.explain import explain_model
         return explain_model(self, *args, **kwargs)
@@ -2148,6 +2361,15 @@ class BaseModel(NN):
         if self.category == "ML" and self.is_custom_model:
             config['config']['model'] = self.model_name
 
+        # following parameters are not set during build and are not in "config" which
+        # builds the model because they are set during run time from data
+        # putting them in metaconfig is necessary because when we build model
+        # from config, and want to make some plots such as roc curve,
+        # it will need classes_ attribute.
+        for attr in ['classes_', 'num_classes_', 'is_binary_',
+                     'is_multiclass_', 'is_multilabel_']:
+            config[attr] = getattr(self, attr, None)
+
         dict_to_file(config=config, path=self.path)
         return config
 
@@ -2157,7 +2379,7 @@ class BaseModel(NN):
             config: dict,
             make_new_path: bool = False,
             **kwargs
-    ):
+    )->"BaseModel":
         """Loads the model from config dictionary i.e. model.config
 
         Arguments
@@ -2176,21 +2398,22 @@ class BaseModel(NN):
         Example
         -------
             >>> from ai4water import Model
+            >>> import numpy as np
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
             >>> old_model = Model(model="XGBRegressor")
             >>> old_model.fit(data=data)
             ... # now construct a new model instance from config dictionary
             >>> model = Model.from_config(old_model.config)
+            >>> model.update_weights()
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config=config,
-                                                make_new_path=make_new_path)
-
-        return cls(**config,
-                   path=path,
-                   **kwargs)
+        return cls._get_config_and_path(
+            cls,
+            config=config,
+            make_new_path=make_new_path,
+            **kwargs)
 
     @classmethod
     def from_config_file(
@@ -2224,18 +2447,40 @@ class BaseModel(NN):
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config_path=config_path,
-                                                make_new_path=make_new_path)
 
-        return cls(**config,
-                   path=path,
-                   **kwargs)
+        # when an instance of Model is created, config is written, which
+        # will overwrite these attributes so we need to keep track of them
+        # so that after building the model, we can set these attributes to Model
+        attrs = {}
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+        for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
+            if attr in config:
+                attrs[attr] = config[attr]
+
+        model = cls._get_config_and_path(
+            cls,
+            config_path=config_path,
+            make_new_path=make_new_path,
+            **kwargs
+        )
+
+        for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
+            if attr in attrs:
+                setattr(model, attr, attrs[attr])
+         # now we need to save the config again
+        model.save_config()
+
+        return model
 
     @staticmethod
-    def _get_config_and_path(cls,
-                             config_path: str = None,
-                             config=None,
-                             make_new_path=False):
+    def _get_config_and_path(
+            cls,
+            config_path: str = None,
+            config=None,
+            make_new_path=False,
+            **kwargs
+    )->"BaseModel":
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
@@ -2245,8 +2490,8 @@ class BaseModel(NN):
         if config is None:
             assert config_path is not None
             with open(config_path, 'r') as fp:
-                config = json.load(fp)
-                config = config['config']
+                meta_config = json.load(fp)
+                config = meta_config['config']
                 path = os.path.dirname(config_path)
         else:
             assert isinstance(config, dict), f"""
@@ -2259,15 +2504,18 @@ class BaseModel(NN):
         if 'path' in config:
             config.pop('path')
 
-        cls.from_check_point = True
-
         if make_new_path:
-            cls.allow_weight_loading = False
+            allow_weight_loading = False
             path = None
         else:
-            cls.allow_weight_loading = True
+            allow_weight_loading = True
 
-        return config, path
+        model = cls(**config, path=path, **kwargs)
+
+        model.allow_weight_loading = allow_weight_loading
+        model.from_check_point = True
+
+        return model
 
     def update_weights(self, weight_file: str = None):
         """
@@ -2299,6 +2547,7 @@ class BaseModel(NN):
                              f"and model path is {self.path}")
 
         if self.category == "ML":
+            import joblib # some modules don't have joblib in their requires
             self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
@@ -2346,24 +2595,8 @@ class BaseModel(NN):
         return eda
 
     def update_info(self):
-        from .backend import lightgbm, tcn, catboost, xgboost
-        from . import __version__
-        self.info['version_info'] = get_version_info(
-            tf=tf,
-            keras=keras,
-            torch=torch,
-            np=np,
-            pd=pd,
-            matplotlib=mpl,
-            h5py=h5py,
-            joblib=joblib,
-            lightgbm=lightgbm,
-            tcn=tcn,
-            catboost=catboost,
-            xgboost=xgboost
-        )
 
-        self.info["version_info"]['ai4water_version'] = __version__
+        self.info["version_info"] =get_version_info()
         return
 
     def print_info(self):
@@ -2398,7 +2631,7 @@ class BaseModel(NN):
             algorithm: str = "bayes",
             num_iterations: int = 14,
             process_results: bool = True,
-            update_config: bool = True,
+            refit: bool = True,
             **kwargs
     ):
         """
@@ -2413,19 +2646,20 @@ class BaseModel(NN):
                     - raw unprepared data in the form of a numpy array or pandas dataframe
                     - a tuple of x,y pairs
                 If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
-                which prepares x,y pairs from it. The ``DataSet`` class also 
-                splits the data into training, validation and tests sets. If it 
+                which prepares x,y pairs from it. The ``DataSet`` class also
+                splits the data into training, validation and tests sets. If it
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
-            algorithm:
+            algorithm: str, optional (default="bayes")
                 the algorithm to use for optimization
-            num_iterations:
+            num_iterations: int, optional (default=14)
                 number of iterations for optimization.
-            process_results:
+            process_results: bool, optional (default=True)
                 whether to perform postprocessing of optimization results or not
-            update_config:
-                whether to update the config of model or not.
+            refit: bool, optional (default=True)
+                whether to retrain the model using both training and validation data
+
         Returns:
             an instance of :py:class:`ai4water.hyperopt.HyperOpt` which is used for optimization
 
@@ -2441,13 +2675,15 @@ class BaseModel(NN):
 
             Same can be done if a model is defined using neural networks
 
-            >>> model_conf = {"layers": {
-            ...     "Input": {"input_shape": (15, 13)},
+            ... lookback = 14
+            >>> model_config = {"layers": {
+            ...     "Input": {"input_shape": (lookback, 13)},
             ...     "LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-            ...      "Dense1": {"units": 1,
+            ...      "Dense": {"units": 1,
             ...            "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
-            >>> model = Model(model=model_config)
-            >>> optimizer = model.optimize_hyperparameters(data=busan_beach())
+            >>> model = Model(model=model_config, ts_args={"lookback": lookback})
+            >>> optimizer = model.optimize_hyperparameters(data=busan_beach(),
+            ...          refit=False)
         """
         from ._optimize import OptimizeHyperparameters  # optimize_hyperparameters
 
@@ -2467,24 +2703,35 @@ class BaseModel(NN):
 
         algo_type = list(self.config['model'].keys())[0]
 
-        if update_config:
-            new_model_config = update_model_config(self._original_model_config['model'],
-                                                   _optimizer.best_paras())
-            self.config['model'][algo_type] = new_model_config
+        new_model_config = update_model_config(self._original_model_config['model'],
+                                               _optimizer.best_paras())
+        self.config['model'][algo_type] = new_model_config
 
-            new_other_config = update_model_config(self._original_model_config['other'],
-                                                   _optimizer.best_paras())
-            self.config.update(new_other_config)
+        new_other_config = update_model_config(self._original_model_config['other'],
+                                               _optimizer.best_paras())
+        self.config.update(new_other_config)
 
-            # if ts_args are optimized, update them as well
-            for k,v in _optimizer.best_paras().items():
-                if k in self.config['ts_args']:
-                    self.config['ts_args'][k] = v
+        # if ts_args are optimized, update them as well
+        for k, v in _optimizer.best_paras().items():
+            if k in self.config['ts_args']:
+                self.config['ts_args'][k] = v
 
+        if refit:
             # for ml models, we must build them again
             # TODO, why not for DL models
             if self.category == "ML":
                 self.build_ml_model()
+                if isinstance(data, (list, tuple)):
+                    assert len(data)==2
+                    x, y = data
+                    self.fit_on_all_training_data(x=x, y=y)
+                else:
+                    self.fit_on_all_training_data(data=data)
+            else:
+                raise NotImplementedError(f"""
+            Setting `refit` is not supported for neural network
+            based models. please call optimize_hyperparmeters(..., refit=False)
+""")
 
         return _optimizer
 
@@ -2513,8 +2760,8 @@ class BaseModel(NN):
                     - raw unprepared data in the form of a numpy array or pandas dataframe
                     - a tuple of x,y pairs
                 If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
-                which prepares x,y pairs from it. The ``DataSet`` class also 
-                splits the data into training, validation and tests sets. If it 
+                which prepares x,y pairs from it. The ``DataSet`` class also
+                splits the data into training, validation and tests sets. If it
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
@@ -2536,7 +2783,7 @@ class BaseModel(NN):
                 - ``sqrt``    square root
 
             include : list, dict, str, optional
-                the name/names of input features to include. If you don't want 
+                the name/names of input features to include. If you don't want
                 to include any feature. Set this to an empty list
             exclude: the name/names of input features to exclude
             append:
@@ -2736,13 +2983,13 @@ class BaseModel(NN):
 
         from .postprocessing.explain import PermutationImportance
         pm = PermutationImportance(
-            self.predict,
-            x,
-            y,
-            scoring,
-            n_repeats,
-            noise,
-            use_noise_only,
+            model=self.predict,
+            inputs=x,
+            target=y,
+            scoring=scoring,
+            n_repeats=n_repeats,
+            noise=noise,
+            use_noise_only=use_noise_only,
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,
@@ -2821,7 +3068,7 @@ class BaseModel(NN):
         >>>     output_features=output_features)
         ... # train the model
         >>> model.fit(data=df)
-        .. # perform sensitivity analysis
+        ... # perform sensitivity analysis
         >>> si = model.sensitivity_analysis(data=df[input_features].values,
         >>>                    sampler="morris", analyzer=["morris", "sobol"],
         >>>                        sampler_kwds={'N': 100})
@@ -2872,6 +3119,9 @@ class BaseModel(NN):
         else:
             func = self.predict
 
+        if names is None:
+            names = self.input_features
+
         results = sensitivity_analysis(
             sampler,
             analyzer,
@@ -2879,7 +3129,7 @@ class BaseModel(NN):
             bounds=bounds,
             sampler_kwds = sampler_kwds,
             analyzer_kwds = analyzer_kwds,
-            names=names or self.input_features
+            names=names
         )
 
         if save_plots:
@@ -2958,7 +3208,7 @@ class BaseModel(NN):
             >>> data = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
             >>> model.fit(data=data)
-            >>> model.explain(data=data, example_num=2)
+            >>> model.explain_example(data=data, example_num=2)
 
         """
 
@@ -2987,7 +3237,8 @@ class BaseModel(NN):
             data=None,
             data_type="all",
             feature_name=None,
-            num_points=100,
+            num_points:int=100,
+            show:bool = True,
     ):
         """Shows partial depedence plot for a feature.
 
@@ -3007,6 +3258,8 @@ class BaseModel(NN):
                 two feature names, in which case 2d interaction plot will be plotted.
             num_points : int
                 number of points. It is used to define grid.
+            show : bool
+                whether to show the plot or not!
 
         Returns
         -------
@@ -3034,7 +3287,8 @@ class BaseModel(NN):
             self.predict,
             data=x,
             feature_names=self.input_features,
-            num_points=num_points
+            num_points=num_points,
+            show=show
         )
 
         if isinstance(feature_name, str):
@@ -3046,48 +3300,48 @@ class BaseModel(NN):
 
         return pdp
 
-    def feature_interaction(
+    def prediction_analysis(
             self,
-            features: List[str],
-            x: Union[np.ndarray, pd.DataFrame] = None,
+            features:Union[list, str],
+            x:Union[np.ndarray, pd.DataFrame]=None,
+            y:np.ndarray=None,
             data = None,
-            data_type: str = "all",
-            feature_names: List[str] = None,
-            plot_type="heatmap",
-            num_grid_points=None,
-            grid_types=None,
-            percentile_ranges=None,
-            grid_ranges=None,
-            cust_grid_points=None,
+            data_type:str = "all",
+            feature_names:Union[list, str]=None,
+            num_grid_points:int = None,
+            grid_types = "percentile",
+            percentile_ranges = None,
+            grid_ranges = None,
+            custom_grid:list = None,
             show_percentile: bool = False,
-            show_outliers: bool =False,
-            endpoint: bool = True,
+            show_outliers: bool = False,
+            end_point:bool = True,
             which_classes=None,
             ncols=2,
-            figsize: Tuple[Union[int, float]]=None,
-            annotate: bool = False,
-            annotate_counts: bool = True,
-            show: bool = True,
-            save_info: bool = True,
-            annotate_colors=("black", "white"),
-            annotate_color_threshold: float=None,
-            annotate_fmt:str = None,
-            annotate_fontsize: int = 7
-    )->Tuple[pd.DataFrame, plt.Axes]:
+            figsize: tuple = None,
+            annotate:bool = True,
+            annotate_kws:dict = None,
+            cmap="YlGn",
+            border=False,
+            show:bool=True,
+            save_metadata:bool=True
+    )->plt.Axes:
         """shows prediction distribution with respect to two input features.
 
         Parameters
         ----------
             x :
                 input data to the model.
+            y :
+                true data corresponding to ``x``.
             data :
                 raw unprepared data from which x,y pairs for training,validation and test
                 are generated. It must only be given if ``x`` is not given.
             data_type : str, optional (default="test")
                 The kind of data to be used. It is only valid if ``data`` argument is used.
                 It should be one of ``training``, ``validation``, ``test`` or ``all``.
-            features: list
-                two features to investigate
+            features: str/list
+                name or names of features to investigate
             feature_names: list
                 feature names
             num_grid_points: list, optional, default=None
@@ -3098,13 +3352,13 @@ class BaseModel(NN):
                 percentile range to investigate for each feature
             grid_ranges: list of tuple, optional, default=None
                 value range to investigate for each feature
-            cust_grid_points: list of (Series, 1d-array, list), optional, default=None
+            custom_grid: list of (Series, 1d-array, list), optional, default=None
                 customized list of grid points for each feature
             show_percentile: bool, optional, default=False
                 whether to display the percentile buckets for both feature
             show_outliers: bool, optional, default=False
                 whether to display the out of range buckets for both features
-            endpoint: bool, optional
+            end_point: bool, optional
                 If True, stop is the last grid point, default=True
                 Otherwise, it is not included
             which_classes: list, optional, default=None
@@ -3115,21 +3369,23 @@ class BaseModel(NN):
                 number subplot columns, used when it is multi-class problem
             annotate: bool, default=False
                 whether to annotate the points
-            annotate_counts : bool, default=False
-                whether to annotate counts or not.
-            annotate_colors : tuple
-                pair of colors
-            annotate_color_threshold : float
-                threshold value for annotation
-            annotate_fmt : str
-                format string for annotation.
-            annotate_fontsize : int, optinoal (default=7)
-                fontsize for annotation
-            plot_type : str, optional (default="circles")
-                either ``circles`` or ``hetmap``
+            annotate_kws : dict, optional
+                a dictionary of keyword arguments with following keys
+                    annotate_counts : bool, default=False
+                        whether to annotate counts or not.
+                    annotate_colors : tuple
+                        pair of colors
+                    annotate_color_threshold : float
+                        threshold value for annotation
+                    annotate_fmt : str
+                        format string for annotation.
+                    annotate_fontsize : int, optinoal (default=7)
+                        fontsize for annotation
+            cmap :
+            border :
             show : bool, optional (default=True)
                 whether to show the  plot or not
-            save_info : bool, optional, default=True
+            save_metadata : bool, optional, default=True
                 whether to save the information as csv or not
 
         Returns
@@ -3144,194 +3400,104 @@ class BaseModel(NN):
         ...
         >>> model = Model(model="XGBRegressor")
         >>> model.fit(data=busan_beach())
-        >>> model.feature_interaction(
+        >>> model.prediction_analysis(features="tide_cm",
+        ... data=busan_beach(), show_percentile=True)
+        ... # for multiple features
+        >>> model.prediction_analysis(
         ...     ['tide_cm', 'sal_psu'],
         ...     data=busan_beach(),
-        ...     annotate_counts=True,
-        ...     annotate_colors=("black", "black"),
-        ...     annotate_fontsize=10,
-        ...     cust_grid_points=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+        ...     annotate_kws={"annotate_counts":True,
+        ...     "annotate_colors":("black", "black"),
+        ...     "annotate_fontsize":10},
+        ...     custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
         ...                       [33.45, 33.7, 33.9, 34.05, 34.4]],
         ... )
-        """
-        if x is None:
-            assert data is not None, f"either 'x' or 'data' must be given"
-            x, _ = getattr(self, f"{data_type}_data")(data=data)
-
-        from pdpbox.info_plots import actual_plot_interact
-
-        if not isinstance(x, pd.DataFrame):
-            assert isinstance(x, np.ndarray)
-            x = pd.DataFrame(x, columns=self.input_features)
-
-        if feature_names is None:
-            feature_names = features
-
-        fig, ax, summary_df = actual_plot_interact(
-            self,
-            x,
-            features=features,
-            feature_names=feature_names,
-            annotate=annotate,
-            annotate_counts=annotate_counts,
-            plot_type=plot_type,
-            num_grid_points=num_grid_points,
-            grid_types=grid_types,
-            percentile_ranges=percentile_ranges,
-            grid_ranges=grid_ranges,
-            cust_grid_points=cust_grid_points,
-            show_percentile=show_percentile,
-            show_outliers=show_outliers,
-            endpoint=endpoint,
-            which_classes=which_classes,
-            ncols=ncols,
-            figsize=figsize,
-            annotate_colors=annotate_colors,
-            annotate_color_threshold=annotate_color_threshold,
-            annotate_fmt=annotate_fmt,
-            annotate_fontsize=annotate_fontsize,
-        )
-
-        if save_info:
-            summary_df.to_csv(os.path.join(self.path, f"{data_type}_feature_interaction.csv"))
-
-        plt.tight_layout()
-        if show:
-            plt.show()
-
-        return summary_df, ax
-
-    def prediction_distribution(
-            self,
-            feature: Union[str, list],
-            feature_name: str = None,
-            x: Union[np.ndarray, pd.DataFrame] = None,
-            data = None,
-            data_type: str = "test",
-            num_grid_points=10,
-            grid_type='percentile',
-            percentile_range=None,
-            grid_range=None,
-            cust_grid_points=None,
-            show_percentile: bool = False,
-            show_outliers: bool = False,
-            endpoint : bool = True,
-            figsize: tuple = None,
-            ncols: int = 2,
-            save_info: bool = True,
-            show: bool = True,
-            plot_params: dict = None,
-    )->Tuple[plt.Figure, plt.Axes, pd.DataFrame]:
-        """plots distribution of prediction from the model against an input feature.
-
-        Parameters
-        ----------
-            feature : str or list
-                the name of input feature against which the distribution is to be plotted.
-                for one-hot encoding features, this must be a list
-            feature_name : str
-                only useful when feature is list i.e. it is a one-hot encoded feature
-            x :
-                input data to the model.
-            data :
-                raw unprepared data from which x,y pairs for training,validation and test
-                are generated. It must only be given if ``x`` is not given.
-            data_type : str, optional (default="test")
-                The kind of data to be used. It is only valid if ``data`` argument is used.
-                It should be one of ``training``, ``validation``, ``test`` or ``all``.
-            num_grid_points: integer, optional, default=10
-                number of grid points for numeric feature
-            grid_type: string, optional, default='percentile'
-                'percentile' or 'equal'
-                type of grid points for numeric feature
-            percentile_range: tuple or None, optional, default=None
-                percentile range to investigate
-                for numeric feature when grid_type='percentile'
-            grid_range: tuple or None, optional, default=None
-                value range to investigate
-                for numeric feature when grid_type='equal'
-            cust_grid_points: Series, 1d-array, list or None, optional, default=None
-                customized list of grid points
-                for numeric feature
-            show_percentile: bool, optional, default=False
-                whether to display the percentile buckets
-                for numeric feature when grid_type='percentile'
-            show_outliers: bool, optional, default=False
-                whether to display the out of range buckets
-                for numeric feature when percentile_range or grid_range is not None
-            endpoint: bool, optional, default=True
-                If True, stop is the last grid point
-                Otherwise, it is not included
-            figsize : tuple or None, optional, default=None
-                size of the figure, (width, height)
-            ncols : integer, optional, default=2
-                number subplot columns, used when it is multi-class problem
-            save_info : bool, optional, default=True
-                whether to save the information as csv or not
-            show : bool, optional, default=True
-                whether to show the plot or not
-            plot_params : dict or None, optional, default=None
-                parameters for the plot
-
-        Returns
-        -------
-            a tuple of plt.Figure, plt.Axes and pd.DataFrame
-
-        Examples
-        --------
-        >>> from ai4water.datasets import busan_beach
-        >>> from ai4water import Model
-        ...
-        >>> model = Model(model="XGBRegressor")
-        >>> model.fit(data=busan_beach())
-        >>> model.prediction_distribution(feature="tide_cm",
-        ... data=busan_beach(), show_percentile=True)
 
         """
-
         if x is None:
             assert data is not None
             x, _ = getattr(self, f"{data_type}_data")(data=data)
 
-        y = self.predict(x)
+            y = self.predict(x)
 
         if isinstance(x, np.ndarray):
             x = pd.DataFrame(x, columns=self.input_features)
 
-        if feature_name is None:
-            if isinstance(feature, str):
-                feature_name = feature
+        if feature_names is None:
+            if isinstance(features, str):
+                feature_names = features
             else:
-                assert isinstance(feature, list)
-                feature_name = "Feature"
+                assert isinstance(features, list)
+                feature_names = "Feature"
 
-        fig, axes, summary_df = prediction_distribution_plot(
-            self.mode,
-            inputs=x,
-            prediction=y,
-            feature=feature,
-            feature_name=feature_name,
-            n_classes=self.num_classes,
-            num_grid_points=num_grid_points,
-            grid_type=grid_type,
-            percentile_range=percentile_range,
-            grid_range=grid_range,
-            cust_grid_points=cust_grid_points,
-            show_percentile = show_percentile,
-            show_outliers = show_outliers,
-            endpoint = endpoint,
-            figsize = figsize,
-            ncols = ncols,
-            plot_params=plot_params
-        )
+        if not isinstance(features, list):
+            features = [features]
 
-        if save_info:
-            summary_df.to_csv(os.path.join(self.path, f"{data_type}_prediction_distribution.csv"))
+        _annotate_kws = {
+            'annotate_counts': True,
+            'annotate_colors':("black", "white"),
+            'annotate_color_threshold': None,
+            'annotate_fmt': None,
+            'annotate_fontsize': 7
+        }
+
+        if annotate_kws is None:
+            annotate_kws = dict()
+
+        _annotate_kws.update(annotate_kws)
+
+        if len(features) == 1:
+            ax, summary_df = prediction_distribution_plot(
+                self.mode,
+                inputs=x,
+                prediction=y,
+                feature=features[0],
+                feature_name=feature_names[0],
+                n_classes=self.num_classes_,
+                num_grid_points=num_grid_points or 10,
+                grid_type=grid_types,
+                percentile_range=percentile_ranges,
+                grid_range=grid_ranges,
+                cust_grid_points=custom_grid,
+                show_percentile=show_percentile,
+                show_outliers=show_outliers,
+                end_point=end_point,
+                figsize=figsize,
+                ncols=ncols,
+                show=False,
+            )
+
+        else:
+            ax, summary_df = feature_interaction(
+                self.predict,
+                x,
+                features=features,
+                feature_names=feature_names,
+                num_grid_points=num_grid_points,
+                grid_types=grid_types,
+                percentile_ranges=percentile_ranges,
+                grid_ranges=grid_ranges,
+                cust_grid_points=custom_grid,
+                show_percentile=show_percentile,
+                show_outliers=show_outliers,
+                end_point=end_point,
+                which_classes=which_classes,
+                ncols=ncols,
+                figsize=figsize,
+                annotate=annotate,
+                cmap=cmap,
+                border=border,
+                **_annotate_kws,
+            )
+
+        fname = f"prediction_analysis_{features[0] if len(features)==1 else features[0]+features[1]}"
+        if save_metadata:
+            summary_df.to_csv(os.path.join(self.path, f"{fname}.csv"))
 
         if show:
             plt.show()
 
-        return fig, axes, summary_df
+        return ax
 
     def _transform(self, data, name_in_config):
         """transforms the data using the transformer which has already been fit"""
@@ -3437,19 +3603,68 @@ class BaseModel(NN):
         return y
 
     def training_data(self, x=None, y=None, data='training', key='train')->tuple:
-        #x,y are not used but only given to be used if user overwrites this method
+        """
+        returns the x,y pairs for training. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def training_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
         return self.__fetch('training', data,key)
 
-    def validation_data(self, x=None, y=None, data='validation', key="val", **kwargs)->tuple:
-        """This method should return x,y pairs of validation data"""
+    def validation_data(self, x=None, y=None, data='validation', key="val")->tuple:
+        """
+        returns the x,y pairs for validation. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def validation_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
+
         return self.__fetch('validation', data, key)
 
     def test_data(self, x=None, y=None, data='test', key="test")->tuple:
-        """This method should return x,y pairs of validation data"""
+        """
+        returns the x,y pairs for test. x,y are not used but
+        only given to be used if user overwrites this method for further processing
+        of x, y as shown below.
+
+        >>> from ai4water import Model
+        >>> class MyModel(Model):
+        >>>     def ttest_data(self, *args, **kwargs) ->tuple:
+        >>>         train_x, train_y = super().training_data(*args, **kwargs)
+        ...         # further process x, y
+        >>>         return train_x, train_y
+        """
         return self.__fetch('test', data, key)
 
     def all_data(self, x=None, y=None, data=None)->tuple:
-        """it returns all i.e. training+validation+test data"""
+        """it returns all data i.e. training+validation+test
+        after extracting them ``data``.
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> model = Model(model="XGBRegressor")
+        >>> train_x, train_y = model.training_data(data=data)
+        >>> print(train_x.shape, train_y.shape)
+        >>> val_x, val_y = model.validation_data(data=data)
+        >>> print(val_x.shape, val_y.shape)
+        ... # all_data will contain both training and validation data
+        >>> all_x, all_y = model.all_data(data=data)
+        >>> print(all_x.shape, all_y.shape
+        """
 
         train_x, train_y = self.training_data(x=x, y=y, data=data)
         val_x, val_y = self.validation_data(x=x, y=y, data=data)
@@ -3523,8 +3738,9 @@ class BaseModel(NN):
             user_defined_x = False
             key=f"5_{source}"
 
-            # the user has provided DataSet from which training/test data needs to be extracted
             if isinstance(data, _DataSet):
+                # the user has provided DataSet from which training/test data
+                # needs to be extracted
                 setattr(self, 'dh_', data)
                 data = getattr(data, f'{source}_data')(key=key)
 
@@ -3568,25 +3784,6 @@ def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
                 config[idx] = transformer
 
     return config
-
-
-class DataNotFound(Exception):
-
-    def __init__(self, source):
-        self.source= source
-
-    def __str__(self):
-        return f"""
-        Unable to get {self.source} data.
-        You must specify the data either using 'x' or 'data' keywords."""
-
-
-def get_values(outputs):
-
-    if isinstance(outputs, dict) and len(outputs) == 1:
-        outputs = list(outputs.values())[0]
-
-    return outputs
 
 
 def fill_val(metric_name, default="min", default_min=99999999):

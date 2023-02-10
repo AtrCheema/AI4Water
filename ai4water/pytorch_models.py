@@ -10,8 +10,8 @@ from .utils.utils import dateandtime_now, plot_activations_along_inputs
 from .backend import torch, np, plt, os, mpl
 
 if torch is not None:
-    from .models.torch import IMVTensorLSTM
-    from .models.torch import HARHN
+    from .models._torch import IMVTensorLSTM
+    from .models._torch import HARHN
 else:
     HARHN, IMVTensorLSTM = None, None
 
@@ -132,7 +132,7 @@ class IMVModel(HARHNModel):
                ax=ax,
                xticklabels=xticklabels,
                yticklabels=list(all_cols),
-               title="Importance of features and timesteps",
+               ax_kws=dict(title="Importance of features and timesteps"),
                annotate=annotate,
                show=False)
 

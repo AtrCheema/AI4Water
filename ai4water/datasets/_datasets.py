@@ -195,9 +195,7 @@
 
 import glob
 import warnings
-import zipfile
-import shutil
-from typing import Union
+from typing import Union, Tuple, Any, Optional, List
 
 try:
     from shapely.geometry import shape, mapping
@@ -210,9 +208,10 @@ from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
 from ai4water.backend import xr
 from .download_pangaea import PanDataSet
-from .download_zenodo import download_from_zenodo
-from .utils import download, download_all_http_directory
-from .utils import check_attributes, sanity_check, check_st_en
+from .utils import download_all_http_directory
+from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
+from .utils import check_attributes, check_st_en
+from .utils import encode_column, LabelEncoder, OneHotEncoder
 
 SEP = os.sep
 # TODO, add visualization
@@ -249,17 +248,26 @@ DATASETS = [
 
 class Datasets(object):
     """
-    Base class for datasets
+    This is the base class for datasets
 
     Note:
         We don't host datasets. Each dataset is downloaded fromt he target remote
         server and saved into local disk.
     """
-    def __init__(self, name=None, units=None):
+    def __init__(self,
+                 name=None,
+                 units=None,
+                 path:str = None
+                 ):
         """
         Arguments:
-            name :
-            units :
+            name : str (default=None)
+                name of dataset
+            units : str, (default=None)
+                the unit system being used
+            path : str (default=None)
+                path where the data is available (manually downloaded).
+                If None, it will be downloaded
         """
         if name is None:
             name = self.__class__.__name__
@@ -281,18 +289,34 @@ class Datasets(object):
 
     @property
     def ds_dir(self):
-        _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
+        return self._ds_dir
+
+    @ds_dir.setter
+    def ds_dir(self, path=None):
+        if path is None:
+            _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
+        else:
+            _dir = path
         if not os.path.exists(_dir):
             os.makedirs(_dir)
-        return _dir
+        self._ds_dir = _dir
+        return
 
-    def _download(self, overwrite=False):
-        """Downloads the dataset. If already downloaded, then"""
-        _maybe_download(self.ds_dir, overwrite, self.url, self.name)
+    def _download(self, overwrite=False, **kwargs):
+        """Downloads the dataset. If already downloaded, then
+
+        Parameters
+        -----------
+        overwrite : bool
+        **kwargs :
+            any keyword arguments for maybe_download function
+        """
+        maybe_download(self.ds_dir, overwrite=overwrite,
+                       url=self.url, name=self.name, **kwargs)
         return
 
     def _download_and_unzip(self):
-        _download_and_unzip(self.ds_dir, self.url)
+        download_and_unzip(self.ds_dir, self.url)
         return
 
     def download_from_pangaea(self, overwrite=False):
@@ -339,6 +363,11 @@ class Weisssee(Datasets):
 
     url = '10.1594/PANGAEA.898217'
 
+    def __init__(self, path=None, overwrite=False, **kwargs):
+        super(Weisssee, self).__init__(path=path, **kwargs)
+        self.ds_dir = path
+        self.download_from_pangaea(overwrite=overwrite)
+
     def fetch(self, **kwargs):
         """
         Examples
@@ -347,7 +376,7 @@ class Weisssee(Datasets):
             >>> dataset = Weisssee()
             >>> data = dataset.fetch()
         """
-        self.download_from_pangaea()
+
         data = {}
         for f in self.data_files:
             fpath = os.path.join(self.ds_dir, f)
@@ -501,25 +530,37 @@ class WeatherJena(Datasets):
     """
     10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
     from 2002 onwards.
+
+        Examples
+        --------
+        >>> from ai4water.datasets import WeatherJena
+        >>> dataset = WeatherJena()
+        >>> data = dataset.fetch()
+        >>> data.sum()
     """
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
 
-    def __init__(self, obs_loc='roof'):
+    def __init__(self,
+                 path=None,
+                 obs_loc='roof'):
         """
         The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
 
         Parameters
         ----------
             obs_loc : str, optional (default=roof)
-                location of observation.
+                location of observation. It can be one of following
+                    - roof
+                    - soil
+                    - saale
         """
 
         if obs_loc not in ['roof', 'soil', 'saale']:
             raise ValueError
         self.obs_loc = obs_loc
 
-        super().__init__()
-
+        super().__init__(path=path)
+        self.ds_dir = path
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
 
         if not os.path.exists(sub_dir):
@@ -549,7 +590,7 @@ class WeatherJena(Datasets):
 
     @property
     def dynamic_features(self)->list:
-        """returns names of features availabel"""
+        """returns names of features available"""
         return self.fetch().columns.tolist()
 
     def fetch(
@@ -578,9 +619,13 @@ class WeatherJena(Datasets):
         --------
             >>> from ai4water.datasets import WeatherJena
             >>> dataset = WeatherJena()
-            >>> df = dataset.fetch()
+            >>> data = dataset.fetch()
+            >>> data.shape
+            (972111, 21)
             ... # get data between specific period
-            >>> df = dataset.fetch("20110101", "20201231")
+            >>> data = dataset.fetch("20110101", "20201231")
+            >>> data.shape
+            (525622, 21)
         """
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
@@ -621,7 +666,7 @@ class WeatherJena(Datasets):
 class SWECanada(Datasets):
     """
     Daily Canadian historical Snow Water Equivalent dataset from 1928 to 2020
-    from brown et al., 2019 [1]_
+    from Brown_ et al., 2019 .
 
     Examples
     --------
@@ -629,26 +674,37 @@ class SWECanada(Datasets):
         >>> swe = SWECanada()
         ... # get names of all available stations
         >>> stns = swe.stations()
+        >>> len(stns)
+        2607
         ... # get data of one station
         >>> df1 = swe.fetch('SCD-NS010')
+        >>> df1['SCD-NS010'].shape
+        (33816, 3)
         ... # get data of 10 stations
-        >>> df10 = swe.fetch(10, st='20110101')
+        >>> df5 = swe.fetch(5, st='20110101')
+        >>> df5.keys()
+        ['YT-10AA-SC01', 'ALE-05CA805', 'SCD-NF078', 'SCD-NF086', 'INA-07RA01B']
+        >>> [v.shape for v in df5.values()]
+        [(3500, 3), (3500, 3), (3500, 3), (3500, 3), (3500, 3)]
         ... # get data of 0.1% of stations
         >>> df2 = swe.fetch(0.001, st='20110101')
         ... # get data of one stations starting from 2011
         >>> df3 = swe.fetch('ALE-05AE810', st='20110101')
-        ...
+        >>> df3.keys()
+        >>> ['ALE-05AE810']
         >>> df4 = swe.fetch(stns[0:10], st='20110101')
 
-    .. [1] https://doi.org/10.1080/07055900.2019.1598843
+    .. _Brown:
+        https://doi.org/10.1080/07055900.2019.1598843
 
     """
     url = "https://doi.org/10.5194/essd-2021-160"
-    feaures = ['snw', 'snd', 'den']
+    features = ['snw', 'snd', 'den']
     q_flags = ['data_flag_snw', 'data_flag_snd', 'qc_flag_snw', 'qc_flag_snd']
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
 
         self._download()
 
@@ -727,7 +783,7 @@ class SWECanada(Datasets):
         stn_id_dict_inv = {v: k for k, v in stn_id_dict.items()}
         stn_ids = [stn_id_dict[i] for i in station_id]
 
-        features = check_attributes(features, self.feaures)
+        features = check_attributes(features, self.features)
         qflags = []
         if q_flags is not None:
             qflags = check_attributes(q_flags, self.q_flags)
@@ -777,9 +833,9 @@ class RRLuleaSweden(Datasets):
     .. [11] https://doi.org/10.5194/hess-24-869-2020
     """
     url = "https://zenodo.org/record/3931582"
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.ds_dir = path
         self._download()
 
     def fetch(
@@ -820,13 +876,16 @@ class RRLuleaSweden(Datasets):
         Returns
         -------
         pd.DataFrame
-            a dataframe of shape (37_618, 3)
+            a dataframe of shape (37_618, 3) where the columns are velocity,
+            level and flow rate
 
         Examples
         --------
             >>> from ai4water.datasets import RRLuleaSweden
             >>> dataset = RRLuleaSweden()
             >>> flow = dataset.fetch_flow()
+            >>> flow.shape
+            (37618, 3)
         """
         fname = os.path.join(self.ds_dir, "flow_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
@@ -858,6 +917,8 @@ class RRLuleaSweden(Datasets):
             >>> from ai4water.datasets import RRLuleaSweden
             >>> dataset = RRLuleaSweden()
             >>> pcp = dataset.fetch_pcp()
+            >>> pcp.shape
+            (967080, 1)
 
         """
 
@@ -867,7 +928,7 @@ class RRLuleaSweden(Datasets):
         return check_st_en(df, st, en)
 
 
-class RRAlpileCatchments(Datasets):
+class RRAlpineCatchments(Datasets):
     """
     Modelled runoff in contrasting Alpine catchments in Austria from 1981 to 2100
     using 14 models follwoing the work of Hanus et al., 2021 [12]_ .
@@ -881,6 +942,7 @@ class RRAlpileCatchments(Datasets):
         super().__init__(**kwargs)
 
         self._download()
+
 
 class ETPAgroForestGermany(Datasets):
     """
@@ -898,293 +960,346 @@ class ETPTelesinaItaly(Datasets):
     url = "https://zenodo.org/record/3726856"
 
 
-class Quadica(Datasets):
-    """water quality dataset following Pia Ebeling et al. 2022 [1]_ .
+def mg_photodegradation(
+        inputs: list = None,
+        target: str = "Efficiency (%)",
+        encoding:str = None
+)->Tuple[pd.DataFrame,
+         Union[LabelEncoder, OneHotEncoder, Any],
+         Union[LabelEncoder, OneHotEncoder, Any]]:
+    """
+    This data is about photocatalytic degradation of melachite green dye using
+    nobel metal dobe BiFeO3. For further description of this data see
+    `Jafari et al., 2023 <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
+    for the use of this data for removal efficiency prediction `see <https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction>`_ .
+    This dataset consists of 1200 points collected during ~135 experiments.
 
-    .. [1] https://doi.org/10.5194/essd-2022-6
+    Parameters
+    ----------
+        inputs : list, optional
+            features to use as input. By default following features are used as input
+
+                - ``Catalyst_type``
+                - ``Surface area``
+                - ``Pore Volume``
+                - ``Catalyst_loading (g/L)``
+                - ``Light_intensity (W)``
+                - ``time (min)``
+                - ``solution_pH``
+                - ``HA (mg/L)``
+                - ``Anions``
+                - ``Ci (mg/L)``
+                - ``Cf (mg/L)``
+
+        target : str, optional, default="Efficiency (%)"
+            features to use as target. By default ``Efficiency (%)`` is used as target
+            which is photodegradation removal efficiency of dye from wastewater. Following
+            are valid target names
+
+                - ``Efficiency (%)``
+                - ``k_first``
+                - ``k_2nd``
+
+        encoding : str, default=None
+            type of encoding to use for the two categorical features i.e., ``Catalyst_type``
+            and ``Anions``, to convert them into numberical. Available options are ``ohe``,
+            ``le`` and None. If ohe is selected the original input columns are replaced
+            with ohe hot encoded columns. This will result in 6 columns for Anions and
+            15 columns for Catalyst_type.
+
+    Returns
+    -------
+    data : pd.DataFrame
+        a pandas dataframe consisting of input and output features. The default
+        setting will result in dataframe shape of (1200, 12)
+    cat_encoder :
+        catalyst encoder
+    an_encoder :
+        encoder for anions
+
+    Examples
+    --------
+    >>> from ai4water.datasets import mg_photodegradation
+    >>> mg_data, catalyst_encoder, anion_encoder = mg_photodegradation()
+    >>> mg_data.shape
+    (1200, 12)
+    ... # the default encoding is None, but if we want to use one hot encoder
+    >>> mg_data_ohe, cat_enc, an_enc = mg_photodegradation(encoding="ohe")
+    >>> mg_data_ohe.shape
+    (1200, 31)
+    >>> cat_enc.inverse_transform(mg_data_ohe.iloc[:, 9:24].values)
+    >>> an_enc.inverse_transform(mg_data_ohe.iloc[:, 24:30].values)
+    ... # if we want to use label encoder
+    >>> mg_data_le, cat_enc, an_enc = mg_photodegradation(encoding="le")
+    >>> mg_data_le.shape
+    (1200, 12)
+    >>> cat_enc.inverse_transform(mg_data_le.iloc[:, 9].values.astype(int))
+    >>> an_enc.inverse_transform(mg_data_le.iloc[:, 10].values.astype(int))
+    ... # By default the target is efficiency but if we want
+    ... # to use first order k as target
+    >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")
+    ... # if we want to use 2nd order k as target
+    >>> mg_data_k2, _, _ = mg_photodegradation(target="k_2nd")
 
     """
-    url = {
-        "quadica.zip":
-            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/QUADICA.zip",
-        "metadata.pdf":
-            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/Metadata_QUADICA.pdf"
-    }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    df = pd.read_csv(
+    "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
+    )
+    default_inputs = ['Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
+                      'Light_intensity (W)', 'time (min)', 'solution_pH', 'HA (mg/L)',
+                      'Ci (mg/L)', 'Cf (mg/L)', 'Catalyst_type', 'Anions',
+                      ]
+    default_targets = ['Efficiency (%)', 'k_first', 'k_2nd']
 
-        self._download()
+    # first order
+    df["k_first"] = np.log(df["Ci (mg/L)"] / df["Cf (mg/L)"]) / df["time (min)"]
 
-    def fetch_wrtds_monthly(
-            self,
-            features:Union[str, list] = None,
-            st: Union[str, int, pd.DatetimeIndex] = None,
-            en: Union[str, int, pd.DatetimeIndex] = None,
-    )->pd.DataFrame:
-        """Monthly median concentrations, flow-normalized concentrations, and mean
-        fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
-        for stations with enough data availability.
+    # k second order
+    df["k_2nd"] = ((1 / df["Cf (mg/L)"]) - (1 / df["Ci (mg/L)"])) / df["time (min)"]
 
-        Parameters
-        ----------
-            features : optional
-            st : optional
-                starting point of data. By default, the data starts from 1992-09
-            en : optional
-                end point of data. By default, the data ends at 2013-12
+    if inputs is None:
+        inputs = default_inputs
 
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (50186, 47)
-
-        Examples
-        --------
-            >>> from ai4water.datasets import Quadica
-            >>> dataset = Quadica()
-            >>> df = dataset.fetch_wrtds_monthly()
-
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "wrtds_monthly.csv")
-        wrtds = pd.read_csv(fname)
-        wrtds.index = pd.to_datetime(wrtds['Year'].astype(str) + ' ' + wrtds['Month'].astype(str))
-
-        if features is None:
-            features = wrtds.columns.tolist()
-        elif isinstance(features, str):
-            features = [features]
-
-        assert isinstance(features, list)
-
-        wrtds = wrtds[features]
-
-        return check_st_en(wrtds, st, en)
-
-    def fetch_wrtds_annual(
-            self,
-            features:Union[str, list] = None,
-            st: Union[str, int, pd.DatetimeIndex] = None,
-            en: Union[str, int, pd.DatetimeIndex] = None,
-    )->pd.DataFrame:
-        """Annual median concentrations, flow-normalized concentrations, and mean
-        fluxes estimated using Weighted Regressions on Time, Discharge, and Season (WRTDS)
-        for stations with enough data availability.
-
-        Parameters
-        ----------
-            features : optional
-            st : optional
-                starting point of data. By default, the data starts from 1992
-            en : optional
-                end point of data. By default, the data ends at 2013
-
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (4213, 46)
-
-        Examples
-        --------
-            >>> from ai4water.datasets import Quadica
-            >>> dataset = Quadica()
-            >>> df = dataset.fetch_wrtds_annual()
-
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "wrtds_annual.csv")
-        wrtds = pd.read_csv(fname)
-        wrtds.index = pd.to_datetime(wrtds['Year'].astype(str))
-
-        if features is None:
-            features = wrtds.columns.tolist()
-        elif isinstance(features, str):
-            features = [features]
-
-        assert isinstance(features, list)
-
-        wrtds = wrtds[features]
-
-        return check_st_en(wrtds, st, en)
-
-    def fetch_metadata(self)->pd.DataFrame:
-        """fetches the metadata about the stations as dataframe.
-        Each row represents metadata about one station and each column
-        represents one feature.
-
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (1386, 60)
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "metadata.csv")
-        return pd.read_csv(fname,encoding='cp1252')
-
-    def fetch_pet(
-            self,
-            st: Union[str, int, pd.DatetimeIndex] = None,
-            en: Union[str, int, pd.DatetimeIndex] = None,
-    )->pd.DataFrame:
-        """average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
-
-
-        Examples
-        --------
-            >>> from ai4water.datasets import Quadica
-            >>> dataset = Quadica()
-            >>> df = dataset.fetch_pet() # -> (828, 1388)
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
-        pet = pd.read_csv(fname)
-        return check_st_en(pet, st, en)
-
-    def fetch_tavg(
-            self,
-            st: Union[str, int, pd.DatetimeIndex] = None,
-            en: Union[str, int, pd.DatetimeIndex] = None,
-    )->pd.DataFrame:
-        """monthly median average temperatures starting from 1950-01 to 2018-09
-
-        Examples
-        --------
-            >>> from ai4water.datasets import Quadica
-            >>> dataset = Quadica()
-            >>> df = dataset.fetch_tavg() # -> (828, 1388)
-        """
-
-        fname = os.path.join(self.ds_dir, "quadica", "tavg_monthly.csv")
-        pet = pd.read_csv(fname)
-        return check_st_en(pet, st, en)
-
-    def fetch_precip(
-            self,
-            st: Union[str, int, pd.DatetimeIndex] = None,
-            en: Union[str, int, pd.DatetimeIndex] = None,
-    )->pd.DataFrame:
-        """ sums of precipitation starting from 1950-01 to 2018-09
-
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (828, 1388)
-
-        Examples
-        --------
-            >>> from ai4water.datasets import Quadica
-            >>> dataset = Quadica()
-            >>> df = dataset.fetch_precip() # -> (828, 1388)
-        """
-
-        fname = os.path.join(self.ds_dir, "quadica", "pre_monthly.csv")
-        pet = pd.read_csv(fname)
-        return check_st_en(pet, st, en)
-
-    def monthly_medians(
-            self,
-    )->pd.DataFrame:
-        """Monthly medians over the whole time series of water quality variables
-        and discharge
-
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (16629, 18)
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
-        return pd.read_csv(fname)
-
-    def annual_medians(
-            self,
-    )->pd.DataFrame:
-        """Annual medians over the whole time series of water quality variables
-        and discharge
-
-        Returns
-        -------
-        pd.DataFrame
-            a dataframe of shape (24393, 18)
-        """
-        fname = os.path.join(self.ds_dir, "quadica", "c_annual.csv")
-        return pd.read_csv(fname)
-
-    def fetch_annual(self):
-        return
-
-
-def _maybe_download(ds_dir, overwrite, url, _name):
-    if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
-        if overwrite:
-            print(f"removing previous data directory {ds_dir} and downloading new")
-            shutil.rmtree(ds_dir)
-            _download_and_unzip(ds_dir, url)
-        else:
-            sanity_check(_name, ds_dir)
-            print(f"""
-    Not downloading the data since the directory 
-    {ds_dir} already exists.
-    Use overwrite=True to remove previously saved files and download again""")
+    if not isinstance(target, list):
+        if isinstance(target, str):
+            target = [target]
+    elif isinstance(target, list):
+        pass
     else:
-        _download_and_unzip(ds_dir, url)
-    return
+        target = default_targets
+
+    assert isinstance(target, list)
+
+    assert all(trgt in default_targets for trgt in target)
+
+    df = df[inputs + target]
+
+    # consider encoding of categorical features
+    cat_encoder, an_encoder = None, None
+    if encoding:
+        df, cols_added, cat_encoder = encode_column(df, "Catalyst_type", encoding)
+        df, an_added, an_encoder = encode_column(df, "Anions", encoding)
+
+        # move the target to the end
+        for t in target:
+            df[t] = df.pop(t)
+
+    return df, cat_encoder, an_encoder
 
 
-def _download_and_unzip(ds_dir, url):
+def gw_punjab(
+        data_type:str = "full",
+        country:str = None,
+)->pd.DataFrame:
+    """
+    groundwater level (meters below ground level) dataset from Punjab region
+    (Pakistan and north-west India) following the study of MacAllister_ et al., 2022.
+
+    parameters
+    ----------
+    data_type : str (default="full")
+        either ``full`` or ``LTS``. The ``full`` contains the
+        full dataset, there are 68783 rows of observed groundwater level data from
+        4028 individual sites. In ``LTS`` there are 7547 rows of groundwater
+        level observations from 130 individual sites, which have water level data available
+        for a period of more than 40 years and from which at least two thirds of the
+        annual observations are available.
+    country : str (default=None)
+        the country for which data to retrieve. Either ``PAK`` or ``IND``.
+
+    Returns
+    -------
+    pd.DataFrame
+        a pandas DataFrame with datetime index
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import gw_punjab
+    >>> full_data = gw_punjab()
+    find out the earliest observation
+    >>> print(full_data.sort_index().head(1))
+    >>> lts_data = gw_punjab()
+    >>> lts_data.shape
+        (68782, 4)
+    >>> df_pak = gw_punjab(country="PAK")
+    >>> df_pak.sort_index().dropna().head(1)
+
+    .. MacAllister : https://doi.org/10.1038/s41561-022-00926-1
+    """
+    f = 'https://webservices.bgs.ac.uk/accessions/download/167240?fileName=India_Pakistan_WL_NGDC.xlsx'
+
+    ds_dir =os.path.join(os.path.dirname(__file__), "data", 'gw_punjab')
     if not os.path.exists(ds_dir):
         os.makedirs(ds_dir)
-    if isinstance(url, str):
-        if 'zenodo' in url:
-            download_from_zenodo(ds_dir, url)
-        else:
-            download(url, ds_dir)
-        _unzip(ds_dir)
-    elif isinstance(url, list):
-        for url in url:
-            if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url)
-            else:
-                download(url, ds_dir)
-        _unzip(ds_dir)
-    elif isinstance(url, dict):
-        for fname, url in url.items():
-            if 'zenodo' in url:
-                download_from_zenodo(ds_dir, url)
-            else:
-                download(url, os.path.join(ds_dir, fname))
-        _unzip(ds_dir)
 
+    fname = os.path.join(ds_dir, "gw_punjab.xlsx")
+    if not os.path.exists(fname):
+        print(f"downloading {fname}")
+        download(f, fname)
+
+    assert data_type in ("full", "LTS")
+
+    if data_type == "full":
+        sheet_name = "Full_dataset"
     else:
-        raise ValueError(ds_dir)
+        sheet_name = "LTS"
 
-    return
+    df = pd.read_excel(fname, sheet_name=sheet_name)
+
+    if sheet_name == "LTS":
+        df.iloc[5571, 3] = '01/10/1887'
+        df.iloc[5572, 3] = '01/10/1892'
+        df.iloc[6227, 3] = '01/10/1887'
+        df.iloc[5511, 3] = '01/10/1887'
+        df.iloc[5512, 3] = '01/10/1892'
+        df.iloc[6228, 3] = '01/10/1892'
+
+    df.index = pd.to_datetime(df.pop("DATE"))
+
+    if country:
+        if country == "PAK":
+            pak_stations = [st for st in df['OW_ID'].unique() if st.startswith("PAK")]
+            df = df[df['OW_ID'].isin(pak_stations)]
+        else:
+            pak_stations = [st for st in df['OW_ID'].unique() if st.startswith("IND")]
+            df = df[df['OW_ID'].isin(pak_stations)]
+
+    return df
 
 
-def _unzip(ds_dir, dirname=None):
-    """unzip all the zipped files in a directory"""
-    if dirname is None:
-        dirname = ds_dir
+def qe_biochar_ec(
+        input_features:List[str]=None,
+        encoding:str = None
+)->tuple:
+    """
+    data of adsorption capacity for removal of emerging pollutants from wastewater
+    using biochar. For more description of this data see `Jaffari et al., 2023 <>_`
 
-    all_files = glob.glob(f"{dirname}/*.zip")
-    for f in all_files:
-        src = os.path.join(dirname, f)
-        trgt = os.path.join(dirname, f.split('.zip')[0])
-        if not os.path.exists(trgt):
-            print(f"unziping {src} to {trgt}")
-            with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
-                try:
-                    zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
-                except OSError:
-                    filelist = zip_ref.filelist
-                    for _file in filelist:
-                        if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
-                            zip_ref.extract(_file)
+    Parameters
+    ----------
+    input_features :
+        By default following features are used as input
+            - `Adsorbent``
+            - `Pyrolysis temperature``
+            - `Pyrolysis time``
+            - `C``
+            - `H``
+            - `O``
+            - `N``
+            - ``(O+N)/C``
+            - ``Ash``
+            - ``H/C``
+            - ``O/C``
+            - ``Surface area``
+            - ``Pore volume``
+            - ``Average pore size``
+            - ``Pollutant``
+            - ``Adsorption time``
+            - `concentration``
+            - ``Solution pH``
+            - ``RPM``
+            - ``Volume``
+            - ``Adsorbent dosage``
+            - ``Adsorption temperature``
+            - ``Ion concentration``
+            - ``Humid acid``
+            - ``Wastewater type``
+            - ``Adsorption type``
 
-    # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
-    gz_files = glob.glob(f"{ds_dir}/*.gz")
-    for f in gz_files:
-        shutil.unpack_archive(f, ds_dir)
+    encoding : str, default=None
+        the type of encoding to use for categorical features. If not None, it should
+        be either ``ohe`` or ``le``.
 
-    return
+    Returns
+    --------
+    tuple
 
-def unzip_all_in_dir(dir_name, ext=".gz"):
-    gz_files = glob.glob(f"{dir_name}/*{ext}")
-    for f in gz_files:
-        shutil.unpack_archive(f, dir_name)
+    Examples
+    --------
+    >>> from ai4water.datasets import qe_biochar_ec
+    >>> data, *_ = qe_biochar_ec()
+    >>> data.shape
+    (3757, 27)
+    >>> data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+    >>> data.shape
+    (3757, 27)
+    >>> ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
+    >>> pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
+    >>> wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
+    >>> adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
+    >>> data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+    >>> data.shape
+    (3757, 58)
+    >>> adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
+    >>> polt_enc.inverse_transform(data.iloc[:, 37:51].values)
+    >>> wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
+    >>> adspt_enc.inverse_transform(data.iloc[:, 55:-1].values)
+
+    """
+    fpath = os.path.join(os.path.dirname(__file__), 'qe_biochar_ec.csv')
+    url = 'https://raw.githubusercontent.com/ZeeshanHJ/Adsorption-capacity-prediction-for-ECs/main/Raw_data.csv'
+
+    if os.path.exists(fpath):
+        data = pd.read_csv(fpath)
+    else:
+        data = pd.read_csv(url)
+        # remove space in 'Pyrolysis temperature '
+        data['Pyrolysis temperature'] = data.pop('Pyrolysis temperature ')
+
+        data['Adsorbent'] = data.pop('Adsorbent')
+        data['Pollutant'] = data.pop('Pollutant')
+        data['Wastewater type'] = data.pop('Wastewater type')
+        data['Adsorption type'] = data.pop('Adsorption type')
+
+        data['Capacity'] = data.pop('Capacity')
+
+        data.to_csv(fpath, index=False)
+
+    def_inputs = [
+        'Pyrolysis temperature',
+        'Pyrolysis time',
+        'C',
+        'H',
+        'O',
+        'N',
+        '(O+N)/C',
+        'Ash',
+        'H/C',
+        'O/C',
+        'Surface area',
+        'Pore volume',
+        'Average pore size',
+        'Adsorption time',
+        'Initial concentration',
+        'Solution pH',
+        'RPM',
+        'Volume',
+        'Adsorbent dosage',
+        'Adsorption temperature',
+        'Ion concentration',
+        'Humic acid',
+        'Adsorbent',
+        'Pollutant',
+        'Wastewater type',
+        'Adsorption type',
+    ]
+
+    if input_features is not None:
+        assert isinstance(input_features, list)
+        assert all([feature in def_inputs for feature in input_features])
+    else:
+        input_features = def_inputs
+
+    data = data[input_features + ['Capacity']]
+
+    ads_enc, pol_enc, wwt_enc, adspt_enc = None, None, None, None
+    if encoding:
+        data, _, ads_enc = encode_column(data, 'Adsorbent', encoding)
+        data, _, pol_enc = encode_column(data, 'Pollutant', encoding)
+        data, _, wwt_enc = encode_column(data, 'Wastewater type', encoding)
+        data, _, adspt_enc = encode_column(data, 'Adsorption type', encoding)
+
+        data['Capacity'] = data.pop('Capacity')
+
+    return data, ads_enc, pol_enc, wwt_enc, adspt_enc

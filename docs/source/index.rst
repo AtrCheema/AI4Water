@@ -10,10 +10,11 @@ Welcome to ai4water's documentation!
 
    installation
    quick_start
+   understanding
 
 .. toctree::
    :maxdepth: 2
-   :caption: modules
+   :caption: Modules
 
    model
    models

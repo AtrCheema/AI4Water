@@ -58,4 +58,9 @@ DLRegressionExperiments
                     model_TemporalFusionTransformer,
 
 
+DLClassificationExperiments
+============================
+.. autoclass:: ai4water.experiments.DLClassificationExperiments
+   :members:
+   :show-inheritance:
 

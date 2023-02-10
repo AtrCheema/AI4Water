@@ -11,24 +11,24 @@ if os.path.exists(fpath):
 else:
     long_desc = "https://github.com/AtrCheema/AI4Water"
 
+
+skopt_version = 'scikit-optimize'
+seq_met_ver = 'SeqMetrics>=1.3.3'
+easy_mpl_ver = 'easy_mpl[all]>=0.21.3'
+
 min_requirements = [
-    'numpy',
     'scikit-learn',
     'pandas',
-    'matplotlib',
-    'scikit-optimize',
-    'joblib',
-    'requests',
-    'easy_mpl>=0.20.5',
-    'SeqMetrics>=1.3.3',
-    'PDPbox1'
+
+    easy_mpl_ver,
+    seq_met_ver,
     ]
 
 extra_requires = [
 'tensorflow', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
-'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
+skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 
-'h5py<2.11.0', # only if you want to save batches
+'h5py', # only if you want to save batches
 'xgboost',
 'lightgbm',
 'catboost',
@@ -38,7 +38,7 @@ extra_requires = [
 # shapely manually download the wheel file and install
 'pyshp',
 
-'optuna',
+'optuna<=2.10.1',
 'hyperopt',
 
 # for reading data
@@ -53,41 +53,46 @@ extra_requires = [
 
 # only in some plots
 'plotly',
+
+    'requests',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
-               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
+               'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl>=0.20.5', 'tensorflow', 'pandas',
-                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
-                   'SeqMetrics>=1.3.3']
+tf2_requires = ['h5py', 'numpy', easy_mpl_ver, 'tensorflow<=2.7', 'pandas',
+               'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
-torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.3']
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
+                   'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
+                   seq_met_ver, 'AttentionLSTM']
 
-torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
-                      'SeqMetrics>=1.3.3']
+torch_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', 'pandas',
+                  'matplotlib', 'scikit-learn', seq_met_ver]
+
+torch_hpo_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', 'pandas',
+                  'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
+                      seq_met_ver]
 
 ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.2']
+               'lightgbm', easy_mpl_ver, seq_met_ver]
 
 ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.4', 'hyperopt', 'scikit-optimize', 'optuna',
-                   'SeqMetrics>=1.3.3']
+               'lightgbm', easy_mpl_ver, 'hyperopt', skopt_version, 'optuna<=2.10.1',
+                   seq_met_ver]
 
-hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
+hpo_requirements = ['optuna<=2.10.1', 'hyperopt', skopt_version, seq_met_ver]
 
-post_process_requirements = ['lime', 'shap', 'SeqMetrics>=1.3.3']
+post_process_requirements = ['lime', 'shap', seq_met_ver]
 
 exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     'tpot',
-                    'optuna', 'hyperopt', 'scikit-optimize',
-                    'h5py<2.11.0', 'SeqMetrics>=1.3.3'
+                    'optuna<=2.10.1', 'hyperopt', skopt_version,
+                    'h5py<2.11.0', seq_met_ver, easy_mpl_ver
                     ]
-pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', 'SeqMetrics>=1.3.3']
+pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', seq_met_ver, easy_mpl_ver]
 
-eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.3']
+eda_requires = ['seaborn', 'scikit-learn', easy_mpl_ver, seq_met_ver]
 
 all_requirements = min_requirements + extra_requires
 
@@ -95,7 +100,7 @@ setup(
 
     name='AI4Water',
 
-    version="1.05",
+    version="1.06",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
@@ -131,8 +136,8 @@ setup(
 
     packages=['ai4water',
               'ai4water/models',
-              'ai4water/models/tensorflow',
-              'ai4water/models/torch',
+              'ai4water/models/_tensorflow',
+              'ai4water/models/_torch',
               'ai4water/hyperopt',
               'ai4water/utils',
               'ai4water/preprocessing',
@@ -144,9 +149,11 @@ setup(
               'ai4water/postprocessing/interpret',
               'ai4water/postprocessing/visualize',
               'ai4water/datasets',
+              'ai4water/datasets/water_quality',
               'ai4water/et',
               'ai4water/experiments',
-              'ai4water/eda'
+              'ai4water/eda',
+              'ai4water/envs'
               ],
 
     install_requires=min_requirements,
@@ -158,6 +165,7 @@ setup(
         'exp': exp_requirements,
         'eda': eda_requires,
         'tf': tf_requires,
+        'tf2': tf2_requires,
         'torch': torch_requires,
         'tf_hpo': tf_hpo_requires,
         'torch_hpo_requires': torch_hpo_requires,

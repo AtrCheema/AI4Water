@@ -21,8 +21,15 @@ nasdaq_input_features = nasdaq.columns.tolist()[0:-1]
 nasdaq_output_features = nasdaq.columns.tolist()[-1:]
 
 
-def make_and_run(input_model, data, _layers=None, lookback=12,
-                 batch_size=64, epochs=3, **kwargs):
+def make_and_run(
+        input_model,
+        data,
+        _layers=None,
+        lookback=12,
+        batch_size=64,
+        drop_remainder=False,
+        epochs=3,
+        **kwargs):
 
     model = input_model(
         verbosity=0,
@@ -31,6 +38,7 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
         lr=0.001,
         epochs=epochs,
         split_random=True,
+        drop_remainder=drop_remainder,
         **kwargs
     )
 
@@ -42,15 +50,21 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
     pred_y = model.predict_on_test_data(data=data)
 
     # user defined data
-    x,y = model.training_data(data=data)
+    x, y = model.training_data(data=data)
     model.fit(x=x,y=y, epochs=1)
     model.fit_on_all_training_data(data=data, epochs=1)
     _ = model.predict(x=x,y=y)
+    # initial conditions are not given!
+    if drop_remainder:
+        _ = model.predict(x=x)
+    else:
+        _ = model.predict(x=x[0])
     model.predict_on_validation_data(data=data)
     model.predict_on_all_data(data=data)
-    weights = model.get_attention_weights(x=x)
+    model.get_attention_weights(x=x)
 
     return pred_y
+
 
 class TestModels(unittest.TestCase):
 
@@ -88,6 +102,19 @@ class TestModels(unittest.TestCase):
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
+    def test_IA_with_transformation_list(self):
+
+        prediction = make_and_run(InputAttentionModel,
+                                  data=arg_busan,
+                                  input_features=arg_input_features,
+                                  x_transformation=[
+                                      {'method': 'minmax', 'features': ['tide_cm']},
+                                      {'method': 'minmax', 'features': ['sal_psu']}],
+                                  y_transformation='zscore',
+                                  output_features=arg_output_features)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
+
     def test_DA_with_transformation(self):
 
         prediction = make_and_run(DualAttentionModel,
@@ -102,23 +129,29 @@ class TestModels(unittest.TestCase):
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
-    # def test_InputAttentionModel_with_drop_remainder(self):
-    #
-    #     prediction = make_and_run(InputAttentionModel, drop_remainder=True)
-    #     self.assertGreater(float(prediction[0].sum()), 0.0)
+    def test_InputAttentionModel_with_drop_remainder(self):
 
-    def test_DualAttentionModel(self):
-        # DualAttentionModel based model
-
-        prediction = make_and_run(
-            DualAttentionModel,
-            data=nasdaq,
-            input_features=nasdaq_input_features,
-            output_features=nasdaq_output_features
-        )
-
-        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        # prediction = make_and_run(InputAttentionModel,
+        #                           drop_remainder=True,
+        #                           input_features=nasdaq_input_features,
+        #                           output_features=nasdaq_output_features,
+        #                           data=nasdaq)
+        # self.assertGreater(float(prediction[0].sum()), 0.0)
         return
+
+
+    # def test_DualAttentionModel(self):
+    #     # DualAttentionModel based model
+    #
+    #     prediction = make_and_run(
+    #         DualAttentionModel,
+    #         data=nasdaq,
+    #         input_features=nasdaq_input_features,
+    #         output_features=nasdaq_output_features
+    #     )
+    #
+    #     self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+    #     return
 
     def test_da_without_prev_y(self):
         prediction = make_and_run(

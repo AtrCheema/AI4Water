@@ -13,6 +13,7 @@ import xarray as xr
 
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
+from ai4water.datasets import WaterBenchIowa
 
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_dataframe=False):
@@ -151,9 +152,15 @@ def test_fetch_static_feature(dataset, stn_id):
     return
 
 
-def test_st_en_with_static_and_dynamic(dataset, station, as_dataframe=False, yearly_steps=366):
+def test_st_en_with_static_and_dynamic(dataset, station,
+                                       as_dataframe=False,
+                                       yearly_steps=366):
+    print(f"testing {dataset.name} with st and en with both static and dynamic")
+
     if len(dataset.static_features)>0:
-        data = dataset.fetch([station], static_features='all', st='19880101', en='19881231', as_dataframe=as_dataframe)
+        data = dataset.fetch([station], static_features='all',
+                             st='19880101',
+                             en='19881231', as_dataframe=as_dataframe)
         if as_dataframe:
             check_dataframe(dataset, data['dynamic'], 1, yearly_steps)
         else:
@@ -179,7 +186,7 @@ def test_selected_dynamic_features(dataset):
 
 
 def test_hysets():
-    hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
+    hy = HYSETS(path=r'F:\data\HYSETS')
 
     # because it takes very long time, we dont test with all the data
     test_dynamic_data(hy, 0.003, int(14425 * 0.003), 25202)
@@ -252,25 +259,26 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        path = r"D:\mytools\AI4Water\AI4Water\datasets\data\CAMELS\CAMELS-GB"
+        path = r"F:\data\CAMELS\CAMELS-GB"
         if os.path.exists(path):
             ds_gb = CAMELS_GB(path=path)
             test_dataset(ds_gb, 671, 16436, 290, 10)
         return
 
     def test_aus(self):
-        ds_aus = CAMELS_AUS()
+        ds_aus = CAMELS_AUS(path=r'F:\data\CAMELS\CAMELS_AUS')
         test_dataset(ds_aus, 222, 21184, 110, 26)
         return
 
     def test_hype(self):
-        ds_hype = HYPE()
+        ds_hype = HYPE(path=r'F:\data\CAMELS\HYPE')
         test_dataset(ds_hype, 564, 12783, 0, 9)
         return
 
     def test_cl(self):
-        ds_cl = CAMELS_CL()
-        test_dataset(ds_cl, num_stations=516, dyn_data_len=38374, num_static_attrs=104, num_dyn_attrs=12)
+        ds_cl = CAMELS_CL(r'F:\data\CAMELS\CAMELS_CL')
+        test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
+                     num_static_attrs=104, num_dyn_attrs=12)
         return
 
     def test_lamah(self):
@@ -289,7 +297,7 @@ class TestCamels(unittest.TestCase):
 
                     print(f'checking for {dt} at {ts} time step')
 
-                    ds_eu = LamaH(time_step=ts, data_type=dt)
+                    ds_eu = LamaH(time_step=ts, data_type=dt, path=r'F:\data\CAMELS\LamaH')
 
                     if ts =='hourly':
                         test_df=False
@@ -300,17 +308,50 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_br(self):
-        ds_br = CAMELS_BR()
+        ds_br = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS-BR')
         test_dataset(ds_br, 593, 14245, 67, 12)
         return
 
     def test_us(self):
-        ds_us = CAMELS_US()
+        ds_us = CAMELS_US(path=r'F:\data\CAMELS\CAMELS_US')
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
     def test_hysets(self):
-        #test_hysets()
+        test_hysets()
+        return
+
+    def test_waterbenchiowa(self):
+
+        dataset = WaterBenchIowa(path=r'F:\data\CAMELS\WaterBenchIowa')
+
+        data = dataset.fetch(static_features=None)
+        assert len(data) == 125
+        for k, v in data.items():
+            assert v.shape == (61344, 3)
+
+        data = dataset.fetch(5, as_dataframe=True)
+        assert data.shape == (184032, 5)
+
+        data = dataset.fetch(5, static_features="all", as_dataframe=True)
+        assert data['static'].shape == (5, 7)
+        data = dataset.fetch_dynamic_features('644', as_dataframe=True)
+        assert data.unstack().shape == (61344, 3)
+
+        stns = dataset.stations()
+        assert len(stns) == 125
+
+        static_data = dataset.fetch_static_features(stns)
+        assert static_data.shape == (125, 7)
+
+        static_data = dataset.fetch_static_features('592')
+        assert static_data.shape == (1, 7)
+
+        static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
+        assert static_data.shape == (125, 2)
+
+        data = dataset.fetch_static_features('592', features=['slope', 'area'])
+        assert data.shape == (1,2)
         return
 
 

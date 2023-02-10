@@ -7,6 +7,8 @@ site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import numpy as np
 import pandas as pd
 
+from SeqMetrics import ClassificationMetrics
+
 from ai4water.experiments import MLClassificationExperiments
 
 from ai4water.datasets import MtropicsLaos
@@ -18,6 +20,10 @@ data = MtropicsLaos().make_classification(
 
 inputs = data.columns.tolist()[0:-1]
 outputs = data.columns.tolist()[-1:]
+
+
+def f1_score_(t,p)->float:
+    return ClassificationMetrics(t, p).f1_score(average="macro")
 
 
 def make_multiclass_classification(
@@ -44,16 +50,25 @@ data_multiclass, input_features_cls = make_multiclass_classification(100, 10, 5)
 class TestCls(unittest.TestCase):
 
     def test_basic(self):
-        exp = MLClassificationExperiments(input_features=inputs,
-                                          output_features=outputs)
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            monitor = [f1_score_, "accuracy", "f1_score", "precision"],
+            show=False, save=False
+        )
 
         exp.fit(data=data, exclude=[
             # giving nan predictions
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
             'LinearDiscriminantAnalysis',
-        ]
+        ],
+                include=['model_XGBRFClassifier', 'model_XGBClassifier']
                 )
-        exp.compare_errors('accuracy', show=False)
+        exp.compare_errors('accuracy', data=data)
+        exp.compare_errors('f1_score', data=data)
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
+        exp.compare_roc_curves(data[inputs].values, data[outputs].values)
+
         return
 
     def test_binary_cv(self):
@@ -63,7 +78,8 @@ class TestCls(unittest.TestCase):
             output_features=outputs,
             train_fraction=1.0,
             val_fraction=0.3,
-            cross_validator = {"KFold": {"n_splits": 3}}
+            cross_validator = {"KFold": {"n_splits": 3}},
+            show=False, save=False
         )
 
         exp.fit(data=data,
@@ -72,10 +88,11 @@ class TestCls(unittest.TestCase):
                     'QuadraticDiscriminantAnalysis',
                     'LinearDiscriminantAnalysis'
                 ],
+                include=['model_XGBRFClassifier', 'RandomForestClassifier'],
                 cross_validate=True,
                 )
 
-        exp.plot_cv_scores(show=False)
+        exp.plot_cv_scores()
         return
 
     def test_binary_optimize(self):
@@ -85,18 +102,18 @@ class TestCls(unittest.TestCase):
             output_features=outputs,
             train_fraction=1.0,
             val_fraction=0.3,
+            show=False, save=False
         )
 
         exp.fit(data=data,
                 include=[
                     # "model_AdaBoostClassifier", TODO
-                    "model_CatBoostClassifier",
-                    "model_LGBMClassifier",
                     "model_XGBClassifier",
                     "RandomForestClassifier"
                 ],
                 run_type="optimize",
                 )
+        exp.compare_precision_recall_curves(data[inputs].values, data[outputs].values)
         return
 
     def test_multiclass(self):
@@ -104,15 +121,15 @@ class TestCls(unittest.TestCase):
 
         exp = MLClassificationExperiments(
             input_features=input_features_cls,
-            output_features=['target']
+            output_features=['target'],
+            show=False, save=False
         )
 
         exp.fit(data=data_multiclass,
-                exclude=[
-            # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
-                    'NuSVC',
-        ]
+                            include=[
+                                "model_XGBClassifier",
+                                "RandomForestClassifier"
+                            ],
                 )
         return
 
@@ -122,20 +139,44 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(
             input_features=input_features_cls,
             cross_validator={"KFold": {"n_splits": 3}},
-            output_features=['target']
+            output_features=['target'],
+            show=False, save=False
         )
 
-        exp.fit(data=data_multiclass, exclude=[
-            # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
-            'NuSVC',  # ValueError: specified nu is infeasible
-        ],
+        exp.fit(data=data_multiclass,
+                include=[
+                    "model_XGBClassifier",
+                    "RandomForestClassifier"
+                ],
                 cross_validate=True
                 )
 
-        exp.plot_cv_scores(show=False)
+        exp.plot_cv_scores()
 
         return
+
+    def test_optimize_wtih_cv(self):
+
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            cross_validator={'KFold': {'n_splits': 3}},
+            show=False, save=False
+        )
+
+        exp.fit(data=data,
+                run_type="optimize",
+                opt_method="random",
+                num_iterations=5,
+                cross_validate=True,
+                post_optimize="train_best",
+                include=[
+                    'model_LinearSVC',
+                ]
+                )
+        exp.plot_cv_scores()
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

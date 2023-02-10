@@ -3,6 +3,8 @@ import site
 import unittest
 import sys
 # so that ai4water directory is in path
+import numpy as np
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
@@ -15,9 +17,10 @@ else:
     from ai4water import Model
 
 from ai4water.datasets import busan_beach
-from ai4water.models.tensorflow.private_layers import ConditionalRNN
+from ai4water.models._tensorflow.private_layers import ConditionalRNN
 
-inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
+inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c",
+          "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
 outputs = ['tetx_coppml']
 
 data = busan_beach(inputs, outputs)
@@ -71,8 +74,10 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dropout": 0.3,
             "Conv1D_1": {'filters': 32, 'kernel_size': 2},
             "MaxPool1D": 2,
-            'Flatten': {},  # This layer does not receive any input arguments
-            'LeakyReLU': {},  # activation function can also be used as a separate layer
+            # This layer does not receive any input arguments
+            'Flatten': {},
+            # activation function can also be used as a separate layer
+            'LeakyReLU': {},
             "Dense": 1
                   },
         12)
@@ -101,10 +106,13 @@ class TestBuiltTFConfig(unittest.TestCase):
 
         model = build_model({
             'Input': {'shape': (3, 1, 4, 8)},
-            'ConvLSTM2D': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
+            'ConvLSTM2D': {'filters': 64,
+                           'kernel_size': (1, 3),
+                           'activation': 'relu'},
             'Flatten': {},
             'RepeatVector': 1,
-            'LSTM': {'units': 128, 'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4},
+            'LSTM': {'units': 128, 'activation': 'relu',
+                     'dropout': 0.3, 'recurrent_dropout': 0.4},
             'Dense': 1
         },
             12)
@@ -131,10 +139,18 @@ class TestBuiltTFConfig(unittest.TestCase):
             "MaxPool1D": 2,
             "TimeDistributed_4": {},
             'Flatten': {},
-            'LSTM_0':  {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+            'LSTM_0':  {'units': 64,
+                        'activation': 'relu',
+                        'dropout': 0.4,
+                        'recurrent_dropout': 0.5,
+                        'return_sequences': True,
                        'name': 'lstm_0'},
             'relu_1': {},
-            'LSTM_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
+            'LSTM_1':   {'units': 32,
+                         'activation': 'relu',
+                         'dropout': 0.4,
+                         'recurrent_dropout': 0.5,
+                         'name': 'lstm_1'},
             'sigmoid_2': {},
             'Dense': 1
         },
@@ -147,10 +163,14 @@ class TestBuiltTFConfig(unittest.TestCase):
     def test_lstm_autoenc(self):
 
         model = build_model({
-            'LSTM_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+            'LSTM_0': {'units': 100,
+                       'dropout': 0.3,
+                       'recurrent_dropout': 0.4},
             "LeakyReLU_0":{},
             'RepeatVector': 11,
-            'LSTM_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+            'LSTM_1': {'units': 100,
+                       'dropout': 0.3,
+                       'recurrent_dropout': 0.4},
             "relu_1": {},
             'Dense': 1
         }, 12)
@@ -178,12 +198,20 @@ class TestBuiltTFConfig(unittest.TestCase):
 
         model = build_model({
             "Input_0": {"shape": (5, 10), "name": "cont_inputs"},
-            "LSTM_0": {"config": {"units": 62, "activation": "leakyrelu", "dropout": 0.4, "recurrent_dropout": 0.4,
-                                  "return_sequences": False, "name": "lstm_0"},
+            "LSTM_0": {"config":
+                           {"units": 62,
+                            "activation": "leakyrelu",
+                            "dropout": 0.4,
+                            "recurrent_dropout": 0.4,
+                            "return_sequences": False,
+                            "name": "lstm_0"},
                        "inputs": "cont_inputs"},
 
             "Input_1": {"shape": 10, "name": "disc_inputs"},
-            "Dense_0": {"config": {"units": 64, "activation": "leakyrelu", "name": "Dense_0"},
+            "Dense_0": {"config":
+                            {"units": 64,
+                             "activation": "leakyrelu",
+                             "name": "Dense_0"},
                         "inputs": "disc_inputs"},
             "Flatten_0": {"config": {"name": "flatten_0"},
                           "inputs": "Dense_0"},
@@ -191,23 +219,36 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Concatenate": {"config": {"name": "Concat"},
                        "inputs": ["lstm_0", "flatten_0"]},
 
-            "Dense_1": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"},
+            "Dense_1": {"units": 16,
+                        "activation": "leakyrelu",
+                        "name": "Dense_1"},
             "Dropout": 0.4,
             "Dense_2": 1
         }, 5)
         assert model.trainable_parameters() == 20857
         assert model.nn_layers().__len__() == 9
+        inp1 = np.random.random((100, 5, 10))
+        inp2 = np.random.random((100, 10))
+        y = np.random.random(100)
+        model.fit([inp1, inp2], y, epochs=1)
+        return
 
     def test_multi_output(self):
 
         model = build_model({
-            "LSTM": {'config': {'units': 64, 'return_sequences': True, 'return_state': True},
+            "LSTM": {'config':
+                         {'units': 64,
+                          'return_sequences': True,
+                          'return_state': True},
                      'outputs': ['junk', 'h_state', 'c_state']},
 
             "Dense_0": {'config': {'units': 1, 'name': 'MyDense'},
                       'inputs': 'h_state'},
 
-            "Conv1D_1": {'config': {'filters': 64, 'kernel_size': 3, 'name': 'myconv'},
+            "Conv1D_1": {'config':
+                             {'filters': 64,
+                              'kernel_size': 3,
+                              'name': 'myconv'},
                         'inputs': 'junk'},
             "MaxPool1D": {'config': {'name': 'MyMaxPool'},
                         'inputs': 'myconv'},
@@ -222,20 +263,30 @@ class TestBuiltTFConfig(unittest.TestCase):
         15)
         assert model.trainable_parameters() == 31491
         assert model.nn_layers().__len__() == 8
+        inp1 = np.random.random((100, 15, 8))
+        y = np.random.random(100)
+        model.fit(inp1, y, epochs=1)
         return
 
     def test_add_args(self):
 
         model = build_model({
             "Input": {'shape': (15, len(inputs)), 'name': "MyInputs"},
-            "LSTM": {'config': {'units': 64, 'return_sequences': True, 'return_state': True, 'name': 'MyLSTM1'},
+            "LSTM": {'config':
+                         {'units': 64,
+                          'return_sequences': True,
+                          'return_state': True,
+                          'name': 'MyLSTM1'},
                      'inputs': 'MyInputs',
                      'outputs': ['junk', 'h_state', 'c_state']},
 
             "Dense_0": {'config': {'units': 1, 'name': 'MyDense'},
                       'inputs': 'h_state'},
 
-            "Conv1D_1": {'config': {'filters': 64, 'kernel_size': 3, 'name': 'myconv'},
+            "Conv1D_1": {'config':
+                             {'filters': 64,
+                              'kernel_size': 3,
+                              'name': 'myconv'},
                         'inputs': 'junk'},
             "MaxPool1D": {'config': {'name': 'MyMaxPool'},
                         'inputs': 'myconv'},
@@ -253,43 +304,53 @@ class TestBuiltTFConfig(unittest.TestCase):
         }, 15)
         assert model.trainable_parameters() == 50243
         assert model.nn_layers().__len__() == 9
+        inp = np.random.random((100, 15, len(inputs)))
+        y = np.random.random(100)
+        model.fit(inp, y, epochs=1)
         return
 
     def test_custom_layer(self):
         num_hrus = 7
         lookback = 5
 
-        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) in [210, 250, 115]:
-            # todo, write __call__ for custom layer for tf 2.1 and 2.5
-            return
+        import ai4water.tf_attributes as attributes
 
         class SharedRNN(tf.keras.layers.Layer):
 
-            def __init__(self, *args, **kwargs):
+            def __init__(self, num_hrus, *args, **kwargs):
                 super().__init__()
+                self.num_hrus = num_hrus
                 self.rnn = ConditionalRNN(*args, **kwargs)
 
-            def __call__(self, inputs, conditions, *args, **kwargs):
+                self.lin_lyrs = []
+                for i in range(num_hrus):
+                    self.lin_lyrs.append(tf.keras.layers.Dense(1, name=f'HRU_{i}'))
+
+            def __call__(self, inputs, *args, **kwargs):
+                inputs, conditions = inputs
                 assert len(inputs.shape) == 4
-                assert inputs.shape[1] == conditions.shape[1]
+                assert inputs.shape[1] == conditions.shape[1] == self.num_hrus, f"""
+                {inputs.shape}, {conditions.shape} {self.num_hrus}"""
 
                 outputs = []
 
                 for i in range(inputs.shape[1]):
                     rnn_output = self.rnn([inputs[:, i], conditions[:, i]])
-                    rnn_output = tf.keras.layers.Dense(1, name=f'HRU_{i}')(rnn_output)
+                    rnn_output = self.lin_lyrs[i](rnn_output)
                     outputs.append(rnn_output)
 
                 return outputs
 
+        attributes.LAYERS['SharedRNN'] = SharedRNN
+
         layers = {
-            'Input_cont': {'shape': (num_hrus, lookback, 3)},  # 3 because a,b,c are input parameters
+            # 3 because a,b,c are input parameters
+            'Input_cont': {'shape': (num_hrus, lookback, 3)},
             'Input_static': {'shape': (num_hrus, 3)},
-            SharedRNN: {'config': {'units': 32},
+            'SharedRNN': {'config': {'units': 32, 'num_hrus': num_hrus},
                         'inputs': ['Input_cont', 'Input_static'],
                         'outputs': 'rnn_outputs'},
             'Add': {'name': 'total_flow'},
-            'Reshape_output': {'target_shape': (1, 1)}
         }
 
         model = Model(
@@ -297,6 +358,11 @@ class TestBuiltTFConfig(unittest.TestCase):
             verbosity=0
         )
         assert model.trainable_parameters() == 4967
+
+        inp_dyn = np.random.random((100, num_hrus, lookback, 3))
+        inp_static = np.random.random((100, num_hrus, 3))
+        y = np.random.random(100)
+        model.fit([inp_dyn, inp_static], y=y, epochs=1)
 
         return
 

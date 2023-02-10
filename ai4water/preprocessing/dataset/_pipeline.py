@@ -26,7 +26,7 @@ class DataSetPipeline(_DataSet):
     """
     def __init__(
             self,
-            *datasets,
+            *datasets: _DataSet,
             verbosity=1
     ) -> None:
         """
@@ -37,11 +37,28 @@ class DataSetPipeline(_DataSet):
         verbosity :
             controls the output information being printed.
 
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> from ai4water.preprocessing import DataSet, DataSetPipeline
+        >>> df1 = pd.DataFrame(np.random.random((100, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> df2 = pd.DataFrame(np.random.random((200, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> ds1 = DataSet(df1)
+        >>> ds2 = DataSet(df2)
+        >>> ds = DataSetPipeline(ds1, ds2)
+        >>> train_x, train_y = ds.training_data()
+        >>> val_x, val_y = ds.validation_data()
+        >>> test_x, test_y = ds.test_data()
+
         """
         self.verbosity = verbosity
 
         self._datasets = []
         for ds in datasets:
+            ds.verbosity = 0
             assert isinstance(ds, _DataSet), f"""
                             {ds} is not a valid dataset"""
             self._datasets.append(ds)
@@ -49,6 +66,23 @@ class DataSetPipeline(_DataSet):
         self.examples = {}
 
         _DataSet.__init__(self, config={}, path=os.getcwd())
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            item = self._datasets[self.index]
+        except IndexError:
+            self.index = 0
+            raise StopIteration
+
+        self.index += 1
+        return item
+
+    def __getitem__(self, item:int):
+        return self._datasets[item]
 
     @property
     def num_datasets(self) -> int:
@@ -82,7 +116,7 @@ class DataSetPipeline(_DataSet):
             return x, prev_y, y
         else:
             x, y = self._get_xy('training_data')
-            return self.return_xy(np.row_stack(x), np.row_stack(y), "Training")
+            return self.return_xy(x, y, "Training")
 
     def validation_data(self, key="val", **kwargs):
         if self.teacher_forcing:

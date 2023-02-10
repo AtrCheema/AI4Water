@@ -11,15 +11,18 @@ from .utils import to_skopt_as_dict
 from .utils import post_process_skopt_results
 from .utils import to_skopt_space
 from .utils import save_skopt_results
+from .utils import Dimension
+from .utils import plot_convergence
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
 
 from ai4water.utils.utils import JsonEncoder
 from ai4water.utils.utils import clear_weights
-from ai4water.utils.utils import Jsonize, dateandtime_now
+from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
+from ai4water.utils.utils import create_subplots
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
 
@@ -31,14 +34,16 @@ ParameterSampler = sklearn.model_selection.ParameterSampler
 bar_chart = easy_mpl.bar_chart
 parallel_coordinates = easy_mpl.parallel_coordinates
 
-Space = skopt.space.space.Space
-Dimension = skopt.space.space.Dimension
-forest_minimize = skopt.forest_minimize
-gp_minimize = skopt.gp_minimize
-BayesSearchCV = skopt.BayesSearchCV
-use_named_args = skopt.utils.use_named_args
-
-from skopt.plots import plot_convergence, plot_evaluations
+if skopt is None:
+    pass
+else:
+    Space = skopt.space.space.Space
+    #Dimension = skopt.space.space.Dimension
+    forest_minimize = skopt.forest_minimize
+    gp_minimize = skopt.gp_minimize
+    BayesSearchCV = skopt.BayesSearchCV
+    use_named_args = skopt.utils.use_named_args
+    from skopt.plots import plot_evaluations
 
 if _hyperopt is not None:
     space_eval = _hyperopt.space_eval
@@ -70,15 +75,10 @@ else:
 
 if optuna is None:
     plot_contour = None
-    Study = None
 else:
-    Study = optuna.study.Study
     plot_contour = optuna.visualization.plot_contour
 
-try:
-    from.testing import plot_param_importances
-except ModuleNotFoundError:
-    plot_param_importances = None
+from ._fanova import fANOVA
 
 # TODO RayTune libraries under the hood https://docs.ray.io/en/master/tune/api_docs/suggestion.html#summary
 # TODO add generic algorithm, deap/pygad
@@ -168,7 +168,6 @@ class HyperOpt(object):
         ...        input_features=input_features,
         ...        output_features=output_features,
         ...        model={"XGBRegressor": suggestion},
-        ...        train_data='random',
         ...        verbosity=0)
         ...
         ...    model.fit(data=data)
@@ -186,8 +185,7 @@ class HyperOpt(object):
         ...    Categorical(['gbtree', 'dart'], name='booster'),
         ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
         ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
-        ...]
-        ...
+        ... ]
         ... # Using Baysian with gaussian processes
         >>> optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
         ...                     num_iterations=num_iterations )
@@ -229,48 +227,9 @@ class HyperOpt(object):
         ...                     num_iterations=num_iterations )
         >>> optimizer.fit()
 
-        Backward compatability
-        The following shows some tweaks with hyperopt to make its working
-        compatible with its underlying libraries.
-        using grid search with AI4Water
-
-        using Bayesian with custom objective_fn
-
-        >>> def f(x, noise_level=0.1):
-        ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
-        ...
-        >>> opt = HyperOpt("bayes",
-        ...           objective_fn=f,
-        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-        ...                        ],
-        ...           acq_func='EI',  # Expected Improvement.
-        ...           n_calls=50,     #number of iterations
-        ...           x0=[32, "relu"],  # inital value of optimizing parameters
-        ...           n_random_starts=3,  # the number of random initialization points
-        ...           )
-        >>> opt_results = opt.fit()
-
-        using Bayesian with custom objective_fn and named args
-
-        >>> def f(noise_level=0.1, **kwargs):
-        ...    x = kwargs['x']
-        ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
-        >>> opt = HyperOpt("bayes",
-        ...           objective_fn=f,
-        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-        ...                        ],
-        ...           acq_func='EI',  # Expected Improvement.
-        ...           n_calls=50,     #number of iterations
-        ...           x0=[32, "relu"],  # inital value of optimizing parameters
-        ...           n_random_starts=3,  # the number of random initialization points
-        ...           random_state=2
-        ...           )
-        >>> opt_results = opt.fit()
 
     .. _hpo_tutorial:
-        https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb
+        https://ai4water-examples.readthedocs.io/en/latest/auto_examples/index.html#hyperparameter-optimization
 
     .. _GridSearchCV:
         https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html
@@ -624,18 +583,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.use_skopt_gpmin:
             xys = self.xy_of_iterations()
             paras = xys[self.best_iter()]['x']
+
         elif self.backend == 'hyperopt':
             d = get_one_tpe_x_iter(self.trials.best_trial['misc']['vals'], self.hp_space())
             if as_list:
                 return list(d.values())
             else:
                 return d
+
         elif self.backend == 'optuna':
             if as_list:
                 return list(self.study.best_trial.params.values())
             return self.study.best_trial.params
+
         elif self.use_skopt_bayes or self.use_sklearn:
+            # using BayesSerchCV
             paras = self.optfn.best_params_
+
         else:
             paras = sort_x_iters(self.results[self.best_iter()]['x'], list(self.param_space.keys()))
 
@@ -644,7 +608,20 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return paras
 
     def fit(self, *args, **kwargs):
-        """Makes and calls the underlying fit method"""
+        """Makes and calls the underlying fit method
+
+        parameters
+        ----------
+        **kwargs :
+            any keyword arguments for the userdefined objective function
+
+        Example
+        -------
+        >>> def objective_fn(a=2, b=5, **suggestions)->float:
+        ...     # do something e.g calcualte validation score
+        >>>     val_score = 2.0
+        >>>     return val_score
+        """
 
         if self.use_sklearn or self.use_skopt_bayes:
             fit_fn = self.optfn.fit
@@ -691,7 +668,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # this will be used for gp_minimize
         return list(self.param_space)
 
-    def model_for_gpmin(self):
+    def model_for_gpmin(self, **kws):
         """
         This function can be called in two cases
             - The user has made its own objective_fn.
@@ -708,13 +685,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             # external function and this function accepts named args.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
-                return self.objective_fn(**kwargs)
+                return self.objective_fn(**kwargs, **kws)
             return fitness
 
         raise ValueError(f"used named args is {self.use_named_args}")
 
-    def own_fit(self):
-
+    def own_fit(self, **kws):
+        """kws are the keyword arguments to user objective function
+        by the user
+        """
         if self.algorithm == "bayes":
             minimize_func = gp_minimize
         else: # bayes_rf
@@ -725,9 +704,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             kwargs['n_calls'] = kwargs.pop('num_iterations')
 
         try:
-            search_result = minimize_func(func=self.model_for_gpmin(),
-                                        dimensions=self.dims(),
-                                        **kwargs)
+            search_result = minimize_func(
+                func=self.model_for_gpmin(**kws),
+                dimensions=self.dims(),
+                **kwargs)
         except ValueError as e:
             if int(''.join(sklearn.__version__.split('.')[1])) > 22:
                 raise ValueError(f"""
@@ -757,7 +737,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 self.results[idx] = {'y': y, 'x': x}
 
         if self._process_results:
-            post_process_skopt_results(search_result, self.results, self.opt_path)
+            post_process_skopt_results(search_result, self.results,
+                                       self.opt_path, rename=True)
 
             if len(search_result.func_vals)<=100 and self.algorithm != "bayes_rf":
                 save_skopt_results(search_result, self.opt_path)
@@ -769,17 +750,39 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return search_result
 
-    def eval_sequence(self, params):
+    def save_results(self, results, path:str = None):
+        """
+        saves the hpo results so that they can be loaded
+        using load_results method.
 
+        parameters
+        ----------
+        results :
+            hpo results i.e. output of optimizer.fit()
+        path :
+            path where to save the results
+        """
+        assert self.algorithm == "bayes"
+
+        if path is None:
+            path = self.opt_path
+        save_skopt_results(results, path)
+        return
+
+    def eval_sequence(self, params, **kwargs):
+        """"
+        kwargs :
+            any additional keyword arguments for objective_fn
+        """
         if self.verbosity > 0:
             print(f"total number of iterations: {len(params)}")
         for idx, para in enumerate(params):
 
             if self.use_named_args:  # objective_fn is external but uses kwargs
-                err = self.objective_fn(**para)
+                err = self.objective_fn(**para, **kwargs)
             else:  # objective_fn is external and does not uses keywork arguments
                 try:
-                    err = self.objective_fn(*list(para.values()))
+                    err = self.objective_fn(*list(para.values()), **kwargs)
                 except TypeError:
                     raise TypeError(f"""
                         use_named_args argument is set to {self.use_named_args}. If your
@@ -790,7 +793,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self.results[idx] = {'y':err, 'x':sort_x_iters(para, self.original_para_order())}
 
         if self._process_results:
-            clear_weights(self.opt_path, self.results)
+            clear_weights(self.opt_path, self.results, rename=True)
             self.process_results()
 
         if self.eval_on_best:
@@ -798,15 +801,21 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return self.results
 
-    def grid_search(self):
+    def grid_search(self, **kwargs):
 
         params = list(ParameterGrid(self.param_space))
         self.param_grid = params
 
-        return self.eval_sequence(params)
+        return self.eval_sequence(params, **kwargs)
 
-    def random_search(self):
-
+    def random_search(self, **kwargs):
+        """
+        objective function that will used during random search method.
+        parameters
+        ----------
+            kwargs :
+                keyword arguments in the user defined objective function.
+        """
         for k, v in self.param_space.items():
             if v is None:
                 grid = self.space()[k].grid
@@ -824,10 +833,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         self.param_grid = param_list
 
-        return self.eval_sequence(param_list)
+        return self.eval_sequence(param_list, **kwargs)
 
     def optuna_objective(self, **kwargs):
-
+        """
+        objective function that will used during random search method.
+        parameters
+        ----------
+            kwargs :
+                keyword arguments in the user defined objective function.
+        """
         if self.verbosity == 0:
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
@@ -842,7 +857,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             suggestion = {}
             for space_name, _space in self.param_space.items():
                 suggestion[space_name] = _space.suggest(trial)
-            return self.objective_fn(**suggestion)
+            return self.objective_fn(**suggestion, **kwargs)
 
         if self.algorithm in ['tpe', 'cmaes', 'random']:
             study = optuna.create_study(direction='minimize', sampler=sampler[self.algorithm]())
@@ -895,7 +910,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                              **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
-            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4, cls=JsonEncoder)
+            json.dump(jsonize(trials.trials), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         setattr(self, 'trials', trials)
         # self.results = trials.results
@@ -929,16 +944,25 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             for idx, trial in zip(num_iters, self.study.trials):
                 results[idx] = {'y': trial.value, 'x': trial.params}
             return results
+
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
+
         elif self.backend == 'skopt':
-            assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
-            fv = self.gpmin_results['func_vals']
-            xiters = self.gpmin_results['x_iters']
+
+            if self.use_skopt_bayes:
+                fv = self.optfn.cv_results_['mean_test_score']
+                xiters = self.optfn.cv_results_['params']
+            else:
+                assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
+                fv = self.gpmin_results['func_vals']
+                xiters = self.gpmin_results['x_iters']
+
             results = {}
             for idx, y, x in zip(range(len(fv)), fv, xiters):
                 results[idx] = {'y': y, 'x': self.to_kw(x)}
             return results
+
         else:
             # for sklearn based
             return self.results
@@ -947,27 +971,29 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """returns the value of objective function at each iteration."""
         if self.backend == 'hyperopt':
             return np.array([self.trials.results[i]['loss'] for i in range(self.num_iterations)])
+
         elif self.backend == 'optuna':
             return np.array([s.values for s in self.study.trials])
+
+        elif self.use_skopt_bayes or self.use_sklearn:
+            return self.optfn.cv_results_['mean_test_score']
         else:
             return np.array([v['y'] for v in self.results.values()])
 
     def skopt_results(self):
-        if self.use_own and self.algorithm in ["bayes", "bayes_rf"] and self.backend == 'skopt':
-            return self.gpmin_results
-        else:
-            class SR:
-                x_iters = [list(s['x'].values()) for s in self.xy_of_iterations().values()]
-                func_vals = self.func_vals()
-                space = self.skopt_space()
-                if isinstance(self.best_paras(), list):
-                    x = self.best_paras
-                elif isinstance(self.best_paras(), dict):
-                    x = list(self.best_paras().values())
-                else:
-                    raise NotImplementedError
 
-            return SR()
+        class OptimizeResult:
+            x_iters = [list(s['x'].values()) for s in self.xy_of_iterations().values()]
+            func_vals = self.func_vals()
+            space = self.skopt_space()
+            if isinstance(self.best_paras(), list):
+                x = self.best_paras
+            elif isinstance(self.best_paras(), dict):
+                x = list(self.best_paras().values())
+            else:
+                raise NotImplementedError
+
+        return OptimizeResult()
 
     def best_iter(self)->int:
         """returns the iteration on which best/optimized parameters are obtained.
@@ -994,23 +1020,39 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
 
-    def _plot_parallel_coords(self, save=True, **kwargs):
+    def plot_parallel_coords(self, save=True, show=False, **kwargs):
         """ parallel coordinates of hyperparameters
+
+        Parameters
+        -----------
+        save : bool, default=True
+        show : bool, default=False
+        **kwargs :
+            any keyword arguments for easy_mpl.parallel_coordinates
         """
         d = self.xy_of_iterations()
 
         data = pd.DataFrame([list(v['x'].values()) for v in d.values()],
                             columns=[s for s in self.space()])
         categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+
+        _kws = dict(coord_title_kws=dict(rotation=10, fontsize=12))
+        if kwargs is not None:
+            _kws.update(kwargs)
+
         parallel_coordinates(
             data=data,
             categories=categories,
+            title="Hyperparameters",
             show=False,
-            **kwargs,
+            **_kws
         )
         if save:
             fname = os.path.join(self.opt_path, "parallel_coordinates")
             plt.savefig(fname, dpi=500, bbox_inches="tight")
+
+        if show:
+            plt.show()
         return
 
     def _plot_evaluations(self, save=True):
@@ -1022,56 +1064,83 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         bbox_inches='tight')
         return
 
-    def _plot_convergence(self, original=False, save=True, **kwargs):
+    def _plot_convergence(self,
+                          original:bool=False,
+                          ax = None,
+                          save=True,
+                          show=False,
+                          **kwargs):
         plt.close('all')
         if original:
-            easy_mpl.plot(self.func_vals(), '--.',
-                 xlabel="Number of calls $n$",
-                 ylabel=r"$\min f(x)$ after $n$ calls", **kwargs)
+            ax = easy_mpl.plot(self.func_vals(),
+                               marker=".",
+                               markersize= 12,
+                               lw= 2,
+                               ax_kws=dict(xlabel="Number of calls $n$",
+                                           ylabel=r"$\min f(x)$ after $n$ calls",
+                                           grid=True),
+                               show=False,
+                               **kwargs)
         else:
-            plot_convergence([self.skopt_results()], **kwargs)
+            ax = plot_convergence(self.func_vals(), ax=ax, show=False, **kwargs)
         if save:
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
-        return
 
-    def process_results(self):
+        if show:
+            plt.show()
+
+        return ax
+
+    def process_results(self, show=False):
         """post processing of results"""
         self.save_iterations_as_xy()
 
-        self._plot_parallel_coords()
+        self.plot_parallel_coords()
 
         # deep learning related results
         if self.objective_fn_is_dl:
-            plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
-            plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
+            plot_convergences(
+                self.opt_path,
+                what='val_loss',
+                ylabel='Validation MSE')
+            plot_convergences(
+                self.opt_path,
+                what='loss',
+                ylabel='MSE',
+                leg_pos="upper right")
 
         self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
-        self._plot_distributions(show=False)
+        self._plot_distributions(show=show)
 
-        sr = self.skopt_results()
-
-        # convergence plot
-        if sr.x_iters is not None and self.backend != "skopt":
-            self._plot_convergence()
+        # convergence plot,
+        #if sr.x_iters is not None and self.backend != "skopt": # todo
+        self._plot_convergence(show=show)
 
         # plot of hyperparameter space as explored by the optimizer
-        if self.backend != 'skopt' and len(self.space()) < 20:  # and len(self.space())>1:
+        if self.backend != 'skopt' and len(self.space()) < 20 and skopt is not None:
             self._plot_evaluations()
 
-        self.plot_importance(raise_error=False)
-        self.plot_importance(raise_error=False, plot_type="bar")
+        if len(self.best_paras(True))>1:
+            plt.close('all')
+            try:
+                self.plot_importance()
+                plt.close('all')
+                self.plot_importance(plot_type="bar", show=show)
+            except (RuntimeError, AttributeError):
+                warnings.warn(f"Error encountered during fanova calculation")
 
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
                            save=True,
                            fname=os.path.join(self.opt_path, "loss_histogram.png")
                            )
-            plot_hyperparameters(self.trials,
-                                 fname=os.path.join(self.opt_path, "hyperparameters.png"),
-                                 save=True)
+            plot_hyperparameters(
+                self.trials,
+                fname=os.path.join(self.opt_path, "hyperparameters.png"),
+                save=True)
 
         if plotly is not None:
 
@@ -1083,47 +1152,202 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, raise_error=True, save=True, plot_type="box"):
+    def plot_importance(
+            self,
+            save=True,
+            show:bool=False,
+            plot_type="box",
+            with_optuna:bool = False,
+            **tree_kws
+    )->plt.Axes:
+        """plots hyperparameter importance using fANOVA"""
 
-        msg = "You must have optuna installed to get hyper-parameter importance."
-        if optuna is None:
-            if raise_error:
-                raise ModuleNotFoundError(msg)
-            else:
-                warnings.warn(msg)
+        if with_optuna:
+            return self._calc_importance_with_optuna(plot_type, save=save, show=show)
+
+        X = pd.DataFrame([list(iter_xy['x'].values()) for iter_xy in self.xy_of_iterations().values()])
+        Y = np.array([iter_xy['y'] for iter_xy in self.xy_of_iterations().values()])
+        X.columns = list(self.xy_of_iterations()[0]['x'].keys())
+        dtypes = [space.__class__.__name__ for space in self.skopt_space()]
+        bounds = [(space.low, space.high) if isinstance(space, (Real, Integer)) else None for space in self.skopt_space()]
+
+        kws = {'X': X, 'Y': Y, 'dtypes': dtypes, 'bounds': bounds}
+
+        kws.update(tree_kws)
+
+        if plot_type == "bar":
+            try:
+                importance = fANOVA(**kws).feature_importance()
+            except (AttributeError, RuntimeError):
+                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
+
+            ax = self._plot_importance_as_barchart(importance, save=save)
 
         else:
-            importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-            if importances is not None:
-                if plot_type in ["bar"]:
-                    if  save:
-                        plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+
+            try:
+                mean, std = fANOVA(**kws).feature_importance(return_raw=True)
+            except (AttributeError, RuntimeError):
+                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
+
+            ax = self._plot_importance_as_boxplot(mean, std, save)
+
+        if show:
+            plt.show()
+
+        return ax
+
+    def _plot_importance_as_boxplot(self, mean, std, save:bool=False):
+        df = pd.DataFrame([mean, std])
+        plt.close('all')
+        ax = df.boxplot(rot=70, return_type="axes")
+        ax.set_ylabel("Relative Importance")
+        if save:
+            plt.savefig(os.path.join(
+                self.opt_path,
+                "fanova_importance_hist.png"),
+                dpi=300,
+                bbox_inches='tight')
+        fname = "fanova_importances_raw.json"
+
+        with open(os.path.join(self.opt_path, fname), 'w') as fp:
+            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+
+        return ax
+
+    def _plot_importance_as_barchart(self, importance, save=False):
+        df = pd.DataFrame.from_dict(importance, orient='index')
+        ax = bar_chart(df, orient='h', show=False,
+                       ax_kws={'title': "fANOVA hyperparameter importance",
+                               'xlabel': "Relative Importance"})
+
+        fname = "fanova_importances.json"
+
+        if save:
+            plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+                        bbox_inches="tight", dpi=300)
+
+        with open(os.path.join(self.opt_path, fname), 'w') as fp:
+            json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
+        return ax
+
+    def _calc_importance_with_optuna(self, plot_type="bar", save=False, show=True):
+        # todo, it is plotting both bar_chart and boxplot on same axes
+        from ._optuna_fanova import plot_param_importances
+
+        importances, importance_paras, ax = plot_param_importances(self.optuna_study())
+
+        if plot_type == "bar":
+            if save:
+                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
+        else:
+            plt.close('all')  # because bar chart has already been drawn
+            df = pd.DataFrame.from_dict(importance_paras)
+            ax = df.boxplot(rot=70, return_type="axes")
+            ax.set_ylabel("Relative Importance")
+            if save:
+                plt.savefig(os.path.join(
+                    self.opt_path,
+                    "fanova_importance_hist.png"),
+                    dpi=300,
+                    bbox_inches='tight')
+
+        with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
+            json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
+
+        with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
+            json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
+
+        if show:
+            plt.show()
+
+        return ax
+
+    def optuna_study(self):
+        """
+        Attempts to create an optuna Study instance so that
+        optuna based plots can be generated.
+
+        Returns
+        None, if not possible else Study
+        """
+        from optuna.study import Study
+        from optuna.trial import TrialState
+
+        if self.backend == 'optuna':
+            return self.study
+
+        class _Trial:
+            state = TrialState.COMPLETE
+            def __init__(self,
+                         number:int,
+                         values:Union[list, int, float],
+                         params:dict,
+                         distributions:dict):
+
+                values = jsonize(values)
+                self._number = number
+                self._values = values
+                if isinstance(values, list):
+                    assert len(values) == 1
+                    self.value = values[0]
+                elif isinstance(values, float) or isinstance(values, int):
+                    self.value = values
                 else:
-                    plt.close('all')
-                    df = pd.DataFrame.from_dict(importance_paras)
-                    axis = df.boxplot(rot=70, return_type="axes")
-                    axis.set_ylabel("Relative Importance")
-                    if save:
-                        plt.savefig(os.path.join(
-                            self.opt_path,
-                            "fanova_importance_hist.png"),
-                            dpi=300,
-                            bbox_inches='tight')
+                    try:  # try to convert it to float if possible
+                        self.value = float(values)
+                    except Exception as e:
+                        raise NotImplementedError(f"""
+                        values must be convertible to list but it is {values} of type
+                         {values.__class__.__name__} Actual error message was {e}""")
+                self.params = params
+                self._distributions = distributions
+                self.distributions = distributions
 
-                with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                    json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
+        XY_OF_ITERATIONS = self.xy_of_iterations()
+        SPACE = self.space()
+        BEST_PARAS = self.best_paras()
 
-                with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-                    json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
-        return
+        class _Study(Study):
+
+            trials = []
+            idx = 0
+
+            distributions = {sn: s.to_optuna() for sn, s in SPACE.items()}
+
+            for xy in XY_OF_ITERATIONS.values():
+                _x, _y = xy['x'], xy['y']
+                assert isinstance(_x, dict), f"""
+                params must of type dict but provided params are of type 
+                {_x.__class__.__name__}"""
+
+                trials.append(_Trial(number=idx,
+                                     values=_y,
+                                     params=_x,
+                                     distributions=distributions
+                                     ))
+                idx += 1
+            best_params = BEST_PARAS
+            best_trial = None
+            best_value = None
+            _study_id = 0
+            _distributions = distributions
+
+            def __init__(self):
+                pass
+
+            def _is_multi_objective(self):
+                return False
+
+        study = _Study()
+
+        setattr(self, 'study', study)
+
+        return study
 
     def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""
-        try:
-            from pandas.plotting._matplotlib.tools import create_subplots
-        except ImportError: # for older pandas versions
-            from pandas.plotting._matplotlib.tools import _subplots as create_subplots
 
         # name of hyperparameters
         h_paras = list(self.best_xy()['x'].keys())
@@ -1147,6 +1371,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         for ax, col in zip(axes.flat, h_paras):
 
             labels, bins = np.unique(np.array(h_para_lists[col]), return_counts=True)
+
+            if isinstance(self.space()[col], Real):
+                labels = [round(label, 3) for label in labels]
+
             bar_chart(bins, labels, orient="v", ax=ax, rotation=90, label=col,
                       show=False)
             ax.set_ylabel("Number of iterations")
@@ -1238,7 +1466,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def serialize(self):
         return {'fun': '',
                 'x': '',
-                "best_paras": Jsonize(self.best_paras())(),
+                "best_paras": jsonize(self.best_paras()),
                 'space': {k: v.serialize() for k, v in self.space().items()},
                 'fun_vals': self.func_vals(),
                 # 'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
@@ -1247,78 +1475,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 'opt_path': self.opt_path
                 }
 
-    def optuna_study(self) -> Study:
-        """
-        Attempts to create an optuna Study instance so that
-        optuna based plots can be generated.
-        Returns None, if not possible."""
-
-        from optuna.trial import TrialState
-
-        if self.backend == 'optuna':
-            return self.study
-
-        class _Trial:
-            state = TrialState.COMPLETE
-            def __init__(self, number:int, values:list, params:dict, distributions:dict):
-                values = Jsonize(values)()
-                self._number = number
-                self._values = values
-                if isinstance(values, list):
-                    assert len(values) == 1
-                    self.value = values[0]
-                elif isinstance(values, float) or isinstance(values, int):
-                    self.value = values
-                else:
-                    try:  # try to convert it to float if possible
-                        self.value = float(values)
-                    except Exception as e:
-                        raise NotImplementedError(f"""values must be convertible to list but it is {values} of type
-                         {values.__class__.__name__} Actual error message was {e}""")
-                self.params = params
-                self._distributions = distributions
-                self.distributions = distributions
-
-        class _Study(Study):
-
-            trials = []
-            idx = 0
-
-            distributions = {sn: s.to_optuna() for sn, s in self.space().items()}
-
-            for xy in self.xy_of_iterations().values():
-                _x, _y = xy['x'], xy['y']
-                assert isinstance(_x, dict), f'params must of type dict but provided params are of type {_x.__class__.__name__}'
-
-                trials.append(_Trial(number=idx,
-                                     values=_y,
-                                     params=_x,
-                                     distributions=distributions
-                                     ))
-                idx += 1
-            best_params = self.best_paras()
-            best_trial = None
-            best_value = None
-            _study_id = 0
-            _distributions = distributions
-
-            def __init__(StudyObject):
-                pass
-
-            def _is_multi_objective(StudyObject):
-                return False
-
-        study = _Study()
-
-        setattr(self, 'study', study)
-
-        return study
-
     def save_iterations_as_xy(self):
 
         iterations = self.xy_of_iterations()
 
-        jsonized_iterations = Jsonize(iterations)()
+        jsonized_iterations = jsonize(iterations)
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:
@@ -1388,3 +1549,35 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             y0.append(float(y))
             x0.append(list(x.values()))
         return x0, y0
+
+    def load_results(self, fname:str):
+        """loads the previously computed results. It should not
+        be used after .fit()
+
+        parameters
+        ----------
+        fname : str
+            complete path of  hpo_results.bin file e.g.
+            path/to/hpo_results.bin
+        """
+
+        from joblib import load  # some modules may not be dependent upon joblib
+
+        assert len(self.results) == 0, f"""
+        Loading results after call to .fit is not allowed.
+        Create a new instance of HyperOpt and then call this function.
+        """
+
+        if not os.path.exists(fname):
+            raise FileNotFoundError(f" File {fname} does not exist")
+
+        new_results =  load(fname)
+
+        self.gpmin_results = new_results
+
+        fv = new_results.func_vals
+        xiters = new_results.x_iters
+        for idx, y, x in zip(range(len(fv)), fv, xiters):
+            self.results[idx] = {'y': y, 'x': x}
+
+        return

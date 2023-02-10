@@ -22,7 +22,7 @@ copyright = '2022, Ather Abbas'
 author = 'Ather Abbas'
 
 # The full version, including alpha/beta/rc tags
-release = "1.04"
+release = "1.06"
 
 # -- General configuration ---------------------------------------------------
 
@@ -46,6 +46,7 @@ extensions = [
 "sphinx-prompt",
 "sphinx_gallery.gen_gallery",
 'sphinx.ext.ifconfig',
+'nbsphinx',
 ]
 
 toggleprompt_offset_right  = 30
@@ -60,6 +61,17 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
+
+# intersphinx configuration
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/{.major}'.format(
+        sys.version_info), None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    'matplotlib': ('https://matplotlib.org/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    'sklearn': ('https://scikit-learn.org/stable/', None),
+}
 
 sphinx_gallery_conf = {
     'backreferences_dir': 'gen_modules/backreferences',

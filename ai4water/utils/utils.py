@@ -1,11 +1,12 @@
+
 import copy
 import json
 import pprint
 import datetime
 import warnings
-from typing import Union
+from typing import Union, Any
 from shutil import rmtree
-from collections import OrderedDict
+from types import FunctionType
 from typing import Tuple, List
 import collections.abc as collections_abc
 
@@ -47,7 +48,8 @@ ERROR_LABELS = {
     'mase': 'MASE'
 }
 
-def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
+def reset_seed(seed: Union[int, None], os=None, random=None, np=None,
+               tf=None, torch=None):
     """
     Sets the random seed for a given module if the module is not None
     Arguments:
@@ -122,7 +124,10 @@ def dateandtime_now() -> str:
     return dt
 
 
-def dict_to_file(path, config=None, errors=None, indices=None, others=None, name=''):
+def dict_to_file(
+        path,
+        config=None, errors=None,
+        indices=None, others=None, name=''):
 
     sort_keys = True
     if errors is not None:
@@ -151,8 +156,10 @@ def dict_to_file(path, config=None, errors=None, indices=None, others=None, name
     if 'config' in data:
         if data['config'].get('model', None) is not None:
             model = data['config']['model']
-            if 'layers' not in model:  # because ML args which come algorithms may not be of json serializable.
-                model = Jsonize(model)()
+            # because ML args which come algorithms may not be of json serializable.
+            if 'layers' not in model:
+
+                model = jsonize(model)
                 data['config']['model'] = model
 
     with open(fpath, 'w') as fp:
@@ -226,7 +233,9 @@ def check_kwargs(**kwargs):
             kwargs['model'] = {model: {}}
 
         if mode=="ML":
-            if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
+            # for ML, default batches will be 2d unless the user specifies
+            # otherwise.
+            if "batches" not in kwargs:
                 kwargs["batches"] = "2d"
 
             if "ts_args" not in kwargs:
@@ -252,7 +261,8 @@ class make_model(object):
 
     def __init__(self, **kwargs):
 
-        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(**kwargs)
+        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(
+            **kwargs)
 
 
 def process_io(**kwargs):
@@ -335,10 +345,12 @@ def _make_model(**kwargs):
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches
-        # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
+        # will be inferred from the Input layer but for cases, the model takes
+        # more than 1 Input, then there can be two
         # cases, either all the input_features are of same shape or they
         # are not. In second case, we should overwrite `train_paras`
-        # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
+        # method. In former case, define whether the batches are 2d or 3d. 3d
+        # means it is for an LSTM and 2d means it is
         # for Dense layer.
         'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
         'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
@@ -456,7 +468,9 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:
             for k, v in data.items():
-                assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
+                assert isinstance(v, list), f"""
+                {k} is of type {v.__class__.__name__} but it must of of type list
+                {k}: {v}"""
 
     _data_config = {}
     for key, val in config.items():
@@ -489,20 +503,26 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
         elif not isinstance(val, dtype):
             # the default value may be None which will be different than dtype
             if val != dict_to_lookup[key]['default']:
-                raise TypeError(f"{key} must be of type {dtype} but it is of type {val.__class__.__name__}")
+                raise TypeError(f"""
+                {key} must be of type {dtype} but it is of type {val.__class__.__name__} 
+                {key}: {val}
+                """)
 
-    if isinstance(val, int) or isinstance(val, float):
+    if isinstance(val, (int, float)):
         if low is not None:
             if val < low:
-                raise ValueError(f"The value '{val}' for '{key}' must be greater than '{low}'")
+                raise ValueError(f"""
+                The value '{val}' for '{key}' must be greater than '{low}'""")
         if up is not None:
             if val > up:
-                raise ValueError(f"The value '{val} for '{key} must be less than '{up}'")
+                raise ValueError(f"""
+                The value '{val} for '{key} must be less than '{up}'""")
 
     if isinstance(val, str):
         if between is not None:
             if val not in between:
-                raise ValueError(f"Unknown value '{val}' for '{key}'. It must be one of '{between}'")
+                raise ValueError(f"""
+                Unknown value '{val}' for '{key}'. It must be one of '{between}'""")
 
     dict_to_update[key] = val
     return
@@ -556,7 +576,8 @@ def find_opt_paras_from_model_config(
     assert isinstance(config, dict) and len(config) == 1
 
     if 'layers' in config:
-        original_model_config, _ = process_config_dict(deepcopy_dict_without_clone(config['layers']), False)
+        original_model_config, _ = process_config_dict(
+            deepcopy_dict_without_clone(config['layers']), False)
 
         # it is a nn based model
         new_lyrs_config, opt_paras = process_config_dict(config['layers'])
@@ -568,7 +589,8 @@ def find_opt_paras_from_model_config(
         ml_config: dict = list(config.values())[0]
         model_name = list(config.keys())[0]
 
-        original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
+        original_model_config, _ = process_config_dict(
+            copy.deepcopy(config[model_name]), False)
 
         for k, v in ml_config.items():
 
@@ -603,13 +625,16 @@ def process_config_dict(config_dict: dict, update_initial_guess=True):
                     v.name = k
 
                 if v.name in opt_paras:
-                    raise ValueError("Hyperparameters with duplicate name found. A hyperparameter to be "
-                                     f"optimized with name '{v.name}' already exists")
+                    raise ValueError(f"""
+        Hyperparameter with duplicate name {v.name} found. A hyperparameter to be
+        optimized with name '{v.name}' already exists""")
+
                 opt_paras[v.name] = v
                 if update_initial_guess:
                     x0 = jsonize(v.rvs(1)[0])  # get initial guess
                     d[k] = x0  # inplace change of dictionary
-                else:  # we most probably have updated the name, so doing inplace change
+                else:
+                # we most probably have updated the name, so doing inplace change
                     d[k] = v
         return
 
@@ -618,7 +643,8 @@ def process_config_dict(config_dict: dict, update_initial_guess=True):
 
 
 def update_model_config(config: dict, suggestions:dict)->dict:
-    """returns the updated config if config contains any parameter from suggestions."""
+    """returns the updated config if config contains any parameter from
+    suggestions."""
     cc = copy.deepcopy(config)
 
     def update(c):
@@ -645,101 +671,106 @@ def to_datetime_index(idx_array, fmt='%Y%m%d%H%M') -> pd.DatetimeIndex:
     return idx
 
 
-class Jsonize(object):
-    """Converts the objects to json compatible format i.e to native python types.
-    If the object is sequence then each member of the sequence is checked and
-    converted if needed. Same goes for nested sequences like lists of lists
+def jsonize(
+        obj,
+        type_converters:dict=None
+):
+    """
+    Serializes an object to python's native types so that it can be saved
+    in json file format. If the object is a sequence, then each member of th sequence
+    is serialized. Same goes for nested sequences like lists of lists
     or list of dictionaries.
 
-    Examples:
-    ---------
-    >>>import numpy as np
-    >>>from ai4water.utils.utils import Jsonize
-    >>>a = np.array([2.0])
-    >>>b = Jsonize(a)(a)
-    >>>type(b)  # int
+    Parameters
+    ----------
+    obj :
+        any python object that needs to be serialized.
+    type_converters : dict
+        a dictionary definiting how to serialize any particular type
+        The keys of the dictionary should be ``type`` the the values
+        should be callable to serialize that type.
+
+    Return
+    ------
+        a serialized python object
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ai4water.utils import jsonize
+    >>> a = np.array([2.0])
+    >>> b = jsonize(a)
+    >>> type(b)  # int
+    ... # if a data container consists of mix of native and third party types
+    ... # only third party types are converted into native types
+    >>> print(jsonize({1: [1, None, True, np.array(3)], 'b': np.array([1, 3])}))
+    ... {1: [1, None, True, 3], 'b': [1, 2, 3]}
+
+    The user can define the methods to serialize some types
+    e. g., we can serialize tensorflow's tensors using serialize method
+
+    >>> from tensorflow.keras.layers import Lambda, serialize
+    >>> tensor = Lambda(lambda _x: _x[Ellipsis, -1, :])
+    >>> jsonize({'my_tensor': tensor}, {Lambda: serialize})
     """
-    # TODO, repeating code in __call__ and stage2
-    # TODO, stage2 not considering tuple
+    # boolean type
+    if isinstance(obj, bool):
+        return obj
 
-    def __init__(self, obj):
-        self.obj = obj
+    if 'int' in obj.__class__.__name__:
+        return int(obj)
 
-    def __call__(self):
-        """Serializes one object"""
-        if 'int' in self.obj.__class__.__name__:
-            return int(self.obj)
-        if 'float' in self.obj.__class__.__name__:
-            return float(self.obj)
+    if 'float' in obj.__class__.__name__:
+        return float(obj)
 
-        if isinstance(self.obj, dict):
-            return {k: self.stage2(v) for k, v in self.obj.items()}
+    if isinstance(obj, dict):
+        return {jsonize(k, type_converters): jsonize(v, type_converters) for k, v in obj.items()}
 
-        if hasattr(self.obj, '__len__') and not isinstance(self.obj, str):
-            return [self.stage2(i) for i in self.obj]
+    if isinstance(obj, tuple):
+        return tuple([jsonize(val, type_converters) for val in obj])
 
-        # if obj is a python 'type'
-        if type(self.obj).__name__ == type.__name__:
-            return self.obj.__name__
+    if obj.__class__.__name__ == 'NoneType':
+        return obj
 
-        if isinstance(self.obj, collections_abc.Mapping):
-            return dict(self.obj)
+    # if obj is a python 'type' such as jsonize(list)
+    if type(obj).__name__ == type.__name__:
+        return obj.__name__
 
-        if self.obj is Ellipsis:
-            return {'class_name': '__ellipsis__'}
+    if hasattr(obj, '__len__') and not isinstance(obj, str):
 
-        if wrapt and isinstance(self.obj, wrapt.ObjectProxy):
-            return self.obj.__wrapped__
+        if hasattr(obj, 'shape') and len(obj.shape) == 0:
+            # for cases such as np.array(1)
+            return jsonize(obj.item(), type_converters)
 
-        return str(self.obj)
+        if obj.__class__.__name__ in ['Series', 'DataFrame']:
+            # simple list comprehension will iterate over only column names
+            # if we simply do jsonize(obj.values()), it will not save column names
+            return {jsonize(k, type_converters): jsonize(v, type_converters) for k,v in obj.items()}
 
-    def stage2(self, obj):
-        """Serializes one object"""
-        if any([isinstance(obj, _type) for _type in [bool, set, type(None)]]) or callable(obj):
-            return obj
+        return [jsonize(val, type_converters) for val in obj]
 
-        if 'int' in obj.__class__.__name__:
-            return int(obj)
-
-        if 'float' in obj.__class__.__name__:
-            return float(obj)
-
-        # tensorflow tensor shape
-        if obj.__class__.__name__ == 'TensorShape':
-            return obj.as_list()
-
-        if isinstance(obj, dict):  # iterate over obj until it is a dictionary
-            return {k: self.stage2(v) for k, v in obj.items()}
-
-        if hasattr(obj, '__len__') and not isinstance(obj, str):
-            if len(obj) > 1:  # it is a list like with length greater than 1
-                return [self.stage2(i) for i in obj]
-            elif isinstance(obj, list) and len(obj) > 0:  # for cases like obj is [np.array([1.0])] -> [1.0]
-                return [self.stage2(obj[0])]
-            elif len(obj) == 1:  # for cases like obj is np.array([1.0])
-                if isinstance(obj, list) or isinstance(obj, tuple):
-                    return obj  # for cases like (1, ) or [1,]
-                return self.stage2(obj[0])
-            else:  # when object is []
-                return obj
-
-        # if obj is a python 'type'
-        if type(obj).__name__ == type.__name__:
+    if callable(obj):
+        if isinstance(obj, FunctionType):
             return obj.__name__
+        if hasattr(obj, '__package__'):
+            return obj.__package__
 
-        if obj is Ellipsis:
-            return {'class_name': '__ellipsis__'}
+    if isinstance(obj, collections_abc.Mapping):
+        return dict(obj)
 
-        if wrapt and isinstance(obj, wrapt.ObjectProxy):
-            return obj.__wrapped__
+    if obj is Ellipsis:
+        return {'class_name': '__ellipsis__'}
 
-        # last solution, it must be of of string type
-        return str(obj)
+    if wrapt and isinstance(obj, wrapt.ObjectProxy):
+        return obj.__wrapped__
 
+    if type_converters:
+        for _type, converter in type_converters.items():
+            if isinstance(obj, _type):
+                return converter(obj)
 
-def jsonize(obj):
-    """functional interface to `Jsonize` class"""
-    return Jsonize(obj)()
+    # last resort, call the __str__ method of object on it
+    return str(obj)
 
 
 def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
@@ -757,9 +788,12 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     return results
 
 
-def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5",
+def find_best_weight(w_path: str,
+                     best: str = "min",
+                     ext: str = ".hdf5",
                      epoch_identifier: int = None):
-    """Given weights in w_path, find the best weight.
+    """
+    Given weights in w_path, find the best weight.
     if epoch_identifier is given, it will be given priority to find best_weights
     The file_names are supposed in following format FileName_Epoch_Error.ext
 
@@ -883,7 +917,7 @@ def clear_weights(
     if rename:
         rank_folders(opt_dir, results, best_results)
 
-    results = {k: Jsonize(v)() for k, v in results.items()}
+    results = {k: jsonize(v) for k, v in results.items()}
 
     if write:
         sorted_fname = os.path.join(opt_dir, fname)
@@ -908,8 +942,27 @@ def rank_folders(opt_dir, results, best_results):
 
 
 class TrainTestSplit(object):
-    """train_test_split of sklearn can not be used for list of arrays so here
+    """
+    train_test_split of sklearn can not be used for list of arrays so here
     we go
+
+
+    Examples
+    ---------
+    >>> import numpy as np
+    >>> from ai4water.utils.utils import TrainTestSplit
+    >>> x1 = np.random.random((100, 10, 4))
+    >>> x2 = np.random.random((100, 4))
+    >>> x = [x1, x2]
+    >>> y = np.random.random(100)
+    ...
+    >>> train_x, test_x, train_y, test_y = TrainTestSplit().split_by_random(x, y)
+    >>> # works as well when only a single array i.e. is provided
+    >>> train_x, test_x, _, _ = TrainTestSplit().split_by_random(x)
+    ... # if we have a time-series like data, where we want to use earlier samples
+    ... # for training and later samples for test then we can do slice based
+    >>> train_x, test_x, train_y, test_y = TrainTestSplit().split_by_slicing(x, y)
+
     """
     def __init__(
             self,
@@ -925,14 +978,14 @@ class TrainTestSplit(object):
                 random seed for reproducibility
         """
         self.test_fraction = test_fraction
-        self.state = np.random.RandomState(seed=seed)
+        self.random_state = np.random.RandomState(seed=seed)
         self.train_indices = train_indices
         self.test_indices = test_indices
 
     def split_by_slicing(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
         """splits the x and y by slicing which is defined by `test_fraction`
         Arguments:
@@ -962,15 +1015,19 @@ class TrainTestSplit(object):
             return train, test
 
         train_x, test_x = split_arrays(x)
-        train_y, test_y = split_arrays(y)
+
+        if y is not None:
+            train_y, test_y = split_arrays(y)
+        else:
+            train_y, test_y = [], []
 
         return train_x, test_x, train_y, test_y
 
     def split_by_random(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-    ):
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
+    )->Tuple[Any, Any, Any, Any]:
         """
         splits the x and y by random splitting.
         Arguments:
@@ -991,10 +1048,11 @@ class TrainTestSplit(object):
         else:
             indices = np.arange(len(x))
 
-        indices = self.state.permutation(indices)
+        indices = self.random_state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
-        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
+        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at),
+                                       self.slice_arrays(indices, split_at))
 
         train_x = self.slice_with_indices(x, train_indices)
         train_y = self.slice_with_indices(y, train_indices)
@@ -1007,7 +1065,7 @@ class TrainTestSplit(object):
     def split_by_indices(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
         """splits the x and y by user defined `train_indices` and `test_indices`"""
 
@@ -1018,16 +1076,24 @@ class TrainTestSplit(object):
 
     @staticmethod
     def slice_with_indices(array, indices):
+        if array is None:
+            return []
         if isinstance(array, list):
-            _data = []
+            data = []
 
             for d in array:
-                assert isinstance(d, np.ndarray)
-                _data.append(d[indices])
+                if isinstance(d, (pd.Series, pd.DataFrame)):
+                    data.append(d.iloc[indices])
+                else:
+                    assert isinstance(d, (np.ndarray, pd.DatetimeIndex))
+                    data.append(d[indices])
         else:
-            assert isinstance(array, np.ndarray) or isinstance(array, pd.DatetimeIndex)
-            _data = array[indices]
-        return _data
+            if isinstance(array, (pd.DataFrame, pd.Series)):
+                data = array.iloc[indices]
+            else:
+                assert isinstance(array, (np.ndarray, pd.DatetimeIndex))
+                data = array[indices]
+        return data
 
     @staticmethod
     def slice_arrays(arrays, start, stop=None):
@@ -1042,10 +1108,12 @@ class TrainTestSplit(object):
             y,
             n_splits,
             shuffle=True,
-            random_state=None
+            **kwargs
     ):
         from sklearn.model_selection import KFold
-        kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
+        kf = KFold(n_splits=n_splits,
+                   random_state=self.random_state,
+                   shuffle=shuffle)
         spliter = kf.split(x[0] if isinstance(x, list) else x)
         return self.yield_splits(x, y, spliter)
 
@@ -1192,7 +1260,7 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
             warnings.warn(f"""Unable to calculate Harmonic mean for {name}. Harmonic mean only defined if all
                           elements are greater than or equal to zero""", UserWarning)
 
-    return Jsonize(stats)()
+    return jsonize(stats)
 
 
 def prepare_data(
@@ -1458,7 +1526,7 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(dataframe, num_outputs=2, lookback=4,
         ...    input_steps=2, forecast_step=2, forecast_len=4)
         >>> x[0]
         array([[  0.,  50., 100.],
@@ -1469,7 +1537,7 @@ def prepare_data(
         array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(dataframe, num_outputs=2, lookback=4,
         ...    forecast_len=3, known_future_inputs=True)
         >>> x[0]
         array([[  0,  50, 100],
@@ -1586,7 +1654,10 @@ class JsonEncoder(json.JSONEncoder):
         elif 'bool' in obj.__class__.__name__:
             return bool(obj)
         elif callable(obj) and hasattr(obj, '__module__'):
-            return obj.__module__
+            if isinstance(obj, FunctionType):
+                return obj.__name__
+            else:
+                return obj.__module__
         else:
             return super(JsonEncoder, self).default(obj)
 
@@ -1617,7 +1688,12 @@ def plot_activations_along_inputs(
 
     for out in range(len(out_cols)):
         pred = predictions[:, out]
-        obs = observations[:, out]
+
+        if observations is None:
+            obs = None
+        else:
+            obs = observations[:, out]
+
         out_name = out_cols[out]
 
         for idx in range(len(in_cols)):
@@ -1631,18 +1707,23 @@ def plot_activations_along_inputs(
             ax1.set_ylabel(in_cols[idx])
 
             ax2.plot(pred, label='Prediction')
-            ax2.plot(obs, '.', label='Observed')
+
+            if obs is not None:
+                ax2.plot(obs, '.', label='Observed')
+
             ax2.legend()
             ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-            axis, im = imshow(activations[:, :, idx].transpose(),
-                              vmin=vmin,
-                              vmax=vmax,
-                              aspect="auto",
-                              ax = ax3,
-                              xlabel="Examples",
-                              ylabel="lookback steps",
-                              show=False,
-                              yticklabels=ytick_labels)
+            im = imshow(
+                activations[:, :, idx].transpose(),
+                  vmin=vmin,
+                  vmax=vmax,
+                  aspect="auto",
+                  ax = ax3,
+                  ax_kws=dict(xlabel="Examples",
+                              ylabel="lookback steps"),
+                show=False,
+                yticklabels=ytick_labels
+            )
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attn_weights_{out_name}_{name}_'
@@ -1656,18 +1737,26 @@ def plot_activations_along_inputs(
     return
 
 
+class DataNotFound(Exception):
+
+    def __init__(self, source):
+        self.source= source
+
+    def __str__(self):
+        return f"""
+        Unable to get {self.source} data.
+        You must specify the data either using 'x' or 'data' keywords."""
+
+
 def print_something(something, prefix=''):
     """prints shape of some python object"""
-    if isinstance(something, np.ndarray):
+    if hasattr(something, "shape"):
         print(f"{prefix} shape: ", something.shape)
     elif isinstance(something, list):
-        print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
+        print(f"{prefix} shape: ", [thing.shape for thing in something if hasattr(thing, "shape")])
     elif isinstance(something, dict):
         print(f"{prefix} shape: ")
-        pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
-    elif something is not None:
-        print(f"{prefix} shape: ", something.shape)
-        print(something)
+        pprint.pprint({k: v.shape for k, v in something.items() if hasattr(v, "shape")}, width=40)
     else:
         print(something)
 
@@ -1694,9 +1783,20 @@ def maybe_three_outputs(data, teacher_forcing=False):
 def get_version_info(
         **kwargs
 ) -> dict:
-    # todo, chekc which attributes are not available in different versions
+    """returns version information of all the packages which are
+    used by different modules of ai4water. """
     import sys
-    info = {'python': sys.version, 'os': os.name}
+    from ai4water.backend import lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics
+    from ai4water.backend import tf, keras, torch
+    from ai4water.backend import np, pd, mpl
+    from ai4water.backend import h5py
+    from ai4water.backend import sklearn, shapefile, xr, netCDF4
+    from ai4water.backend import optuna, skopt, hyperopt, plotly
+    from ai4water.backend import fiona
+    from ai4water.backend import lime, sns
+    from ai4water import __version__
+
+    info = {'python': sys.version, 'os': os.name, 'ai4water': __version__}
     if kwargs.get('tf', None):
         tf = kwargs['tf']
         info['tf_is_built_with_cuda'] = tf.test.is_built_with_cuda()
@@ -1704,11 +1804,17 @@ def get_version_info(
         info['tf_is_gpu_available'] = tf.test.is_gpu_available()
         info['eager_execution'] = tf.executing_eagerly()
 
-    for k, v in kwargs.items():
-        if v is not None:
-            info[k] = getattr(v, '__version__', 'NotDefined')
+    for lib in [
+        lightgbm, tcn, catboost, xgboost, easy_mpl, SeqMetrics,
+        tf, keras, torch, np, pd, mpl, h5py, sklearn,
+        shapefile, fiona, xr, netCDF4,
+        optuna, skopt, hyperopt, plotly,
+        lime, sns]:
+        if lib is not None:
+            info[getattr(lib, '__name__')] =  getattr(lib, '__version__', 'NotDefined')
 
     return info
+
 
 def check_attributes(model, attributes):
     for method in attributes:
@@ -1748,3 +1854,101 @@ METRIC_TYPES = {
     "bias": "min",
     "med_seq_error": "min",
 }
+
+
+class AttribtueSetter(object):
+
+    def __init__(self, obj, y: np.ndarray, from_fit=None):
+
+        if obj.mode is None:
+            if 'float' in y.dtype.name:
+                obj.mode = "regression"
+            else:
+                obj.mode = "regression"
+            warnings.warn(f"inferred mode is {obj.mode}. Ignore this messare if the inferred mode is correct.")
+
+        self.mode = obj.mode
+
+        obj.classes_ = self.classes(y)  # for sklearn
+
+        obj.num_classes_ = len(obj.classes_)
+
+        obj.is_binary_ = self.is_binary(y)
+
+        outs = getattr(obj, 'output_features', '') or ''
+
+        obj.is_multiclass_ = self.is_multiclass(y, outs)
+
+        obj.is_multilabel_ = self.is_multilabel(outs)
+
+        obj.is_fitted_ = from_fit
+
+        return
+
+    def is_multiclass(self, y, output_features='') -> bool:
+        """Returns True if the porblem is multiclass classification"""
+        _default = False
+        if self.mode == 'classification':
+            if len(output_features) <= 1: # also consider 0 bcz when when output_features is None/'', it will be 0
+                if len(self.classes(y)) > 2:
+                    _default = True
+            # elif len(y) == y.size:  # this means the names of
+            #     pass
+            else:
+                pass  # todo, check when output columns are one-hot encoded
+
+        return _default
+
+    def is_multilabel(self,
+                      output_features='',
+                      ):
+        if self.mode == "classification":
+            if len(output_features) > 1:
+                return True
+        return False
+
+    def classes(self, y: np.ndarray):
+
+        if self.mode == "regression":
+            return []
+        if len(y) != y.size:
+            # nd array, one hot encoded
+            return [i for i in range(y.shape[-1])]
+        return list(np.unique(y[~np.isnan(y)]))
+
+    def is_binary(self, y):
+        if self.mode == "regression":
+            return False
+
+        if len(y) != y.size:  # nd array, may be one hot encoded
+            if y.shape[-1] == 2 and len(np.unique(y[~np.isnan(y)])) == 2:
+                return True  # binary, one hot encoded
+            return False
+        if len(np.unique(y[~np.isnan(y)])) == 2:
+            return True
+        return False
+
+
+def get_values(outputs):
+
+    if isinstance(outputs, (dict, list)) and len(outputs) == 1:
+        outputs = list(outputs.values())[0]
+
+    return outputs
+
+
+def create_subplots(*args, **kwargs):
+    try:
+        from pandas.plotting._matplotlib.tools import create_subplots
+    except ImportError:  # for older pandas versions
+        from pandas.plotting._matplotlib.tools import _subplots as create_subplots
+
+    return create_subplots(*args, **kwargs)
+
+
+def mad(*args, **kwargs):
+    try:
+        from scipy.stats import median_abs_deviation as _mad
+    except ImportError:
+        from scipy.stats import median_absolute_deviation as _mad
+    return _mad(*args, **kwargs)

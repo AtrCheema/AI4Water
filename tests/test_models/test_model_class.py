@@ -3,6 +3,9 @@ import os
 import time
 import unittest
 import site
+
+import matplotlib.pyplot as plt
+
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import tensorflow as tf
@@ -174,7 +177,7 @@ class TestPredictMethod(unittest.TestCase):
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
                     verbosity=0)
-        p = model.predict(data=data)
+        p = model.predict_on_test_data(data=data)
         assert isinstance(p, np.ndarray)
         return
 
@@ -206,8 +209,9 @@ class TestPredictMethod(unittest.TestCase):
         model = Model(model="RandomForestRegressor",
             train_fraction=1.0, verbosity=0)
         model.fit(data=data)
-        model.predict()
+        statement = model.predict_on_test_data
 
+        self.assertRaises(DataNotFound, statement, data=data)
         return
 
     def test_with_no_val_and_test_data(self):
@@ -216,7 +220,9 @@ class TestPredictMethod(unittest.TestCase):
             train_fraction=1.0,
             val_fraction=0.0, verbosity=0)
         model.fit(data=data)
-        model.predict()
+        statement = model.predict_on_test_data
+
+        self.assertRaises(DataNotFound, statement, data=data)
 
         return
 
@@ -290,7 +296,7 @@ class TestShapValues(unittest.TestCase):
         return
 
     def test_lookback(self):
-        time.sleep(1)
+        time.sleep(1) # todo
         model = FModel(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
                       verbosity=0)
@@ -398,6 +404,35 @@ class TestChangeNQuantiles(unittest.TestCase):
         assert model.config['x_transformation'][0]['n_quantiles'] < 1000
         assert model.config['x_transformation'][1]['n_quantiles'] < 1000
 
+        return
+
+
+class TestPredictionAnalysis(unittest.TestCase):
+
+    def test_prediction_dist(self):
+
+        model = Model(model="XGBRegressor")
+        model.fit(data=busan_beach())
+        ax = model.prediction_analysis(features="tide_cm",
+        data=busan_beach(), show=False, save_metadata=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_interaction(self):
+
+        model = Model(model="XGBRegressor")
+        model.fit(data=busan_beach())
+        ax = model.prediction_analysis(
+            ['tide_cm', 'sal_psu'],
+            data=busan_beach(),
+            custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+                         [33.45, 33.7, 33.9, 34.05, 34.4]],
+            annotate_kws={"annotate_counts": True,
+                          "annotate_colors": ("black", "black"),
+                          "annotate_fontsize": 10},
+            show=False, save_metadata=False
+        )
+        assert isinstance(ax, plt.Axes)
         return
 
 

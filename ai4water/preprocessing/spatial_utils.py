@@ -47,6 +47,10 @@ def get_areas_geoms(shp_reader):
 
     geometries = [None] * len(shapes)  # a container for geometries of shapefile
     areas = [None] * len(shapes)  # a container for areas of shapefile
+
+    if shape is None:
+        raise ModuleNotFoundError('shapely package should be installed.')
+
     for shp in range(len(shapes)):
         feature = shp_reader.shapeRecords()[shp]  # pyshp
         first = feature.shape.__geo_interface__  # pyshp

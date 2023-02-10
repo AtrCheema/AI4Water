@@ -5,17 +5,20 @@ from collections import OrderedDict
 
 try:
     from skopt.plots import plot_evaluations, plot_objective
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     plot_evaluations, plot_objective = None, None
 
-from ai4water.utils.utils import Jsonize, clear_weights
+from ai4water.utils.utils import jsonize, clear_weights
 from ai4water.backend import os, np, pd, mpl, plt, skopt, easy_mpl
 from ai4water.backend import hyperopt as _hyperopt
-from ._space import Categorical, Real, Integer
+from ._space import Categorical, Real, Integer, Dimension
 
-Space = skopt.space.space.Space
-Dimension = skopt.space.space.Dimension
-dump = skopt.utils.dump
+
+if skopt is None:
+    pass
+else:
+    Space = skopt.space.space.Space
+    dump = skopt.utils.dump
 
 if _hyperopt is not None:
     space_eval = _hyperopt.space_eval
@@ -28,9 +31,11 @@ else:
 plot = easy_mpl.plot
 
 
+
+
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
-    if 'switch' in space.name:
+    if hasattr(space, 'name') and 'switch' in space.name:
         return True
     return False
 
@@ -103,17 +108,19 @@ def skopt_space_from_hp_space(hp_space, prior_name=None):
         skopt_space = to_real(hp_space, prior_name=prior_name)
     elif 'randint' in hp_space.__str__():
         skopt_space = to_int(hp_space, prior_name=prior_name)
+    elif hasattr(hp_space, 'dist') and hp_space.dist.name in ['uniform', 'loguniform', 'quniform', 'qloguniform']:
+        skopt_space = to_real(hp_space, prior_name=prior_name)
     else:
         raise NotImplementedError
 
     return skopt_space
 
 
-def to_categorical(_space, prior_name=None):
+def to_categorical(hp_space, prior_name=None):
     """converts an hp space into a Dimension object."""
     cats = []
     inferred_name = None
-    for arg in _space.pos_args:
+    for arg in hp_space.pos_args:
         if hasattr(arg, '_obj') and arg.pure:
             cats.append(arg._obj)
         elif arg.name == 'hyperopt_param' and len(arg.pos_args)>0:
@@ -167,13 +174,13 @@ def to_int(_space, prior_name=None):
     return Integer(low=limits['low'], high=limits['high'], name=prior_name)
 
 
-def to_real(_space, prior_name=None):
+def to_real(hp_space, prior_name=None):
     """converts an an hp space to real. """
     inferred_name = None
     limits = None
     prior = None
     allowed_names = ['uniform', 'loguniform', 'quniform', 'loguniform', 'qloguniform']
-    for arg in _space.pos_args:
+    for arg in hp_space.pos_args:
         if len(arg.pos_args) > 0:
             for a in arg.pos_args:
                 if a.name == 'literal' and len(arg.named_args) == 0:
@@ -291,11 +298,11 @@ def plot_hyperparameters(
         plt.show()
 
 
-def post_process_skopt_results(skopt_results, results, opt_path):
+def post_process_skopt_results(skopt_results, results, opt_path, rename=True):
 
     skopt_plots(skopt_results, pref=opt_path)
 
-    clear_weights(results=results, opt_dir=opt_path)
+    clear_weights(results=results, opt_dir=opt_path, rename=rename)
 
     return
 
@@ -313,6 +320,8 @@ def save_skopt_results(skopt_results, opt_path):
         with open(fname + '.json', 'w') as fp:
             json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
 
+    dump(skopt_results, os.path.join(opt_path, 'hpo_results.bin'),
+         store_objective=False)
     return
 
 
@@ -327,7 +336,9 @@ def _plot_objective(search_results, pref="", threshold=20):
     return
 
 
-def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
+def skopt_plots(search_result,
+                pref=os.getcwd(),
+                threshold=20):
 
     if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
         plt.close('all')
@@ -343,7 +354,8 @@ def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
     return
 
 
-def convergence(func_vals, color=None, show_original=False):
+def convergence(func_vals, color=None,
+                show_original=False):
 
     _, ax = plt.subplots()
     ax.grid()
@@ -357,16 +369,14 @@ def convergence(func_vals, color=None, show_original=False):
     else:
         data = mins
 
-    plot(data,
+    return plot(data,
          color=color,
          marker=".", markersize=12, lw=2,
-         title="Convergence plot",
+         ax_kws=dict(title="Convergence plot",
          xlabel="Number of calls $n$",
-         ylabel=r"$\min f(x)$ after $n$ calls",
+         ylabel=r"$\min f(x)$ after $n$ calls"),
          show=False,
          ax=ax)
-
-    return
 
 class SerializeSKOptResults(object):
     """
@@ -475,7 +485,7 @@ class SerializeSKOptResults(object):
         """Serializes list of parameters"""
         _x = []
         for para in x:
-            _x.append(Jsonize(para)())
+            _x.append(jsonize(para))
         return _x
 
     def x0(self):
@@ -488,7 +498,7 @@ class SerializeSKOptResults(object):
                 if isinstance(para, list):
                     _x0.append(self.para_list(para))
                 else:
-                    _x0.append(Jsonize(para)())
+                    _x0.append(jsonize(para))
         return _x0
 
     def y0(self):
@@ -498,10 +508,10 @@ class SerializeSKOptResults(object):
         if isinstance(__y0, list):
             _y0 = []
             for y in self.results['specs']['args']['y0']:
-                _y0.append(Jsonize(y)())
+                _y0.append(jsonize(y))
             return _y0
 
-        return Jsonize(self.results['specs']['args']['y0'])()
+        return jsonize(self.results['specs']['args']['y0'])
 
     def fun(self):
         return float(self.results['fun'])
@@ -514,7 +524,7 @@ class SerializeSKOptResults(object):
         for i in range(self.iters):
             x = []
             for para in self.results['x_iters'][i]:
-                x.append(Jsonize(para)())
+                x.append(jsonize(para))
 
             out_x.append(x)
 
@@ -524,20 +534,20 @@ class SerializeSKOptResults(object):
         raum = {}
         for sp in self.results['space'].dimensions:
             if sp.__class__.__name__ == 'Categorical':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if k in ['categories', 'transform_',
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if k in ['categories', 'transform_',
                                                                                   'prior', '_name']}
                 _raum.update({'type': 'Categorical'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Integer':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base',
                                              'dtype', 'log_base']}
                 _raum.update({'type': 'Integer'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Real':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
+                _raum = {k: jsonize(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype',
                                              'log_base']}
                 _raum.update({'type': 'Real'})
@@ -582,7 +592,7 @@ class SerializeSKOptResults(object):
 
     def singleton_kernel(self, k):
         """Serializes Kernels such as  Matern, White, Constant Kernels"""
-        return {k: Jsonize(v)() for k, v in k.__dict__.items()}
+        return {k: jsonize(v) for k, v in k.__dict__.items()}
 
     def specs(self):
         _specs = {}
@@ -596,7 +606,7 @@ class SerializeSKOptResults(object):
         args['dimensions'] = self.space()
 
         be = self.results['specs']['args']['base_estimator']
-        b_e = {k: Jsonize(v)() for k, v in be.__dict__.items() if
+        b_e = {k: jsonize(v) for k, v in be.__dict__.items() if
                                        k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y',
                                              'copy_X_train', 'random_state']}
         b_e['kernel'] = self.kernel(be.kernel)
@@ -607,7 +617,7 @@ class SerializeSKOptResults(object):
             if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func',
                      'acq_optimizer', 'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa',
                      'n_jobs', 'model_queue_size']:
-                args[k] = Jsonize(v)()
+                args[k] = jsonize(v)
 
         args['x0'] = self.x0()
         args['y0'] = self.y0()
@@ -619,7 +629,7 @@ class SerializeSKOptResults(object):
 
         mods = []
         for model in self.results['models']:
-            mod = {k: Jsonize(v)() for k, v in model.__dict__.items() if k in [
+            mod = {k: jsonize(v) for k, v in model.__dict__.items() if k in [
                 'noise','alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
                 '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train',
                 'log_marginal_likelihood', 'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
@@ -635,20 +645,13 @@ def to_skopt_space(x):
     if isinstance(x, list):
         if all([isinstance(s, Dimension) for s in x]):
             _space = Space(x)
-        elif len(x) == 1 and isinstance(x[0], tuple):
-            if len(x[0]) == 2:
-                if 'int' in x[0][0].__class__.__name__:
-                    _space = Integer(low=x[0][0], high=x[0][1])
-                elif 'float' in x[0][0].__class__.__name__:
-                    _space = Integer(low=x[0][0], high=x[0][1])
-                else:
-                    raise NotImplementedError
-            else:
-                raise NotImplementedError
         elif all([s.__class__.__name__== "Apply" for s in x]):
             _space = Space([skopt_space_from_hp_space(v) for v in x])
         else:
-            raise NotImplementedError
+            # x consits of one or multiple tuples
+            assert all([isinstance(obj, tuple) for obj in x])
+            _space = [make_space(i) for i in x]
+
     elif isinstance(x, dict):  # todo, in random, should we build Only Categorical space?
         space_ = []
         for k, v in x.items():
@@ -899,9 +902,10 @@ def to_skopt_as_dict(algorithm:str, backend:str, original_space)->dict:
                     s = space_from_list(v, k)
                 elif isinstance(v, Dimension):
                     s = v
-                elif isinstance(v, tuple) or isinstance(v, list):
+                elif isinstance(v, (tuple, list)):
                     s = Categorical(v, name=k)
-                elif  v.__class__.__name__ == "Apply" or 'rv_frozen' in v.__class__.__name__:
+                elif v.__class__.__name__ in ["Apply",
+                                                  'rv_continuous_frozen'] or 'rv_frozen' in v.__class__.__name__:
                     if algorithm == 'random':
                         s = Real(v.kwds['loc'], v.kwds['loc'] + v.kwds['scale'], name=k, prior=v.dist.name)
                     else:
@@ -937,3 +941,46 @@ def space_from_list(v: list, k: str):
         else:
             raise NotImplementedError
     return s
+
+
+def plot_convergence(func_vals, show=False, ax=None, **kwargs):
+
+    func_vals = np.array(func_vals)
+    n_calls = len(func_vals)
+
+    mins = [np.min(func_vals[:i])
+            for i in range(1, n_calls + 1)]
+
+    if ax is None:
+        ax = plt.gca()
+
+    _kwargs = {
+        "marker":".",
+        "markersize": 12,
+        "lw": 2,
+        "show":show,
+        "ax_kws": {"title": 'Convergence plot',
+        "xlabel": 'Number of calls $n$',
+        "ylabel": '$\min f(x)$ after $n$ calls',
+        'grid': True},
+        'ax': ax,
+    }
+
+    _kwargs.update(kwargs)
+
+    ax = plot(range(1, n_calls + 1), mins, **_kwargs)
+    return ax
+
+
+def make_space(x):
+    if len(x) == 2:
+        low, high = x
+        if 'int' in low.__class__.__name__:
+            space = Integer(low=low, high=high)
+        elif 'float' in low.__class__.__name__:
+            space = Integer(low=low, high=high)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+    return space
