@@ -9,7 +9,7 @@ nbsphinx
 
 scikit-optimize
 plotly
-tensorflow==2.7
+tensorflow==2.9.3
 protobuf==3.19.1
 seaborn
 easy_mpl[all]>=0.21.3

@@ -57,13 +57,13 @@ skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter 
     'requests',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==2.9.3', 'pandas',
                'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
 tf2_requires = ['h5py', 'numpy', easy_mpl_ver, 'tensorflow<=2.7', 'pandas',
                'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==2.9.3', 'pandas',
                    'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
                    seq_met_ver, 'AttentionLSTM']
 
