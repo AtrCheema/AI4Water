@@ -25,7 +25,7 @@ jobs:
         python -m pip install numpy==1.21.0
         python -m pip install h5py==3.5.0
         python -m pip install protobuf==3.19.1
-        python -m pip install easy_mpl SeqMetrics PDPbox1
+        python -m pip install easy_mpl SeqMetrics
     - name: Test with unittest
       run: |
         conda install pytest

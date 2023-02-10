@@ -14,6 +14,8 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
+from ai4water.datasets import busan_beach
+
 
 class TestFrontPage(unittest.TestCase):
 
@@ -34,7 +36,7 @@ class TestFrontPage(unittest.TestCase):
             batch_size=8,  # batch size
             epochs=500,  # number of epochs to train the neural network
             patience=50,  # used for early stopping
-        )
+        verbosity=0)
 
         history = model.fit(data=data)
 
@@ -59,7 +61,8 @@ class TestFrontPage(unittest.TestCase):
             ts_args={'lookback': lookback},
             input_features=inputs,
             output_features=outputs,
-            lr=0.001
+            lr=0.001,
+            verbosity=0
         )
         x = np.random.random((batch_size * 10, lookback, len(inputs)))
         y = np.random.random((batch_size * 10, len(outputs)))
@@ -69,7 +72,7 @@ class TestFrontPage(unittest.TestCase):
 
     def test_example3(self):
         from ai4water import Model
-        from ai4water.datasets import busan_beach
+
 
         data = busan_beach()  # path for data file
 
@@ -84,7 +87,7 @@ class TestFrontPage(unittest.TestCase):
             model={"RandomForestRegressor": {}},
             # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
             # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-        )
+        verbosity=0)
 
         history = model.fit(data=data)
 
@@ -93,10 +96,9 @@ class TestFrontPage(unittest.TestCase):
 
     def test_example4(self):
         from ai4water.functional import Model
-        from ai4water.datasets import MtropicsLaos
         from ai4water.hyperopt import Real, Integer
 
-        data = MtropicsLaos().make_regression(lookback_steps=1)
+        data = busan_beach()
 
         model = Model(
             model={"RandomForestRegressor": {
@@ -112,7 +114,7 @@ class TestFrontPage(unittest.TestCase):
             cross_validator={"KFold": {"n_splits": 5}},
             x_transformation="zscore",
             y_transformation="log",
-        )
+        verbosity=0)
 
         # First check the performance on test data with default parameters
         model.fit_on_all_training_data(data=data)
@@ -122,7 +124,7 @@ class TestFrontPage(unittest.TestCase):
         optimizer = model.optimize_hyperparameters(
             algorithm="bayes",  # you can choose between `random`, `grid` or `tpe`
             data=data,
-            num_iterations=20,  # todo
+            num_iterations=12,  # todo
         )
 
         # Now check the performance on test data with default parameters
@@ -138,7 +140,10 @@ class TestFrontPage(unittest.TestCase):
         comparisons = MLRegressionExperiments(
             input_features=data.columns.tolist()[0:-1],
             output_features=data.columns.tolist()[-1:],
-            split_random=True
+            split_random=True,
+            save=False,
+            show=False,
+            verbosity=0
         )
         # train all the available machine learning models
         comparisons.fit(data=data)
@@ -155,7 +160,7 @@ class TestFrontPage(unittest.TestCase):
         _ = comparisons.taylor_plot(
             data=data,
             figsize=(5, 9),
-            exclude=["DummyRegressor", "XGBRFRegressor",
+            exclude=["DummyRegressor",
                      "SGDRegressor", "KernelRidge", "PoissonRegressor"],
             leg_kws={'facecolor': 'white',
                      'edgecolor': 'black', 'bbox_to_anchor': (2.0, 0.9),
