@@ -54,6 +54,9 @@ class Imputation(object):
 
 
     Examples:
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> from ai4water.preprocessing import Imputation
         >>> df = pd.DataFrame([1,3,np.nan,  np.nan, 9, np.nan, 11])
         >>> imputer = Imputation(df, method='fillna', imputer_args={'method': 'ffill'})
         >>> imputer()

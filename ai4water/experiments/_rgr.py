@@ -58,18 +58,17 @@ class MLRegressionExperiments(Experiments):
             ...       input_features=inputs, output_features=outputs,
             ...       nan_filler= {'method': 'KNNImputer', 'features': inputs} )
             >>> comparisons.fit(data=data,run_type="dry_run")
-            >>> comparisons.compare_errors('r2')
+            >>> comparisons.compare_errors('r2', data=data)
             >>> # find out the models which resulted in r2> 0.5
             >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater',
-            ...                                                cutoff_val=0.3)
-            >>> best_models = [m[1] for m in best_models.values()]
+            ...                                                cutoff_val=0.3, data=data)
             >>> # now build a new experiment for best models and otpimize them
             >>> comparisons = MLRegressionExperiments(
-            ...     inputs_features=inputs, output_features=outputs,
+            ...     input_features=inputs, output_features=outputs,
             ...     nan_filler= {'method': 'KNNImputer', 'features': inputs},
             ...     exp_name="BestMLModels")
-            >>> comparisons.fit(data=data, run_type="optimize", include=best_models)
-            >>> comparisons.compare_errors('r2')
+            >>> comparisons.fit(data=data, run_type="optimize", include=best_models.index)
+            >>> comparisons.compare_errors('r2', data=data)
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
 
         """

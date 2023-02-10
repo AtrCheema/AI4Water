@@ -152,6 +152,7 @@ class Transformation(TransformationsContainer):
     To transform a datafrmae using any of the above methods use
 
     Examples:
+        >>> from ai4water.preprocessing import Transformation
         >>> transformer = Transformation(method='zscore')
         >>> transformer.fit_transform(data=[1,2,3,5])
 
@@ -254,6 +255,7 @@ class Transformation(TransformationsContainer):
             Following shows how to apply log transformation on an array containing zeros
             by making use of the argument `replace_zeros`. The zeros in the input array
             will be replaced internally but will be inserted back afterwards.
+
             >>> from ai4water.preprocessing.transformations import Transformation
             >>> transformer = Transformation(method='log', replace_zeros=True)
             >>> transformed_data = transformer.fit_transform([1,2,3,0.0, 5, np.nan, 7])
@@ -563,6 +565,7 @@ class Transformation(TransformationsContainer):
     )-> "Transformation":
         """constructs the `Transformation` class from `config` which has
         already been fitted/transformed.
+
         Arguments:
             config:
                 a dicionary which is the output of `config()` method.
@@ -642,8 +645,8 @@ class Transformation(TransformationsContainer):
         if len(x_) == x_.size:
             # it is 1d
             fig, axes = plt.subplots(1, 2,  figsize=figsize)
-            func(data, ax=axes[0], ** kwargs, title="original", show=False)
-            func(x_, ax = axes[1], **kwargs,  title="Transformed", show=False)
+            func(data, ax=axes[0], ** kwargs, ax_kws=dict(title="original"), show=False)
+            func(x_, ax = axes[1], **kwargs,  ax_kws=dict(title="Transformed"), show=False)
         else:
             fig, axes = plt.subplots(x_.shape[1], 2, figsize=figsize)
             if isinstance(data, pd.DataFrame):
@@ -654,9 +657,9 @@ class Transformation(TransformationsContainer):
                 title1, title2 = None, None
                 if idx == 0:
                     title1, title2 = "Original", "Transformed"
-                func(data[:, idx], ax=axes[idx, 0], title=title1,
+                func(data[:, idx], ax=axes[idx, 0], ax_kws=dict(title=title1),
                         show=False, **kwargs)
-                func(x_.iloc[:, idx], ax=axes[idx, 1], title=title2,
+                func(x_.iloc[:, idx], ax=axes[idx, 1], ax_kws=dict(title=title2),
                         show=False, **kwargs)
 
         plt.suptitle(self.method)

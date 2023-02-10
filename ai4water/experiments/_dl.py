@@ -41,6 +41,7 @@ class DLRegressionExperiments(Experiments):
     >>> train_fraction=1.0,
     >>> y_transformation="log",
     >>> x_transformation="minmax",
+    >>> ts_args={'lookback':9}
     >>> )
     ... # runt he experiments
     >>> exp.fit(data=data)
@@ -296,21 +297,22 @@ class DLClassificationExperiments(DLRegressionExperiments):
 
     Examples
     ---------
+    >>> from ai4water.experiments import DLClassificationExperiments
     >>> from ai4water.datasets import MtropicsLaos
     >>> data = MtropicsLaos().make_classification(
     ...     input_features=['air_temp', 'rel_hum'],
     ...     lookback_steps=5)
-    define inputs and outputs
+    ... #define inputs and outputs
     >>> inputs = data.columns.tolist()[0:-1]
     >>> outputs = data.columns.tolist()[-1:]
-    create the experiments class
+    ... #create the experiments class
     >>> exp = DLClassificationExperiments(
     ...     input_features=inputs,
     ...     output_features=outputs,
     ...     epochs=5,
     ...     ts_args={"lookback": 5}
     ...)
-     run the experiments
+    ... #run the experiments
     >>> exp.fit(data=data, include=["TFT", "MLP"])
 
     """

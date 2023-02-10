@@ -1228,7 +1228,7 @@ Available cases are {self.models} and you wanted to include
 
         you may wish to plot on log scale
 
-        >>> exp.loss_comparison(logy=True)
+        >>> exp.loss_comparison(ax_kws={'logy':True})
         """
 
         include = self._check_include_arg(include, self.considered_models_)
@@ -1243,15 +1243,19 @@ Available cases are {self.models} and you wanted to include
                 loss_curves[_model] = df.values
                 end = end or len(df)
 
-        _kws = {'linestyle': '-'}
-        if kwargs is not None:
-            _kws.update(kwargs)
         ax_kws = {
             'xlabel': "Epochs",
             'ylabel': 'Loss'}
 
         if len(loss_curves) > 5:
             ax_kws['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
+
+        _kws = {'linestyle': '-'}
+        if kwargs is not None:
+            if 'ax_kws' in kwargs:
+                ax_kws.update(kwargs.pop('ax_kws'))
+            _kws.update(kwargs)
+
 
         _, axis = plt.subplots(figsize=figsize)
 

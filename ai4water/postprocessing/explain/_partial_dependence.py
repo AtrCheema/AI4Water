@@ -122,8 +122,23 @@ class PartialDependencePlot(ExplainerMixin):
                 whether to show the distribution of data as histogram or not
             show_minima:
                 whether to show the function minima or not
+
         Returns:
             matplotlib Figure
+
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PartialDependencePlot
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> x, _ = model.training_data()
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        ...                            num_points=14)
+        >>> pdp.nd_interactions(show_dist=True)
         """
 
         n_dims = len(self.features)
@@ -143,7 +158,7 @@ class PartialDependencePlot(ExplainerMixin):
                     else:
                         ax_ = ax
 
-                    self._plot_pdp_1dim(*self._pdp_for_2d(self.data, self.features[i]),
+                    self._plot_pdp_1dim(*self.calc_pdp_1dim(self.data, self.features[i]),
                                         self.data,
                                         self.features[i],
                                         show_dist=show_dist,
@@ -240,10 +255,7 @@ class PartialDependencePlot(ExplainerMixin):
         >>> x, _ = model.training_data()
         >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
         ...                            num_points=14)
-        >>> pdp.nd_interactions(show_dist=True)
-
-        specifying features whose interaction is to be calculated and plotted.
-
+        ... # specifying features whose interaction is to be calculated and plotted.
         >>> axis = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         """
 

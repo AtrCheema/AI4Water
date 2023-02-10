@@ -32,7 +32,7 @@ class PermutationImportance(ExplainerMixin):
         >>> model = Model(model="XGBRegressor", verbosity=0)
         >>> model.fit(data=data)
         >>> x_val, y_val = model.validation_data()
-
+        ... # initialize the PermutationImportance class
         >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
         >>> fig = pimp.plot_1d_pimp()
 

@@ -37,6 +37,22 @@ class DataSetPipeline(_DataSet):
         verbosity :
             controls the output information being printed.
 
+
+        Examples
+        ---------
+        >>> import pandas as pd
+        >>> from ai4water.preprocessing import DataSet, DataSetPipeline
+        >>> df1 = pd.DataFrame(np.random.random((100, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> df2 = pd.DataFrame(np.random.random((200, 10)),
+        ...              columns=[f"Feat_{i}" for i in range(10)])
+        >>> ds1 = DataSet(df1)
+        >>> ds2 = DataSet(df2)
+        >>> ds = DataSetPipeline(ds1, ds2)
+        >>> train_x, train_y = ds.training_data()
+        >>> val_x, val_y = ds.validation_data()
+        >>> test_x, test_y = ds.test_data()
+
         """
         self.verbosity = verbosity
 

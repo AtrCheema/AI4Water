@@ -95,16 +95,19 @@ class ProcessPredictions(Plot):
 
         Examples
         --------
+        >>> import numpy as np
+        >>> from ai4water.postprocessing import ProcessPredictions
         >>> true = np.random.random(100)
         >>> predicted = np.random.random(100)
-        >>> processor = ProcessPredictions("regression", plots=['prediction', 'regression', 'residual', 'murphy'])
+        >>> processor = ProcessPredictions("regression", forecast_len=1,
+        ...    plots=['prediction', 'regression', 'residual'])
         >>> processor(true, predicted)
 
-        # for classification
+        # for postprocessing of classification, we need to set the mode
 
         >>> true = np.random.randint(0, 2, (100, 1))
         >>> predicted = np.random.randint(0, 2, (100, 1))
-        >>> processor = ProcessPredictions("classification", is_binary=True)
+        >>> processor = ProcessPredictions("classification")
         >>> processor(true, predicted)
         """
         self.mode = mode
@@ -357,7 +360,7 @@ class ProcessPredictions(Plot):
         return plot_metrics(
             errors.calculate_all(),
             show=self.show,
-            save_path=os.path.join(self.path, where, f"{prefix}_errors.png"),
+            save_path=os.path.join(self.path, where),
             save=self.save,
             text_kws = {"fontsize": 16},
             max_metrics_per_fig=20,

@@ -47,9 +47,9 @@ class DualAttentionModel(FModel):
         >>> model = DualAttentionModel(lookback=5,
         ...                            input_features=data.columns.tolist()[0:-1],
         ...                            output_features=data.columns.tolist()[-1:])
-        If you do not wish to feed previous output as input to the model, you
-        can set teacher forcing to False. The drop_remainder argument must be
-        set to True in such a case.
+        ... #If you do not wish to feed previous output as input to the model, you
+        ... #can set teacher forcing to False. The drop_remainder argument must be
+        ... #set to True in such a case.
         >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4,
         ...                            drop_remainder=True, ts_args={'lookback':5})
         >>> model.fit(data=data)

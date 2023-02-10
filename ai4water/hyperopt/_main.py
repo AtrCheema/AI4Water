@@ -168,7 +168,6 @@ class HyperOpt(object):
         ...        input_features=input_features,
         ...        output_features=output_features,
         ...        model={"XGBRegressor": suggestion},
-        ...        train_data='random',
         ...        verbosity=0)
         ...
         ...    model.fit(data=data)
@@ -186,8 +185,7 @@ class HyperOpt(object):
         ...    Categorical(['gbtree', 'dart'], name='booster'),
         ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
         ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
-        ...]
-        ...
+        ... ]
         ... # Using Baysian with gaussian processes
         >>> optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
         ...                     num_iterations=num_iterations )
@@ -229,45 +227,6 @@ class HyperOpt(object):
         ...                     num_iterations=num_iterations )
         >>> optimizer.fit()
 
-        Backward compatability
-        The following shows some tweaks with hyperopt to make its working
-        compatible with its underlying libraries.
-        using grid search with AI4Water
-
-        using Bayesian with custom objective_fn
-
-        >>> def f(x, noise_level=0.1):
-        ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
-        ...
-        >>> opt = HyperOpt("bayes",
-        ...           objective_fn=f,
-        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-        ...                        ],
-        ...           acq_func='EI',  # Expected Improvement.
-        ...           n_calls=50,     #number of iterations
-        ...           x0=[32, "relu"],  # inital value of optimizing parameters
-        ...           n_random_starts=3,  # the number of random initialization points
-        ...           )
-        >>> opt_results = opt.fit()
-
-        using Bayesian with custom objective_fn and named args
-
-        >>> def f(noise_level=0.1, **kwargs):
-        ...    x = kwargs['x']
-        ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
-        >>> opt = HyperOpt("bayes",
-        ...           objective_fn=f,
-        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-        ...                        ],
-        ...           acq_func='EI',  # Expected Improvement.
-        ...           n_calls=50,     #number of iterations
-        ...           x0=[32, "relu"],  # inital value of optimizing parameters
-        ...           n_random_starts=3,  # the number of random initialization points
-        ...           random_state=2
-        ...           )
-        >>> opt_results = opt.fit()
 
     .. _hpo_tutorial:
         https://ai4water-examples.readthedocs.io/en/latest/auto_examples/index.html#hyperparameter-optimization

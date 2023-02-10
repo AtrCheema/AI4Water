@@ -23,7 +23,7 @@ class MLClassificationExperiments(Experiments):
     >>>                                       output_features=outputs)
     >>> exp.fit(data=data, include=["CatBoostClassifier", "LGBMClassifier",
     >>>             'RandomForestClassifier', 'XGBClassifier'])
-    >>> exp.compare_errors('accuracy', show=False)
+    >>> exp.compare_errors('accuracy', data=data)
     """
 
     def __init__(

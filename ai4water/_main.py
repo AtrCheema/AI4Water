@@ -225,13 +225,13 @@ class BaseModel(NN):
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> df = busan_beach()
-            >>> model_ = Model(input_features=df.columns.tolist()[0:-1],
+            >>> ann = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
             ...              output_features=df.columns.tolist()[-1:],
-            ...              model={'layers': {'LSTM': 64, 'Dense': 1}},
+            ...              model={'layers': {'Dense': 64, 'Dense': 1}},
             ... )
-            >>> history = model_.fit(data=df)
-            >>> y, obs = model_.predict()
+            >>> history = ann.fit(data=df)
+            >>> y = ann.predict()
 
         .. _sklearn:
             https://scikit-learn.org/stable/modules/classes.html
@@ -888,7 +888,7 @@ class BaseModel(NN):
                 kwargs['random_state'] = self.config['seed']
             if kwargs.get('boosting_type', None) == "rf" and 'bagging_freq' not in kwargs:
                 # https://github.com/microsoft/LightGBM/issues/1333
-                print('entering')
+                # todo, user must be notified
                 kwargs['bagging_freq'] = 1
                 kwargs['bagging_fraction'] = 0.5
 
@@ -969,6 +969,7 @@ class BaseModel(NN):
 
             using your own data for training
 
+            >>> import numpy as np
             >>> new_inputs = np.random.random((100, 10))
             >>> new_outputs = np.random.random(100)
             >>> model.fit(x=new_inputs, y=new_outputs)
@@ -1153,7 +1154,7 @@ class BaseModel(NN):
         -------
             >>> from ai4water.datasets import busan_beach
             >>> from ai4water import Model
-            >>> model = Model(model="XGBRegressor",
+            >>> model = Model(model="RandomForestRegressor",
             >>>               cross_validator={"KFold": {"n_splits": 5}})
             >>> model.cross_val_score(data=busan_beach())
 
@@ -1429,19 +1430,24 @@ class BaseModel(NN):
 
         Examples
         --------
+            >>> import numpy as np
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
 
             for evaluation on test data
 
-            >>> model.evaluate(data=busan_beach())
+            >>> model.evaluate(data=data)
             ...
 
             evaluate on any metric from SeqMetrics_ library
 
-            >>> model.evaluate(data=busan_beach(), metrics='pbias')
+            >>> model.evaluate(data=data, metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
             >>> new_inputs = np.random.random((10, 13))
@@ -1502,12 +1508,16 @@ class BaseModel(NN):
         Examples
         --------
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
             ... # for evaluation on training data
-            >>> model.evaluate_on_training_data(data=busan_beach())
-            >>> model.evaluate(data=busan_beach(), metrics='pbias')
+            >>> model.evaluate_on_training_data(data=data)
+            >>> model.evaluate(data=data, metrics='pbias')
         """
         x, y = self.training_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
@@ -1548,12 +1558,16 @@ class BaseModel(NN):
         Examples
         --------
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
             ... # for evaluation on validation data
-            >>> model.evaluate_on_validation_data(data=busan_beach())
-            >>> model.evaluate_on_validation_data(data=busan_beach(), metrics='pbias')
+            >>> model.evaluate_on_validation_data(data=data)
+            >>> model.evaluate_on_validation_data(data=data, metrics='pbias')
         """
 
         x, y = self.validation_data(data=data)
@@ -1600,12 +1614,16 @@ class BaseModel(NN):
         Examples
         --------
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
             ... # for evaluation on test data
-            >>> model.evaluate_on_test_data(data=busan_beach())
-            >>> model.evaluate_on_test_data(data=busan_beach(), metrics='pbias')
+            >>> model.evaluate_on_test_data(data=data)
+            >>> model.evaluate_on_test_data(data=data, metrics='pbias')
         """
         x, y = self.test_data(data=data)
         if not _find_num_examples(x):
@@ -1617,12 +1635,16 @@ class BaseModel(NN):
         Examples
         --------
             >>> from ai4water import Model
+            >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=busan_beach())
+            >>> data = busan_beach()
+            >>> model = Model(model=MLP(),
+            ...               input_features=data.columns.tolist()[0:-1],
+            ...               output_features=data.columns.tolist()[-1:])
+            >>> model.fit(data=data)
             ... # for evaluation on all data
-            >>> print(model.evaluate_on_all_data(data=busan_beach())))
-            >>> print(model.evaluate_on_all_data(data=busan_beach(), metrics='pbias'))
+            >>> print(model.evaluate_on_all_data(data=data)))
+            >>> print(model.evaluate_on_all_data(data=data, metrics='pbias'))
         """
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
@@ -1756,7 +1778,7 @@ class BaseModel(NN):
         --------
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
-        >>> model = Model(model="XGBRegressor")
+        >>> model = Model(model="RandomForestRegressor")
         >>> model.fit(data=busan_beach())
         >>> pred = model.predict(data=busan_beach())
 
@@ -1774,7 +1796,8 @@ class BaseModel(NN):
 
         using your own data
 
-        >>> new_input = np.random.random(10, 14)
+        >>> import numpy as np
+        >>> new_input = np.random.random((10, 13))
         >>> pred = model.predict(x = new_input)
         """
 
@@ -2273,8 +2296,16 @@ class BaseModel(NN):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the :py:meth:ai4water.postprocessing.explain.explain_model` function
+        """Calls the :py:func:ai4water.postprocessing.explain.explain_model` function
          to explain the model.
+         Example
+         -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> model = Model(model="RandomForestRegressor")
+        >>> model.fit(data=data)
+        >>> model.explain(total_data=data, examples_to_explain=2)
          """
         from ai4water.postprocessing.explain import explain_model
         return explain_model(self, *args, **kwargs)
@@ -2367,12 +2398,14 @@ class BaseModel(NN):
         Example
         -------
             >>> from ai4water import Model
+            >>> import numpy as np
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
             >>> old_model = Model(model="XGBRegressor")
             >>> old_model.fit(data=data)
             ... # now construct a new model instance from config dictionary
             >>> model = Model.from_config(old_model.config)
+            >>> model.update_weights()
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
@@ -2642,13 +2675,15 @@ class BaseModel(NN):
 
             Same can be done if a model is defined using neural networks
 
-            >>> model_conf = {"layers": {
-            ...     "Input": {"input_shape": (15, 13)},
+            ... lookback = 14
+            >>> model_config = {"layers": {
+            ...     "Input": {"input_shape": (lookback, 13)},
             ...     "LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-            ...      "Dense1": {"units": 1,
+            ...      "Dense": {"units": 1,
             ...            "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
-            >>> model = Model(model=model_config)
-            >>> optimizer = model.optimize_hyperparameters(data=busan_beach())
+            >>> model = Model(model=model_config, ts_args={"lookback": lookback})
+            >>> optimizer = model.optimize_hyperparameters(data=busan_beach(),
+            ...          refit=False)
         """
         from ._optimize import OptimizeHyperparameters  # optimize_hyperparameters
 
@@ -2693,7 +2728,10 @@ class BaseModel(NN):
                 else:
                     self.fit_on_all_training_data(data=data)
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"""
+            Setting `refit` is not supported for neural network
+            based models. please call optimize_hyperparmeters(..., refit=False)
+""")
 
         return _optimizer
 
@@ -3030,7 +3068,7 @@ class BaseModel(NN):
         >>>     output_features=output_features)
         ... # train the model
         >>> model.fit(data=df)
-        .. # perform sensitivity analysis
+        ... # perform sensitivity analysis
         >>> si = model.sensitivity_analysis(data=df[input_features].values,
         >>>                    sampler="morris", analyzer=["morris", "sobol"],
         >>>                        sampler_kwds={'N': 100})
@@ -3170,7 +3208,7 @@ class BaseModel(NN):
             >>> data = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
             >>> model.fit(data=data)
-            >>> model.explain(data=data, example_num=2)
+            >>> model.explain_example(data=data, example_num=2)
 
         """
 
@@ -3302,8 +3340,8 @@ class BaseModel(NN):
             data_type : str, optional (default="test")
                 The kind of data to be used. It is only valid if ``data`` argument is used.
                 It should be one of ``training``, ``validation``, ``test`` or ``all``.
-            features: list
-                two features to investigate
+            features: str/list
+                name or names of features to investigate
             feature_names: list
                 feature names
             num_grid_points: list, optional, default=None
@@ -3362,7 +3400,7 @@ class BaseModel(NN):
         ...
         >>> model = Model(model="XGBRegressor")
         >>> model.fit(data=busan_beach())
-        >>> model.prediction_analysis(feature="tide_cm",
+        >>> model.prediction_analysis(features="tide_cm",
         ... data=busan_beach(), show_percentile=True)
         ... # for multiple features
         >>> model.prediction_analysis(
@@ -3371,7 +3409,7 @@ class BaseModel(NN):
         ...     annotate_kws={"annotate_counts":True,
         ...     "annotate_colors":("black", "black"),
         ...     "annotate_fontsize":10},
-        ...     cust_grid_points=[[-41.4, -20.0, 0.0, 20.0, 42.0],
+        ...     custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
         ...                       [33.45, 33.7, 33.9, 34.05, 34.4]],
         ... )
 

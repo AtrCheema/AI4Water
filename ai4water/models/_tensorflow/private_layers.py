@@ -329,9 +329,10 @@ class TransformerBlocks(tf.keras.layers.Layer):
     -------
     >>> import numpy as np
     >>> from tensorflow.keras.models import Model
-    >>> from tensorflow.keras.layers import Input
+    >>> from tensorflow.keras.layers import Input, Dense
+    >>> from ai4water.models._tensorflow import TransformerBlocks
     >>> inp = Input(shape=(10, 32))
-    >>> out = TransformerBlocks(4, 4, 32)(inp)
+    >>> out, _ = TransformerBlocks(4, 4, 32)(inp)
     >>> out = Dense(1)(out)
     >>> model = Model(inputs=inp, outputs=out)
     >>> model.compile(optimizer="Adam", loss="mse")
@@ -387,9 +388,10 @@ class Transformer(tf.keras.layers.Layer):
     -------
     >>> import numpy as np
     >>> from tensorflow.keras.models import Model
-    >>> from tensorflow.keras.layers import Input
+    >>> from tensorflow.keras.layers import Input, Dense
+    >>> from ai4water.models._tensorflow import Transformer
     >>> inp = Input(shape=(10, 32))
-    >>> out = Transformer(4, 32)(inp)
+    >>> out, _ = Transformer(4, 32)(inp)
     >>> out = Dense(1)(out)
     >>> model = Model(inputs=inp, outputs=out)
     >>> model.compile(optimizer="Adam", loss="mse")

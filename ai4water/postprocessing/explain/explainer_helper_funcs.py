@@ -47,7 +47,7 @@ def explain_model(
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model
-        >>> model = Model(model="RandForestRegressor")
+        >>> model = Model(model="RandomForestRegressor")
         >>> model.fit(data=busan_beach())
         >>> explain_model(model, total_data=busan_beach())
     """
@@ -112,7 +112,7 @@ def explain_model_with_lime(
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model_with_lime
-        >>> model = Model(model="RandForestRegressor")
+        >>> model = Model(model="RandomForestRegressor")
         >>> model.fit(data=busan_beach())
         >>> explain_model_with_lime(model, total_data=busan_beach())
 
@@ -213,7 +213,7 @@ def explain_model_with_shap(
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model_with_shap
-        >>> model = Model(model="RandForestRegressor")
+        >>> model = Model(model="RandomForestRegressor")
         >>> model.fit(data=busan_beach())
         >>> explain_model_with_shap(model, total_data=busan_beach())
     """

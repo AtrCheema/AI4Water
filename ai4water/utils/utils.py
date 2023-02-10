@@ -945,6 +945,24 @@ class TrainTestSplit(object):
     """
     train_test_split of sklearn can not be used for list of arrays so here
     we go
+
+
+    Examples
+    ---------
+    >>> import numpy as np
+    >>> from ai4water.utils.utils import TrainTestSplit
+    >>> x1 = np.random.random((100, 10, 4))
+    >>> x2 = np.random.random((100, 4))
+    >>> x = [x1, x2]
+    >>> y = np.random.random(100)
+    ...
+    >>> train_x, test_x, train_y, test_y = TrainTestSplit().split_by_random(x, y)
+    >>> # works as well when only a single array i.e. is provided
+    >>> train_x, test_x, _, _ = TrainTestSplit().split_by_random(x)
+    ... # if we have a time-series like data, where we want to use earlier samples
+    ... # for training and later samples for test then we can do slice based
+    >>> train_x, test_x, train_y, test_y = TrainTestSplit().split_by_slicing(x, y)
+
     """
     def __init__(
             self,
@@ -1508,7 +1526,7 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(dataframe, num_outputs=2, lookback=4,
         ...    input_steps=2, forecast_step=2, forecast_len=4)
         >>> x[0]
         array([[  0.,  50., 100.],
@@ -1519,7 +1537,7 @@ def prepare_data(
         array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(dataframe, num_outputs=2, lookback=4,
         ...    forecast_len=3, known_future_inputs=True)
         >>> x[0]
         array([[  0,  50, 100],
