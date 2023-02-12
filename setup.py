@@ -18,14 +18,12 @@ easy_mpl_ver = 'easy_mpl[all]>=0.21.3'
 
 min_requirements = [
     'scikit-learn',
-    'pandas',
-
     easy_mpl_ver,
     seq_met_ver,
     ]
 
 extra_requires = [
-'tensorflow', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+'tensorflow==2.7.0', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 
 'h5py', # only if you want to save batches
@@ -57,27 +55,27 @@ skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter 
     'requests',
 ]
 
-tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',
                'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
-tf2_requires = ['h5py', 'numpy', easy_mpl_ver, 'tensorflow<=2.7', 'pandas',
-               'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
+tf2_requires = ['h5py', easy_mpl_ver, 'tensorflow<=2.7',
+               'scikit-learn', seq_met_ver, 'AttentionLSTM']
 
-tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15', 'pandas',
-                   'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',
+                    'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
                    seq_met_ver, 'AttentionLSTM']
 
-torch_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', seq_met_ver]
+torch_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch',
+                   'scikit-learn', seq_met_ver]
 
 torch_hpo_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
                       seq_met_ver]
 
-ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
+ml_requires = [ 'scikit-learn', 'xgboost', 'catboost',
                'lightgbm', easy_mpl_ver, seq_met_ver]
 
-ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
+ml_hpo_requires = ['scikit-learn', 'xgboost', 'catboost',
                'lightgbm', easy_mpl_ver, 'hyperopt', skopt_version, 'optuna<=2.10.1',
                    seq_met_ver]
 

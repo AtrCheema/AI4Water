@@ -12,7 +12,7 @@ import collections.abc as collections_abc
 
 import scipy
 from ai4water.backend import np, pd, plt, os
-from easy_mpl import imshow
+from easy_mpl import imshow, plot
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 try:
@@ -1670,11 +1670,12 @@ def plot_activations_along_inputs(
         in_cols: list,
         out_cols: list,
         lookback: int,
-        name: str,
-        path: str,
+        name: str = None,
+        path: str = None,
         vmin=None,
         vmax=None,
-        show=False
+        show=False,
+        **kwargs
 ):
 
     # activation must be of shape (num_examples, lookback, input_features)
@@ -1685,6 +1686,31 @@ def plot_activations_along_inputs(
     assert data.shape[1] == len(in_cols)
 
     assert len(data) == len(activations)
+
+    ax_kws = dict(xlabel="Examples",
+                  ylabel="lookback steps")
+
+    cbar_params = dict(orientation="horizontal", pad=0.2, border=False)
+
+    if kwargs is not None:
+        if 'ax_kws' in kwargs:
+            ax_kws.update(kwargs.pop('ax_kws'))
+
+        if 'cbar_params' in kwargs:
+            cbar_params.update(kwargs.pop('cbar_params'))
+
+    ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+
+    imshow_kws = dict(
+        aspect="auto",
+        ax_kws=ax_kws,
+        yticklabels=ytick_labels,
+        colorbar=True,
+        cbar_params=cbar_params,
+    )
+
+    if kwargs is not None:
+        imshow_kws.update(kwargs)
 
     for out in range(len(out_cols)):
         pred = predictions[:, out]
@@ -1701,10 +1727,9 @@ def plot_activations_along_inputs(
             fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
             fig.set_figheight(12)
 
-            ax1.plot(data[:, idx], label=in_cols[idx])
-            ax1.legend()
-            ax1.set_title('activations w.r.t ' + in_cols[idx])
-            ax1.set_ylabel(in_cols[idx])
+            plot(data[:, idx], label=in_cols[idx], ax=ax1,
+                 ax_kws=dict(title='activations w.r.t ' + in_cols[idx],
+                             ylabel=in_cols[idx]), show=False)
 
             ax2.plot(pred, label='Prediction')
 
@@ -1712,19 +1737,15 @@ def plot_activations_along_inputs(
                 ax2.plot(obs, '.', label='Observed')
 
             ax2.legend()
-            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+
             im = imshow(
                 activations[:, :, idx].transpose(),
                   vmin=vmin,
                   vmax=vmax,
-                  aspect="auto",
                   ax = ax3,
-                  ax_kws=dict(xlabel="Examples",
-                              ylabel="lookback steps"),
                 show=False,
-                yticklabels=ytick_labels
+                **imshow_kws
             )
-            fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attn_weights_{out_name}_{name}_'
             plt.savefig(os.path.join(path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
@@ -1732,9 +1753,7 @@ def plot_activations_along_inputs(
             if show:
                 plt.show()
 
-            plt.close('all')
-
-    return
+    return im
 
 
 class DataNotFound(Exception):
@@ -1865,7 +1884,7 @@ class AttribtueSetter(object):
                 obj.mode = "regression"
             else:
                 obj.mode = "regression"
-            warnings.warn(f"inferred mode is {obj.mode}. Ignore this messare if the inferred mode is correct.")
+            warnings.warn(f"inferred mode is {obj.mode}. Ignore this message if the inferred mode is correct.")
 
         self.mode = obj.mode
 

@@ -119,24 +119,25 @@ class TestInterpret(unittest.TestCase):
         m.interpret(data='CAMELS_AUS', show=False)
         return
 
-    # def test_da_without_prevy_interpret(self):
-    #     # todo, only working in tensorflow 1
-    #     m = da_lstm_model(teacher_forcing=False, drop_remainder=True,
-    #                       data=beach_data,
-    #                       input_features=input_features,
-    #                       batch_size=8,
-    #                       ts_args={'lookback':14},
-    #                       output_features=output_features)
-    #     x,y = m.training_data()
-    #
-    #     m.interpret(data_type='training', data=beach_data, show=False)
-    #     return
+    def test_da_without_prevy_interpret(self):
+        # todo, only working in tensorflow 1
+        m = da_lstm_model(teacher_forcing=False, drop_remainder=True,
+                          data=beach_data,
+                          input_features=input_features,
+                          batch_size=8,
+                          ts_args={'lookback':14},
+                          output_features=output_features)
+        x,y = m.training_data()
+
+        m.interpret(data_type='training', data=beach_data, show=False)
+        return
 
     def test_ia_interpret(self):
         m = ia_lstm_model(input_features=input_features,
                           ts_args={'lookback': 14},
                           output_features=output_features)
         m.interpret(data=beach_data, show=False)
+        m.plot_act_along_inputs(data=beach_data, feature="pcp_mm")
         return
 
     def test_ml(self):

@@ -1,5 +1,7 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel"]
 
+from typing import Union, List
+
 from easy_mpl import imshow
 
 from .backend import tf, plt, np, os
@@ -406,6 +408,7 @@ class DualAttentionModel(FModel):
             x : optional
                 input data, if given, then ``data`` must not be given
             data :
+                The data which will be passed to DataSet class to get ``x``
             data_type : str, optional
                 the data to make forward pass to get attention weghts. Possible
                 values are
@@ -446,36 +449,26 @@ class DualAttentionModel(FModel):
 
         return activation
 
-    def plot_act_along_inputs(
+    def plot_avg_attentions_along_inputs(
             self,
             data,
-            layer_name: str,
-            data_type='training',
-            vmin=None,
-            vmax=None,
-            show=False
+            data_type:str="training",
+            layer_name:str = None,
+            show:bool=True,
+            save:bool=False,
+            **kwargs
     ):
-
-        if not os.path.exists(self.act_path):
-            os.makedirs(self.act_path)
-
+        """plots averaged activations along inputs
+        """
         activation = self.get_attention_weights(
             layer_name=layer_name,
             data=data,
             data_type=data_type,
         )
 
-        act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
-
         lookback = self.config['ts_args']['lookback']
-        x, observations = getattr(self, f'{data_type}_data')(data=data)
 
-        if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
-            raise ValueError(f"no {data_type} data found.")
-
-        predictions = self.predict(x=x, process_results=False)
-
-        plt.close('all')
+        act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
 
         fig, axis = plt.subplots()
 
@@ -485,32 +478,86 @@ class DualAttentionModel(FModel):
                        aspect="auto",
                        yticklabels=ytick_labels,
                        ax_kws=dict(ylabel='lookback steps'),
-                       show=False
+                       show=False,
+                    xticklabels=self.input_features,
+                    **kwargs
                        )
 
-        axis.set_xticks(np.arange(self.num_ins))
-        axis.set_xticklabels(self.input_features, rotation=90)
-        fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(
+        if save:
+            plt.savefig(
             os.path.join(self.act_path, f'acts_avg_over_examples_{data_type}'),
                     dpi=400, bbox_inches='tight')
-        plt.close('all')
+
+        if show:
+            plt.show()
+        return im
+
+    def plot_act_along_inputs(
+            self,
+            data,
+            layer_name: str=None,
+            data_type='training',
+            feature:Union[str, List[str]]=None,
+            vmin=None,
+            vmax=None,
+            show=False,
+            **kwargs
+    ):
+        """
+
+        parameters
+        -----------
+        data :
+        layer_name :
+        data_type :
+        feature :
+        vmin :
+        vmax :
+        show :
+        **kwargs
+            keyword arguments for imshow
+        """
+        if not os.path.exists(self.act_path):
+            os.makedirs(self.act_path)
+
+        activation = self.get_attention_weights(
+            layer_name=layer_name,
+            data=data,
+            data_type=data_type,
+        )
+
+        lookback = self.config['ts_args']['lookback']
+        x, observations = getattr(self, f'{data_type}_data')(data=data)
+
+        if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
+            raise ValueError(f"no {data_type} data found.")
+
+        predictions = self.predict(x=x, process_results=False)
 
         x = self.inputs_for_attention(x)
+
+        if feature is None:
+            features = self.input_features
+        else:
+            index = self.input_features.index(feature)
+            features = [feature]
+            activation = np.expand_dims(activation[:, :, index], axis=-1)
+            x = np.expand_dims(x[:, index], axis=-1)
 
         return plot_activations_along_inputs(
             data=x,
             activations=activation,
             observations=observations,
             predictions=predictions,
-            in_cols=self.input_features,
+            in_cols=features,
             out_cols=self.output_features,
             lookback=lookback,
             name=data_type,
             path=self.act_path,
             vmin=vmin,
             vmax=vmax,
-            show=show
+            show=show,
+            **kwargs
         )
 
     def plot_act_along_lookback(self, activations, sample=0):
