@@ -72,6 +72,20 @@ class TestMtropicsLaos(unittest.TestCase):
 
         return
 
+    def test_regression_3min(self):
+
+        df = laos.make_regression(freq="3min")
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert int(df.isna().sum().sum()) == 1301309, int(df.isna().sum().sum())
+        self.assertEqual(df.shape[-1], 9)
+
+        df = laos.make_regression(freq="3min", lookback_steps=1)
+        assert int(df.isna().sum().sum()) == 0
+
+        df = laos.make_regression(freq="3min", lookback_steps=1, en="20191231 00:00:00")
+
+        return
+
     def test_regression_with_lookback(self):
 
         df = laos.make_regression(lookback_steps=30)

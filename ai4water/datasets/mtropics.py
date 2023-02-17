@@ -152,6 +152,7 @@ class MtropicsLaos(Datasets):
         -------
         pd.DataFrame
             a dataframe of shape (293, 13)
+
         Examples
         --------
             >>> from ai4water.datasets import MtropicsLaos
@@ -204,6 +205,17 @@ class MtropicsLaos(Datasets):
         Returns
         -------
             a pandas dataframe
+
+        Examples
+        --------
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> laos = MtropicsLaos()
+        >>> phy_chem = laos.fetch_physiochem('T_deg')
+        >>> phy_chem.shape
+         (411, 1)
+        >>> phy_chem_all = laos.fetch_physiochem(features='all')
+        >>> phy_chem_all.shape
+         (411, 8)
         """
 
         if isinstance(features, list):
@@ -522,7 +534,22 @@ class MtropicsLaos(Datasets):
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
         df.columns = ['pcp']
 
-        return df[st:en]
+        df = df[st:en]
+
+        assert df.index.freq is not None
+        if pd.to_timedelta(freq).seconds < df.index.freq.delta.seconds:
+            # we need upsampling i.e. from larger to smaller
+            # Since it is rainfall, we need to equall distribute at small time-steps
+            idx = df.index[-1] + df.index.freq
+            df = df.append(df.iloc[[-1]].rename({df.index[-1]: idx}))
+            df.index.freq = pd.infer_freq(df.index)
+            df1 = df.resample(freq).ffill().iloc[:-1]
+            df1['pcp'] /= df1.resample(df.index.freqstr)['pcp'].transform('size')
+            df = df1.copy()
+        elif pd.to_timedelta(freq).seconds > df.index.freq.delta.seconds:
+            # we need down sampling
+            raise NotImplementedError
+        return df
 
     def _load_pcp_from_excel_files(self):
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
@@ -806,8 +833,8 @@ class MtropicsLaos(Datasets):
         target = check_attributes(output_features, self.target)
         features_to_fetch = inputs + target
 
-        pcp = self.fetch_pcp(st=st, en=en)
-        pcp = pcp.interpolate('linear', limit=5)
+        pcp = self.fetch_pcp(st=st, en=en, freq=freq)
+        pcp = pcp.interpolate('linear', limit=5)  # todo, why this is correct?
         pcp = pcp.fillna(0.0)
 
         w = self.fetch_weather_station_data(st=st, en=en)
@@ -834,7 +861,7 @@ class MtropicsLaos(Datasets):
         spm_6min = spm.resample(freq).first().interpolate(method='linear')
 
         # backfilling because for each month the value is given for last day of month
-        src = self.fetch_source().loc[:, 'NB_E. coli_total'].asfreq("6min").bfill()
+        src = self.fetch_source().loc[:, 'NB_E. coli_total'].asfreq(freq).bfill()
         src.name = "Ecoli_source"
 
         data = pd.concat([w_6min.loc[st:en],

@@ -10,12 +10,13 @@ Busan Beach data
 
 Photodegradation of Melachite Green
 ===================================
-.. automodule:: ai4water.datasets.mg_photodegradation
+.. autofunction:: ai4water.datasets.mg_photodegradation
 
 
 Groundwater of Punjab region
 ===================================
-.. automodule:: ai4water.datasets.gw_punjab
+.. autofunction:: ai4water.datasets.gw_punjab
+
 
 Weisssee
 ========
@@ -25,6 +26,7 @@ Weisssee
    :show-inheritance:
 
    .. automethod:: __init__
+
 
 WeatherJena
 ===========

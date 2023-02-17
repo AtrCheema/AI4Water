@@ -52,3 +52,9 @@ TabTransformer
 ==============
 .. automodule:: ai4water.models
    :members: TabTransformer
+
+
+AttentionLSTM
+==============
+.. automodule:: ai4water.models
+   :members: AttentionLSTM
