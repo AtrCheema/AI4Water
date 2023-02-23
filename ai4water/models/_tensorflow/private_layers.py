@@ -507,11 +507,28 @@ class Transformer(tf.keras.layers.Layer):
 
 
 class NumericalEmbeddings(layers.Layer):
+    """
+    Parameters
+    -----------
+    num_features : int
+        number of features
+    emb_dim : int
+        dimension of embedding
 
+    Example
+    --------
+    >>> from tensorflow.keras.layers import Input
+    ...
+    >>> num_features = 10
+    >>> inp = Input(shape=(num_features,))
+    >>> ne = NumericalEmbeddings(num_features, 32)(inp)
+    >>> ne.shape
+    TensorShape([None, 10, 32])
+    """
     def __init__(
             self,
-            num_features,
-            emb_dim,
+            num_features:int,
+            emb_dim:int,
             *args,
             **kwargs
     ):
@@ -521,6 +538,8 @@ class NumericalEmbeddings(layers.Layer):
         super(NumericalEmbeddings, self).__init__(*args, **kwargs)
 
     def build(self, input_shape):
+        assert input_shape[-1] == self.num_features
+
         w_init = tf.random_normal_initializer()
         # features, n_bins, emb_dim
         self.linear_w = tf.Variable(
@@ -876,6 +895,8 @@ class FTTransformer(layers.Layer):
             seed=seed
         )
 
+        # todo , why slicing :
+        # (batch_size, num_inputs, embed_dims) -> (batch_size, embed_dims)
         self.lmbda = tf.keras.layers.Lambda(lambda x: x[:, 0, :])
 
         self.lyr_norm = layers.LayerNormalization(epsilon=1e-6)

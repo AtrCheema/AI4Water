@@ -1368,6 +1368,19 @@ class BaseModel(NN):
         if self.category == "ML" and hasattr(self, '_model'):
             x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
             x = self._transform_x(x)
+
+            if self.model_name == "XGBClassifier":
+                # https://datascience.stackexchange.com/q/63872
+                try:
+                    out = self._model.predict_proba(x, **kwargs)
+                except ValueError as e:
+                    if isinstance(x, np.ndarray) and self.input_features is not None:
+                        out = self._model.predict_proba(
+                            pd.DataFrame(x, columns=self.input_features))
+                    else:
+                        raise e
+                return out
+
             return self._model.predict_proba(x,  **kwargs)
         raise NotImplementedError(f"can not calculate proba")
 

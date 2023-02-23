@@ -1125,7 +1125,7 @@ Available cases are {self.models} and you wanted to include
         models.index = labels
 
         if kwargs is not None:
-            for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws']:
+            for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws', 'color']:
                 assert arg not in kwargs, f"{arg} not allowed in kwargs"
 
         color1, color2 = None, None
@@ -1836,7 +1836,7 @@ Available cases are {self.models} and you wanted to include
                    'X': x,
                    'y': y.reshape(-1, ),
                    'ax': ax,
-                   'name': model.model_name
+                   'name': shred_model_name(model.model_name)
                    }
 
             if kwargs:
@@ -2486,10 +2486,11 @@ Available cases are {self.models} and you wanted to include
     def _get_model_folders(self):
         model_folders = [p for p in os.listdir(self.exp_path) if os.path.isdir(os.path.join(self.exp_path, p))]
 
+        executed_models = [m_name.split('model_')[1] for m_name in self.considered_models_]
         # find all the model folders
         m_folders = []
         for m in model_folders:
-            if any(m in m_ for m_ in self.considered_models_):
+            if m in executed_models:
                 m_folders.append(m)
         return m_folders
 
@@ -2682,10 +2683,11 @@ def save_json_file(fpath, obj):
         json.dump(jsonize(obj), fp, sort_keys=True, indent=4)
 
 
-def shred_model_name(model_name):
-    key = model_name[6:] if model_name.startswith('model_') else model_name
-    key = key[0:-9] if key.endswith("Regressor") else key
-    return key
+def shred_model_name(model_name:str)->str:
+    model_name = model_name[6:] if model_name.startswith('model_') else model_name
+    model_name = model_name[0:-9] if model_name.endswith("Regressor") else model_name
+    model_name = model_name[0:-10] if model_name.endswith("Classifier") else model_name
+    return model_name
 
 
 def _combine_training_validation_data(
