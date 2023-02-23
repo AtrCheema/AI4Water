@@ -9,13 +9,13 @@ from .utils import _missing_vals
 from ai4water.backend import easy_mpl as ep
 from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.utils import create_subplots
 from ai4water.preprocessing import Transformation
 from ai4water.backend import np, pd, os, plt, sns, mpl
 from ai4water.utils.utils import find_tot_plots, get_nrows_ncols
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
 ticker = mpl.ticker
+create_subplots = ep.utils.create_subplots
 
 # qq plot
 # decompose into trend/seasonality and noise

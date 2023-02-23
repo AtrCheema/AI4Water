@@ -22,7 +22,6 @@ from ai4water.utils.utils import clear_weights
 from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.utils.visualizations import edf_plot
 from ai4water.backend import hyperopt as _hyperopt
-from ai4water.utils.utils import create_subplots
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
 
@@ -33,6 +32,7 @@ ParameterSampler = sklearn.model_selection.ParameterSampler
 
 bar_chart = easy_mpl.bar_chart
 parallel_coordinates = easy_mpl.parallel_coordinates
+create_subplots = easy_mpl.utils.create_subplots
 
 if skopt is None:
     pass

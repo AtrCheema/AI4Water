@@ -3,7 +3,8 @@ from itertools import zip_longest
 
 from ai4water.backend import np, mpl, plt
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.utils import create_subplots
+
+from easy_mpl.utils import create_subplots
 
 
 class LossCurve(Plot):

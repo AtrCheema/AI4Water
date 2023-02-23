@@ -16,7 +16,6 @@ from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.utils import AttribtueSetter
 from ai4water.postprocessing import ProcessPredictions
 from ai4water.utils.visualizations import edf_plot
-from ai4water.utils.utils import create_subplots
 from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
 from ai4water.functional import Model as FModel
 from ai4water._main import BaseModel
@@ -26,6 +25,7 @@ bar_chart = easy_mpl.bar_chart
 taylor_plot = easy_mpl.taylor_plot
 dumbbell_plot = easy_mpl.dumbbell_plot
 reg_plot = easy_mpl.regplot
+create_subplots = easy_mpl.utils.create_subplots
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
