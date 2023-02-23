@@ -599,7 +599,7 @@ class ProcessPredictions(Plot):
 
         ep.imshow(cm, **kws)
 
-        self.save_or_show(fname=f"{prefix}_confusion_matrix")
+        self.save_or_show(fname=f"{prefix}_confusion_matrix", where=prefix)
         return
 
     def precision_recall_curve(self, estimator, x, y, prefix=None):
@@ -709,7 +709,7 @@ class ProcessPredictions(Plot):
     ):
         """post-processes classification results."""
 
-
+        plt.close('all')
         if self.is_multilabel_:
             return self.process_multilabel(true, predicted, metrics, prefix, index)
 
@@ -741,14 +741,18 @@ class ProcessPredictions(Plot):
         if self.output_features is None:
             self.output_features = [f'feature_{i}' for i in range(self.n_classes(true))]
 
+        fpath = os.path.join(self.path, prefix)
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
+
         self.confusion_matrix(true, predicted, prefix=prefix)
 
-        fname = os.path.join(self.path, f"{prefix}_prediction.csv")
+        fname = os.path.join(fpath, f"{prefix}_prediction.csv")
         pd.DataFrame(np.concatenate([true, predicted], axis=1),
                      columns=['true', 'predicted'], index=index).to_csv(fname)
         class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
 
-        dict_to_file(self.path,
+        dict_to_file(fpath,
                      errors=class_metrics.calculate_all(),
                      name=f"{prefix}_{dateandtime_now()}.json")
         return

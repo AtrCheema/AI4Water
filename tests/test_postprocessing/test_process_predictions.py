@@ -106,7 +106,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=True,
                                 )
 
         pp(t_cls.reshape(-1,), p_cls.reshape(-1,),  inputs=x)
@@ -119,7 +119,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=True,
                                 )
 
         pp(t_cls.reshape(-1,), p_cls.reshape(-1,),  inputs=x)
@@ -131,7 +131,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 #output_features=['a', 'b'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=True,
                                 )
 
         pp(t_m_cls.reshape(-1,), p_m_cls.reshape(-1,),  inputs=x)
@@ -142,7 +142,7 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="classification",
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=True,
                                 )
 
         pp(t_m_cls.reshape(-1,), p_m_cls.reshape(-1,),  inputs=x)
