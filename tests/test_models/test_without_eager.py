@@ -63,6 +63,9 @@ def make_and_run(
     model.predict_on_all_data(data=data)
     model.get_attention_weights(x=x)
 
+    model.plot_act_along_inputs(x=x, y=y, show=False,
+                                feature=model.input_features[0])
+
     return pred_y
 
 

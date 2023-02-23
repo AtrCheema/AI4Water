@@ -191,7 +191,8 @@ class DualAttentionModel(FModel):
 
         return
 
-    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, h0=None, num_ins=None):
+    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, 
+                 h0=None, num_ins=None):
 
         if num_ins is None:
             num_ins = self.num_ins
@@ -494,7 +495,9 @@ class DualAttentionModel(FModel):
 
     def plot_act_along_inputs(
             self,
-            data,
+            data=None,
+            x:np.ndarray = None,
+            y:np.ndarray = None,
             layer_name: str=None,
             data_type='training',
             feature:Union[str, List[str]]=None,
@@ -508,12 +511,26 @@ class DualAttentionModel(FModel):
         parameters
         -----------
         data :
-        layer_name :
+            raw data from which x,y pairs will be extracted. If it is not given
+            then, ``x`` and ``y`` must be given.
         data_type :
+            type of data to use. It can be ``training``, ``validation``, ``test`` or ``all``.
+            It is only valid if ``data`` is provided.
+        x :
+            input data. Only valid if ``data`` is not given
+        y :
+            observations/labels corresponding to ``x``. If ``x`` is given, then this
+            value must also be provided
+        layer_name :
+            the layer name to extract attention weights
         feature :
+            feature with respect to which attention maps are to be shown
         vmin :
+            vmin for imshow
         vmax :
+            vmax for imshow
         show :
+            whether to show the plot or not
         **kwargs
             keyword arguments for imshow
         """
@@ -524,13 +541,19 @@ class DualAttentionModel(FModel):
             layer_name=layer_name,
             data=data,
             data_type=data_type,
+            x=x,
         )
 
         lookback = self.config['ts_args']['lookback']
-        x, observations = getattr(self, f'{data_type}_data')(data=data)
+        if x is None:
+            x, observations = getattr(self, f'{data_type}_data')(data=data)
 
-        if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
-            raise ValueError(f"no {data_type} data found.")
+            if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
+                raise ValueError(f"no {data_type} data found.")
+        else:
+            assert y is not None, f"""
+            if x is given, y must also be given"""
+            observations = y
 
         predictions = self.predict(x=x, process_results=False)
 
@@ -652,7 +675,8 @@ class InputAttentionModel(DualAttentionModel):
         setattr(self, 'drop_remainder', self.config['drop_remainder'])
 
         setattr(self, 'method', 'input_attention')
-        print('building input attention model')
+        if self.verbosity>0:
+            print('building input attention model')
 
         enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')
         lstm_out, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False)
