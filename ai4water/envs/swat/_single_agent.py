@@ -325,7 +325,8 @@ class SWATSingleReservoir(gym.Env):
             day:int,
             constituent:str="ALGAE_INppm"
     )->Tuple[float, list]:
-        """runs the SWAT model for a single step with the outflow
+        """
+        runs the SWAT model for a single step with the outflow
         # ALGAE_INppm, CHLA_INkg
         >>> swat_env = SWATSingleReservoir(start_day=5, delta=3, lookback=3)
         >>> a,b = swat_env.run_swat(50, 51)

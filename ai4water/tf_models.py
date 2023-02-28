@@ -191,7 +191,7 @@ class DualAttentionModel(FModel):
 
         return
 
-    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, 
+    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None,
                  h0=None, num_ins=None):
 
         if num_ins is None:

@@ -133,7 +133,8 @@ class SWAT(object):
             skip_rows=8
     )->pd.DataFrame:
         """
-        reads output.rch file and returns data for a particular reach
+        reads main channel output (output.rch) file and returns data for a
+        particular reach
         """
         fname = os.path.join(self.path, "output.rch")
 
@@ -291,7 +292,7 @@ class SWAT(object):
         return lines[2]
 
     def pcp_elev(self):
-        """longitude of stations in .pcp file"""
+        """elevation of stations in .pcp file"""
         with open(self._pcp_fpath(), 'r') as f:
             lines = f.readlines()
         return lines[3]
@@ -380,6 +381,7 @@ class SWAT(object):
         """
         reads water quality of all weirs
         """
+        # todo, are we reading weirs or rches
         rch_wq_df = self.wq_rches(self.weir_codes, wq_name)
         #cols = {v:k for k,v in self.weir_codes.items()}
         #rch_wq_df.rename(cols, axis='columns', inplace=True)

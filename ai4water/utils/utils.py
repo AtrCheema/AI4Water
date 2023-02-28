@@ -7,7 +7,7 @@ import warnings
 from typing import Union, Any
 from shutil import rmtree
 from types import FunctionType
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 import collections.abc as collections_abc
 
 import scipy
@@ -313,16 +313,16 @@ def _make_model(**kwargs):
 
         'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
         # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'x_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+        'x_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
                              'upper': None, 'between': None},
-        'y_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+        'y_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
                              'upper': None, 'between': None},
         # for auto-encoders
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
         # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
         'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},
-        'loss':         {'type': [str, 'callable'], 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
+        'loss':         {'type': (str, Callable), 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
         'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
         'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
         'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
@@ -341,7 +341,7 @@ def _make_model(**kwargs):
         # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
         'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'monitor': {"type": [list, type(None), str], "default": None, 'lower': None, 'upper': None, 'between': None},
+        'monitor': {"type": (list, type(None), str), "default": None, 'lower': None, 'upper': None, 'between': None},
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches
@@ -358,7 +358,7 @@ def _make_model(**kwargs):
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
         'wandb_config': {'type': dict, 'default': None, 'between': None},
-        'val_metric': {'type': str, 'default': None},
+        'val_metric': {'type': (str, Callable), 'default': None},
         'model_name_': {'default': None},
         'is_custom_model_': {"default": None},
     }
@@ -491,16 +491,16 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     between = dict_to_lookup[key].get('between', None)
 
     if dtype is not None:
-        if isinstance(dtype, list):
-            val_type = type(val)
-            if 'callable' in dtype:
-                if callable(val):
-                    pass
-
-            elif val_type not in dtype:
-                raise TypeError("{} must be any of the type {} but it is of type {}"
-                                .format(key, dtype, val.__class__.__name__))
-        elif not isinstance(val, dtype):
+        # if isinstance(dtype, list):
+        #     val_type = type(val)
+        #     if 'callable' in dtype:
+        #         if callable(val):
+        #             pass
+        #
+        #     elif val_type not in dtype:
+        #         raise TypeError("{} must be any of the type {} but it is of type {}"
+        #                         .format(key, dtype, val.__class__.__name__))
+        if not isinstance(val, dtype):
             # the default value may be None which will be different than dtype
             if val != dict_to_lookup[key]['default']:
                 raise TypeError(f"""

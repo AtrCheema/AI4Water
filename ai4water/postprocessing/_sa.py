@@ -190,6 +190,7 @@ def morris_plots(si, show:bool=False, path:str=None, annotate=True):
     si_df = si.to_df()
     bar_plot(si_df[["mu_star", "mu_star_conf"]])
     if show:
+        plt.tight_layout()
         plt.show()
     if path:
         plt.savefig(os.path.join(path, "morris_bar_plot"), bbox_inches="tight")
@@ -203,6 +204,7 @@ def morris_plots(si, show:bool=False, path:str=None, annotate=True):
         for i, txt in enumerate(si['names']):
             ax.annotate(txt, (z[i], y[i]))
     if show:
+        plt.tight_layout()
         plt.show()
     if path:
         plt.savefig(os.path.join(path, "covariance_plot"), bbox_inches="tight")
@@ -213,6 +215,7 @@ def morris_plots(si, show:bool=False, path:str=None, annotate=True):
     if path:
         plt.savefig(os.path.join(path, "morris_bar_plot_all"), bbox_inches="tight")
     if show:
+        plt.tight_layout()
         plt.show()
 
     return

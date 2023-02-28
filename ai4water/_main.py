@@ -1121,11 +1121,12 @@ class BaseModel(NN):
             x=None,
             y=None,
             data: Union[pd.DataFrame, np.ndarray, str] = None,
-            scoring: Union [str, list] = None,
+            scoring: Union [str, List[str], Callable] = None,
             refit: bool = False,
             process_results:bool = False
     ) -> list:
-        """computes cross validation score
+        """
+        computes cross validation score
 
         Parameters
         ----------
@@ -1136,10 +1137,12 @@ class BaseModel(NN):
             data :
                 raw unprepared data which will be given to :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y from it.
-            scoring :
+            scoring : (default=None)
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
-            refit : bool, optional (default=False
+                If callable then it must be a function which can take true and predicted
+                arrays and return a float.
+            refit : bool, optional (default=False)
                 If True, the model will be trained on the whole training+validation
                 data after calculating cross validation score.
             process_results : bool, optional
@@ -1152,11 +1155,21 @@ class BaseModel(NN):
 
         Example
         -------
-            >>> from ai4water.datasets import busan_beach
-            >>> from ai4water import Model
-            >>> model = Model(model="RandomForestRegressor",
-            >>>               cross_validator={"KFold": {"n_splits": 5}})
-            >>> model.cross_val_score(data=busan_beach())
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water import Model
+        >>> model = Model(model="RandomForestRegressor",
+        >>>               cross_validator={"KFold": {"n_splits": 5}})
+        >>> model.cross_val_score(data=busan_beach())
+
+        We can also have our own performance metric as scoring
+
+        >>> from ai4water.datasets import MtropicsLaos
+        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        >>> def f1_score_(t,p)->float:
+        >>>    return ClassificationMetrics(t, p).f1_score(average="macro")
+        >>> model = Model(model="RandomForestClassifier",
+        ... cross_validator={"KFold": {"n_splits": 5}},)
+        >>> model.cross_val_score(data=data, scoring=f1_score_)
 
         Note
         ----
@@ -1218,7 +1231,10 @@ class BaseModel(NN):
 
             val_scores = []
             for score in scoring:
-                val_scores.append(getattr(metrics, score)())
+                if callable(score):
+                    val_scores.append(score(test_y.reshape(-1, 1), pred))
+                else:
+                    val_scores.append(getattr(metrics, score)())
 
             scores.append(val_scores)
 

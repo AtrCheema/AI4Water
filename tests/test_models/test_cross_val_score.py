@@ -2,6 +2,7 @@
 import unittest
 
 import numpy as np
+from SeqMetrics import ClassificationMetrics
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
@@ -65,6 +66,16 @@ class Testcross_val_score(unittest.TestCase):
         cv_score = model.cross_val_score(data=beach_data, scoring=['r2', 'nse'])
         assert isinstance(cv_score, list) and len(cv_score) == 2
         assert hasattr(model.cross_val_scores, '__len__')  # cross_val_scores are array like
+        return
+
+    def test_callable_scoring(self):
+        from ai4water.datasets import MtropicsLaos
+        data = MtropicsLaos().make_classification(lookback_steps=1)
+        def f1_score_(t,p)->float:
+           return ClassificationMetrics(t, p).f1_score(average="macro")
+        model = Model(model="RandomForestClassifier",
+                      cross_validator={"KFold": {"n_splits": 5}},)
+        model.cross_val_score(data=data, scoring=f1_score_)
         return
 
 if __name__ == "__main__":
