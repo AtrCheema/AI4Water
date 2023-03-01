@@ -1,6 +1,7 @@
 
 
 import warnings
+from typing import List, Union
 
 from ai4water.backend import xgboost, tf, np, pd, mpl, plt, os
 from ai4water.backend import easy_mpl as ep
@@ -15,7 +16,12 @@ class Interpret(Plot):
     of the model itself for example attention weights or feature importance.
     """
 
-    def __init__(self, model, save:bool = False, show:bool = True):
+    def __init__(
+            self,
+            model,
+            save:bool = False,
+            show:bool = True
+    ):
         """
         Arguments
         ---------
@@ -311,10 +317,10 @@ class Interpret(Plot):
 
         return attention_components, data
 
-    def get_enc_var_selection_weights(self, data, data_type:str='test'):
+    def get_enc_var_selection_weights(self, x=None, data=None, data_type:str='test'):
         """Returns encoder variable selection weights of TFT model"""
 
-        ac, _ = self.tft_attention_components(data=data, data_type=data_type)
+        ac, _ = self.tft_attention_components(x=x, data=data, data_type=data_type)
         return ac['encoder_variable_selection_weights']
 
     def interpret_example_tft(
@@ -347,7 +353,9 @@ class Interpret(Plot):
             data_name = "data"
 
         enc_var_selection_weights = self.get_enc_var_selection_weights(
-            data=data, data_type=data_type)
+            x=x,
+            data=data,
+            data_type=data_type)
 
         plt.close('all')
 
@@ -375,22 +383,27 @@ class Interpret(Plot):
             x=None,
             y=None,
             data=None,
-            data_type="test"
+            data_type="test",
+            feature:Union[str, List[str]]=None,
+            **kwargs
     ):
         """global interpretation of TFT model.
 
-        Arguments:
-            x :
-                input data. If not given, ``data`` argument must be given.
-            y :
-                labels/target/true data corresponding to ``x``. It is only
-                used for plotting.
-            data :
-                the data to use to interpret model. It is only required
-                when ``x`` is not given.
-            data_type :
-                either ``training``, ``test``, ``validation`` or ``all``.
-                It is only useful when ``data`` argument is used.
+        Parameters
+        ----------
+        x :
+            input data. If not given, ``data`` argument must be given.
+        y :
+            labels/target/true data corresponding to ``x``. It is only
+            used for plotting.
+        data :
+            the data to use to interpret model. It is only required
+            when ``x`` is not given.
+        data_type :
+            either ``training``, ``test``, ``validation`` or ``all``.
+            It is only useful when ``data`` argument is used.
+        feature :
+            feature with respect to which attention maps are to be shown
         """
 
         if x is None:
@@ -401,22 +414,36 @@ class Interpret(Plot):
         else:
             predictions = self.model.predict(x=x, verbose=0)
 
-        ac, data = self.tft_attention_components(data=data)
+        ac, data = self.tft_attention_components(
+            x=x,
+            data=data,
+            data_type=data_type)
 
-        encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
+        activations = ac['encoder_variable_selection_weights']
 
-        plot_activations_along_inputs(
-            activations=encoder_variable_selection_weights,
-            data=x[:, -1],
+        x = x[:, -1]
+
+        if feature is None:
+            features = self.model.input_features
+        else:
+            index = self.model.input_features.index(feature)
+            features = [feature]
+            activations = np.expand_dims(activations[:, :, index], axis=-1)
+            x = np.expand_dims(x[:, index], axis=-1)
+
+        return plot_activations_along_inputs(
+            activations=activations,
+            data=x,
             observations=y,
             predictions=predictions,
-            in_cols=self.model.input_features,
+            in_cols=features,
             out_cols=self.model.output_features,
             lookback=self.model.lookback,
-            name=f'tft_encoder_weights_{data}',
-            path=maybe_create_path(self.model.path)
+            name=f'tft_encoder_weights_{data_type}',
+            path=maybe_create_path(self.model.path),
+            show=self.show,
+            **kwargs
         )
-        return
 
     def interpret_attention_lstm(
             self,
@@ -474,6 +501,7 @@ class Interpret(Plot):
                 It is only useful when ``data`` argument is used.
         """
         raise NotImplementedError
+
 
 def xgb_fimp_with_plotly(
         importance:pd.DataFrame,
