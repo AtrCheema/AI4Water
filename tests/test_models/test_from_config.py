@@ -67,13 +67,16 @@ class TestFromConfig(unittest.TestCase):
 
     def test_subclassing_fn(self):
         _test_from_config_basic(FModel, self.models, x_reg, y_reg)
+        return
 
     def test_subclassing_with_weights(self):
         _test_from_config_basic(Model, self.models, x_reg, y_reg, find_best=True)
+        return
 
     def test_subclassing_fn_with_weights(self):
         # we are able to load functinoal model
         _test_from_config_basic(FModel, self.models, x_reg, y_reg, find_best=True)
+        return
 
     def test_subclassing_with_config_file(self):
         # we are able to load subclassing Model from config_file

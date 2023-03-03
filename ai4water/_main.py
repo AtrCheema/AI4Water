@@ -81,7 +81,9 @@ class BaseModel(NN):
         Parameters
         ----------
             model :
-                a dictionary defining machine learning model. If you are building
+                This determines the algorithm of ML model or architecture of DL
+                model. It can be a dictionary defining machine learning model.
+                If you are building
                 a non-neural network model then this dictionary must consist of
                 name of name of model as key and the keyword arguments to that
                 model as dictionary. For example to build a decision forest based model
@@ -120,7 +122,7 @@ class BaseModel(NN):
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
                 `see examples <https://ai4water.readthedocs.io/en/dev/declarative_def_tf.html>`_
-            x_transformation:
+            x_transformation :
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
                 :py:class:`ai4water.preprocessing.transformations.Transformation` .
@@ -140,7 +142,7 @@ class BaseModel(NN):
                 Here `input1`, `input2`, `input3` and `input4` are the columns in the
                 `data`. For more info see :py:class:`ai4water.preprocessing.Transformations`
                 and :py:class:`ai4water.preprocessing.Transformation` classes.
-            y_transformation:
+            y_transformation :
                 type of transformation to be applied on y/label/output data.
             lr :, default 0.001.
                 learning rate,
@@ -150,14 +152,14 @@ class BaseModel(NN):
                 the cost/loss function to be used for training neural networks.
             quantiles : list Default is None
                 quantiles to be used when the problem is quantile regression.
-            epochs : int  Default is 14
+            epochs : int  (default=14)
                 number of epochs to be used.
-            min_val_loss : float   Default is 0.0001.
+            min_val_loss : float, (default = 0.0001).
                 minimum value of validatin loss/error to be used for early stopping.
-            patience : int
+            patience : int, (default=100)
                 number of epochs to wait before early stopping. Set this value to None
                 if you don't want to use EarlyStopping.
-            save_model : bool
+            save_model : bool (default=True)
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
                 Otherwise model is not saved.
@@ -191,7 +193,7 @@ class BaseModel(NN):
                 >>> wandb_config = {'entity': 'entity_name', 'project': 'project_name',
                 ...                 'training_data':True, 'validation_data': True}
 
-            seed int:
+            seed : int, (default=313)
                 random seed for reproducibility. This can be set to None. The seed
                 is set to `os`, `tf`, `torch` and `random` modules simultaneously.
                 Please note that this seed is not set for numpy because that
@@ -355,6 +357,8 @@ class BaseModel(NN):
                                          'categorical_crossentropy',
                                          'binary_crossentropy']:
                 _mode = "classification"
+            elif self.config['loss'] in ['mse']:
+                _mode = "regression"
             elif self.model_name == "layers":
                 # todo
                 _mode = "regression"
@@ -365,7 +369,8 @@ class BaseModel(NN):
                                      'categorical_crossentropy',
                                      'binary_crossentropy']:
             _mode = "classification"
-
+        elif self.config['loss'] in ['mse']:
+                _mode = "regression"
         elif self.model_name == "layers":
             # todo
             _mode = "regression"
@@ -736,14 +741,14 @@ class BaseModel(NN):
                     self.config[k] = v
                 _kwargs.pop(k)
 
-        self._call_fit_fn(
+        out = self._call_fit_fn(
             **_kwargs,
             **kwargs,
         )
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
-        return self.post_fit()
+        return out
 
     def get_wandb_cb(self, callback, train_data, validation_data) -> dict:
         """Makes WandbCallback and add it in callback"""
@@ -792,20 +797,35 @@ class BaseModel(NN):
 
     def post_fit(self):
         """Does some stuff after Keras model.fit has been called"""
-        if K.BACKEND == 'pytorch':
-            history = self.torch_learner.history
 
-        elif hasattr(self, 'history'):
-            history = self.history
+        if self.category == "DL":
+            if K.BACKEND == 'pytorch':
+                history = self.torch_learner.history
+
+            elif hasattr(self, 'history'):
+                history = self.history
+            else:
+                history = self._model.history
+
+            if self.verbosity >= 0:
+                visualizer = LossCurve(path=self.path,
+                                       show=bool(self.verbosity),
+                                       save=bool(self.verbosity))
+
+                # save all the losses or performance metrics
+                df = pd.DataFrame.from_dict(history.history)
+                df.to_csv(os.path.join(self.path, "losses.csv"))
+                visualizer.plot_loss(history.history)
+
+                # for -ve verbosity, weights are not saved! # todo should raise warning
+                self.load_best_weights()
         else:
-            history = self._model.history
+            class History: history = None
+            history = History()
 
         if self.verbosity >= 0:
             self.save_config(history.history)
-
-            # save all the losses or performance metrics
-            df = pd.DataFrame.from_dict(history.history)
-            df.to_csv(os.path.join(self.path, "losses.csv"))
+            dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         return history
 
@@ -987,7 +1007,6 @@ class BaseModel(NN):
                  callbacks=None,
                  **kwargs):
 
-        visualizer = LossCurve(path=self.path, show=bool(self.verbosity), save=bool(self.verbosity))
         self.is_training = True
 
         source = 'training'
@@ -1015,25 +1034,17 @@ class BaseModel(NN):
 
         if self.category == "DL":
 
-            history = self._fit(inputs,
-                                outputs,
-                                callbacks=callbacks,
-                                **kwargs)
-
-            if self.verbosity >= 0:
-                visualizer.plot_loss(history.history)
-
-                # for -ve verbosity, weights are not saved! # todo should raise warning
-                self.load_best_weights()
+            history = self._fit(
+                inputs,
+                outputs,
+                callbacks=callbacks,
+                **kwargs)
         else:
             history = self.fit_ml_models(inputs, outputs, **kwargs)
 
         self.info['training_end'] = dateandtime_now()
 
-        if self.verbosity >= 0:
-
-            self.save_config()
-            dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
+        self.post_fit()
 
         self.is_training = False
         return history
@@ -2471,7 +2482,7 @@ class BaseModel(NN):
         Example
         -------
             >>> from ai4water import Model
-            >>> config_file_path = "../file/to/config.json"
+            >>> config_file_path = "../path/to/config.json"
             >>> model = Model.from_config_file(config_file_path)
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
@@ -3528,15 +3539,16 @@ class BaseModel(NN):
 
         return ax
 
-    def _transform(self, data, name_in_config):
+    def _transform(self, data, name_in_config:str):
         """transforms the data using the transformer which has already been fit"""
 
         if name_in_config not in self.config:
+            transformation_type = name_in_config[0]
             raise NotImplementedError(f"""You have not trained the model using .fit.
             Making predictions from model or evaluating model without training
             is not allowed when applying transformations. Because the transformation
             parameters are calculated using training data. Either train the model
-            first by using.fit() method or remove x_transformation/y_transformation
+            first by using.fit() method or remove {transformation_type}_transformation
             arguments.""")
 
         transformer = Transformations.from_config(self.config[name_in_config])

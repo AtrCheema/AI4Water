@@ -1,7 +1,7 @@
 
 import os
 import datetime
-from typing import Union, List
+from typing import Union, List, Tuple, Dict
 
 from ai4water.backend import np, pd, plt
 from ai4water.utils.utils import dateandtime_now
@@ -31,6 +31,18 @@ class SWAT(object):
         self.weir_codes = weir_codes
 
         self._rch_cols = self._output_rch_cols()  # todo
+
+    @property
+    def fig_file(self)->str:
+        """returns the name of .fig file"""
+        fname = os.path.join(self.path, "file.cio")
+        fig_files = []
+        with open(fname, 'r') as fp:
+            for line in fp:
+                if ".fig" in line:
+                    fig_files.append(line)
+        assert len(fig_files) == 1
+        return fig_files[0].split(".fig")[0] + ".fig"
 
     def get_wq_rch(self, wq_name, rch_id):
         """get wq data for weir"""
@@ -93,16 +105,30 @@ class SWAT(object):
 
         return pred
 
-    def read_res(self, res_id, year, skip_rows=8):
-        """reads reservoir output file (output.rsv) and returns data
+    def reservoir_output(
+            self,
+            res_id:int,
+            year: int = None,
+            skip_rows: int = 8
+    ):
+        """
+        reads reservoir output file (output.rsv) and returns data
         for a particular reservoir
 
         parameters
         -----------
-        res_id :
-        year :
-        skip_rows :
+        res_id : int
+            id of reservoir. It must be one of self.reservoirs()
+        year : int (default=None)
+            The year for which to return the data.
+        skip_rows : int (default=8)
+            Number of rows in output.rsv file to skip.
         """
+
+        assert res_id in self.reservoirs(), f"""
+        res_id {res_id} is not among the reservoirs considered. Allowed
+        reservoirs are: """
+
         fname = os.path.join(self.path, "output.rsv")
 
         with open(fname, 'r') as f:
@@ -120,13 +146,17 @@ class SWAT(object):
 
         res = res_df.loc[res_df['RES' ]==res_id, :]
 
-        res_yr = res[res['year' ]==year]
-        date_range = pd.date_range(self.sim_start(), end=self.sim_end(), freq="D")
-        res_yr.index = date_range
+        if year is not None:
+            idx = []
+            for jday, year in zip(res["MON"], res["year"]):
+                idx.append(jday_to_date(year, jday))
+            index = pd.to_datetime(idx)
+            res = res[res['year' ]==year]
+            res.index = index
 
-        return res_yr
+        return res
 
-    def read_rch(
+    def channel_output(
             self,
             rch_id:Union[int, list],
             year=None,
@@ -536,20 +566,32 @@ class SWAT(object):
             df = df.loc[start_date:, :]
         return df
 
-    def get_weir_outflow(self, weir_id:int, start_date="20000101"):
-        """get outflow for a single weir"""
+    def get_weir_outflow(self, channel_id:int, start_date:str=None)->pd.DataFrame:
+        """
+        get outflow for a single weir
 
-        day = str(weir_id).rjust(3, '0')
+        Parameters
+        ---------
+        channel_id : int
+            The channel in which reservoir/weir is located
+        start_date :
+        """
+
+        day = str(channel_id).rjust(3, '0')
         fname = f'{self.path}\\00{day}0000.day'
         weir_outflow = pd.read_csv(fname, skiprows=0, encoding='unicode_escape')
+
+        if start_date is None:
+            start_date = self.sim_start()
         index = pd.date_range(start_date, periods=len(weir_outflow), freq='D')
         weir_outflow.index = index
 
         return weir_outflow
 
-    def precip_for_sub(self,
-                       basin_id:Union[int, str]
-                       )->pd.Series:
+    def precip_for_sub(
+            self,
+            basin_id:Union[int, str]
+    )->pd.Series:
         """returns precipitation data for a sub-basin"""
         gage_id = self.precip_gage_for_sub(basin_id)
         pcp = self.read_pcp()
@@ -635,7 +677,7 @@ class SWAT(object):
         It reads the .fig file and returns SUB_NUM values for subbasin command
         """
         sub_nums = []
-        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+        with open(os.path.join(self.path, self.fig_file), 'r') as fp:
             for idx, line in enumerate(fp):
                 if line.startswith('subbasin'):
                     _, hyd_stor, sub_command, sub_num, *sub_gis = line.split()
@@ -651,7 +693,7 @@ class SWAT(object):
         list
         """
         rch_nums = []
-        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+        with open(os.path.join(self.path, self.fig_file), 'r') as fp:
             for idx, line in enumerate(fp):
                 if line.startswith('route'):
                     _, rch_command, hyd_stor, rch_num, *_ = line.split()
@@ -662,12 +704,38 @@ class SWAT(object):
     def reservoirs(self)->List[int]:
         """returns reservoir ids (RES_NUM) being modeled."""
         res_nums = []
-        with open(os.path.join(self.path, 'fig.fig'), 'r') as fp:
+        with open(os.path.join(self.path, self.fig_file), 'r') as fp:
             for idx, line in enumerate(fp):
                 if line.startswith('routres'):
                     _, res_command, hyd_stor, res_num, *_ = line.split()
                     res_nums.append(int(res_num))
         return res_nums
+
+    def reservoir_to_rchres_map(self)->List[Tuple[int, int]]:
+        """returns the mapping"""
+        raise NotImplementedError
+
+    def reservoir_files(self)->Dict[int, str]:
+        """parses the .fig file and returns the names of .res files which contain
+        data for a particular reservoir"""
+        routres_lines = []
+        routres_ids = []
+        with open(os.path.join(self.path, self.fig_file), 'r') as fp:
+
+            for idx, line in enumerate(fp):
+                if line.startswith('routres'):
+                    _, res_command, hyd_stor, res_num, *_ = line.split()
+                    routres_ids.append(int(res_num))
+                    routres_lines.append(idx + 1)
+
+        res_files = []
+        with open(os.path.join(self.path, self.fig_file), 'r') as fp:
+            for idx, line in enumerate(fp):
+                if idx in routres_lines:
+                    res, lwq = line.split('.res')
+                    res_files.append(res.strip() + ".res")
+
+        return {res_id: fname for res_id, fname in zip(routres_ids, res_files)}
 
     def downstream_rch_to_rch(self, upstream_rch_num:int)->int:
         """returns the downstream reach to a reach"""
@@ -676,7 +744,7 @@ class SWAT(object):
             raise ValueError(f"{upstream_rch_num} is the last reach. No downstream reach found")
 
         val = [reaches[idx + 1] for idx, val in enumerate(reaches) if val == upstream_rch_num]
-        assert len(val)==1
+        assert len(val)==1, f"Can't find downstream to {upstream_rch_num}. Output is: {val}"
         return val[0]
 
     def upstream_rch_to_rch(self, downstream_rch_num:int)->int:

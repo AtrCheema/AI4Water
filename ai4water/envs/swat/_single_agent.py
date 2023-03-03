@@ -26,9 +26,12 @@ class SWATSingleReservoir(gym.Env):
     parameters
     -----------
     swat_path : str
-        path where SWAT model results/files are located
+        path where SWAT model results/files are located. The files in this folder
+        are changed when SWAT is run.
     backup_path : str
-        same as swat_path but this is used only for backup.
+        same as swat_path but the files in this folder are not changed. The output files are
+        copied from backup_path to swat_path so that the user has a backup of original
+        results.
     weir_location : int
         reservoir/reach on which weir is located. The outflow from this
         reservoir will be controlled by using .day file and
@@ -36,7 +39,10 @@ class SWATSingleReservoir(gym.Env):
         will be read from corresponding .wql and .rch files and used
         used as ``state``.
     start_day : int
-        julian day to start
+        julian day to start. The actual start day of SWAT will be start_day - lookback
+    end_day : int
+    lookback : int
+        The simulation duration of SWAT for each time-step of RL in an episode
     year : int
         simulation year
     state_names : str/list
@@ -88,13 +94,17 @@ class SWATSingleReservoir(gym.Env):
         self.state_names_rch = state_names.copy()
         self.use_met_states = False
 
+        # the files needs to be copied from backup folder before initializing
+        # the SWAT class
+        self._copy_backup_files()
+
         # initialize the class which interacts with SWAT model
         self.swat = SWAT(swat_path)
         self.swat.change_num_sim_years(1)
         self.swat.change_sim_start_yr(year)
         self.swat.change_start_day(start_day - lookback)
         self.swat.change_end_day(start_day + delta)
-        self.swat.write_outflow(weir_location, np.full(10, 0.0))
+        self.swat.write_outflow(weir_location, np.full(self.swat.sim_len(), 0.0))
         self.swat.customize_sub_output(1)
 
         if "WTMPdegc" in state_names:
@@ -160,30 +170,30 @@ class SWATSingleReservoir(gym.Env):
         return state_names.copy()
 
     def _copy_backup_files(self):
-        """copies .day, .cio, .rch and .wql files from backup folder to
+        """copies .day, .cio, and output files from backup folder to
         swath_path"""
-        src = os.path.join(self.backup_path, f"00{self.weir_num}0000.day")
-        dst = os.path.join(self.swat_path, f"00{self.weir_num}0000.day")
+        fname = f"00{self.weir_num}0000.day"
+        src = os.path.join(self.backup_path, fname)
+
+        if not os.path.exists(src):
+            raise FileExistsError(f"File {fname} is not found in {self.backup_path}")
+        dst = os.path.join(self.swat_path, fname)
         shutil.copy(src, dst)
 
-        src = os.path.join(self.backup_path, "file.cio")
-        dst = os.path.join(self.swat_path, "file.cio")
-        shutil.copy(src, dst)
+        for file in ["file.cio", "output.rch", "output.wql", "output.rsv",
+                     "output.sub", "output.hru", "output.std", "input.std"]:
+            src = os.path.join(self.backup_path, file)
+            dst = os.path.join(self.swat_path, file)
+            shutil.copy(src, dst)
 
-        src = os.path.join(self.backup_path, "output.rch")
-        dst = os.path.join(self.swat_path, "output.rch")
-        shutil.copy(src, dst)
-
-        src = os.path.join(self.backup_path, "output.wql")
-        dst = os.path.join(self.swat_path, "output.wql")
-        shutil.copy(src, dst)
         return
 
     def add_met_data_to_state(
             self,
             parameters:Union[list, str]
     )->None:
-        """add the meteorological parameters such as precipitation, humidity,
+        """
+        add the meteorological parameters such as precipitation, humidity,
         wind speed, air temperature for the state.
         This method overwrites the following class variable.
             ``observation_space``
@@ -342,7 +352,7 @@ class SWATSingleReservoir(gym.Env):
         self.swat(executable='swat_683_silent')
 
         # read new chl-a concentration
-        rch_out = self.swat.read_rch(self.downstream_rch_id, self.year)  # from output.rch file
+        rch_out = self.swat.channel_output(self.downstream_rch_id, self.year)  # from output.rch file
         wql_out = self.swat.read_wql_output(self.downstream_rch_id)  # from output.wql
 
         chla = wql_out.loc[:, constituent].mean()

@@ -128,8 +128,6 @@ class DualAttentionModel(FModel):
 
         super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
-        setattr(self, 'category', "DL")
-
     def build(self, input_shape=None):
 
         self.config['dec_config'] = self.dec_config
@@ -188,6 +186,14 @@ class DualAttentionModel(FModel):
             self._model = self.compile(model_inputs=initial_input, outputs=output)
         else:
             self._model = self.compile(model_inputs=initial_input + [s0, h0, s_de0, h_de0], outputs=output)
+
+        self.config['model'] = "DualAttentionModel"
+        self.config['category'] = "DL"
+
+        if not getattr(self, 'from_check_point', False) and self.verbosity>=0:
+            # fit may fail so better to save config before as well.
+            # This will be overwritten once the fit is complete
+            self.save_config()
 
         return
 
@@ -657,6 +663,7 @@ class InputAttentionModel(DualAttentionModel):
     """
     InputAttentionModel is same as DualAttentionModel with output attention/decoder part
     removed.
+
     Example:
         >>> from ai4water import InputAttentionModel
         >>> from ai4water.datasets import busan_beach
@@ -693,6 +700,12 @@ class InputAttentionModel(DualAttentionModel):
             inputs = inputs + [s0, h0]
         self._model = self.compile(model_inputs=inputs, outputs=predictions)
 
+        self.config['model'] = "InputAttentionModel"
+        self.config['category'] = "DL"
+        if not getattr(self, 'from_check_point', False) and self.verbosity>=0:
+            # fit may fail so better to save config before as well.
+            # This will be overwritten once the fit is complete
+            self.save_config()
         return
 
     def fetch_data(self, source, x=None, y=None, data=None, **kwargs):
