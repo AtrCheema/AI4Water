@@ -261,226 +261,225 @@ class make_model(object):
 
     def __init__(self, **kwargs):
 
-        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(
-            **kwargs)
+        kwargs = self.process_io(**kwargs)
 
+        self._make_model(**kwargs)
 
-def process_io(**kwargs):
+    @staticmethod
+    def process_io(**kwargs):
 
-    input_features = kwargs.get('input_features', None)
-    output_features = kwargs.get('output_features', None)
+        input_features = kwargs.get('input_features', None)
+        output_features = kwargs.get('output_features', None)
 
-    if isinstance(input_features, str):
-        input_features = [input_features]
-    if isinstance(output_features, str):
-        output_features = [output_features]
+        if isinstance(input_features, str):
+            input_features = [input_features]
+        if isinstance(output_features, str):
+            output_features = [output_features]
 
-    kwargs['input_features'] = input_features
-    kwargs['output_features'] = output_features
-    return kwargs
+        kwargs['input_features'] = input_features
+        kwargs['output_features'] = output_features
+        return kwargs
 
+    def _make_model(self, **kwargs):
+        """
+        This functions fills the default arguments needed to run all the models.
+        All the input arguments can be overwritten
+        by providing their name.
+        :return
+          nn_config: `dict`, contais parameters to build and train the neural network
+            such as `layers`
+          data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
+        """
 
-def _make_model(**kwargs):
+        kwargs, model_name, is_custom_model = check_kwargs(**kwargs)
+
+        model = kwargs.get('model', None)
+        def_cat = None
+
+        if model is not None:
+            if 'layers' in model:
+                def_cat = "DL"
+                # for DL, the default mode case will be regression
+            else:
+                def_cat = "ML"
+
+        accept_additional_args = False
+        if 'accept_additional_args' in kwargs:
+            accept_additional_args = kwargs.pop('accept_additional_args')
+
+        model_args = {
+
+            'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
+            # can be None or any of the method defined in ai4water.utils.transformatinos.py
+            'x_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
+                                 'upper': None, 'between': None},
+            'y_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
+                                 'upper': None, 'between': None},
+            # for auto-encoders
+            'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
+            'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
+            # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+            'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},
+            'loss':         {'type': (str, Callable), 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
+            'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
+            'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
+            'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
+            'patience':     {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
+            'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
+            # to save the best models using checkpoints
+            'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
+            'backend':       {'type': None, 'default': 'tensorflow', 'lower': None, 'upper': None,
+                              'between': ['tensorflow', 'pytorch']},
+            # buffer_size is only relevant if 'val_data' is same and shuffle is true.
+            # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
+            # It is used to shuffle tf.Dataset of training data.
+            'buffer_size': {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
+            # comes handy if we want to skip certain batches from last
+            'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
+            # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+            'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
+            # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+            'monitor': {"type": (list, type(None), str), "default": None, 'lower': None, 'upper': None, 'between': None},
+            # todo, is it  redundant?
+            # If the model takes one kind of input_features that is it consists of
+            # only 1 Input layer, then the shape of the batches
+            # will be inferred from the Input layer but for cases, the model takes
+            # more than 1 Input, then there can be two
+            # cases, either all the input_features are of same shape or they
+            # are not. In second case, we should overwrite `train_paras`
+            # method. In former case, define whether the batches are 2d or 3d. 3d
+            # means it is for an LSTM and 2d means it is
+            # for Dense layer.
+            'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
+            'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+            'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+            'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
+            'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
+            'wandb_config': {'type': dict, 'default': None, 'between': None},
+            'val_metric': {'type': (str, Callable), 'default': None},
+            'model_name_': {'default': None},
+            'is_custom_model_': {"default": None},
+        }
+
+        data_args = {
+            # if the shape of last batch is smaller than batch size and if we
+            # want to skip this last batch, set following to True.
+            # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
+            'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
+            'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
+            'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
+                     'between': ["regression", "classification"]},
+            'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
+            'split_random': {'type': bool, 'default': False, 'between': [True, False]},
+            # fraction of data to be used for validation
+            'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
+            # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
+            # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
+            # If this is not string and not None, this will overwite `val_fraction`
+            'indices':          {"type": dict,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
+            # fraction of data to be used for test
+            'train_fraction':     {"type": float, "default": 0.7, 'lower': None, 'upper': None, 'between': None},
+            # write the data/batches as hdf5 file
+            'save':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
+            'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
+
+            'nan_filler':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
+
+            # for reproducability
+            'seed':              {"type": None, "default": 313, 'lower': None, 'upper': None, 'between': None},
+            # input features in data_frame
+            'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+            # column in dataframe to bse used as output/target
+            'output_features':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+            # tuple of tuples where each tuple consits of two integers, marking the start and end
+            # of interval. An interval here
+            # means chunk/rows from the input file/dataframe to be skipped when when preparing
+            # data/batches for NN. This happens
+            # when we have for example some missing values at some time in our data.
+            # For further usage see `examples/using_intervals`
+            "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+            'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
+            'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
+            'dataset_args': {'type': dict, 'default': {}},
+            'ts_args': {"type": dict, "default": {'lookback': 1,
+                                                  'forecast_len': 1,
+                                                  'forecast_step': 0,
+                                                  'known_future_inputs': False,
+                                                  'input_steps': 1,
+                                                  'output_steps': 1}}
+        }
+
+        model_config = {key: val['default'] for key, val in model_args.items()}
+
+        self.config = {key: val['default'] for key, val in data_args.items()}
+
+        self.opt_paras = {}
+        # because there are two kinds of hpos which can be optimized
+        # some can be in model config and others are in main config
+        original_other_conf = {}
+        original_mod_conf = {}
+
+        for key, val in kwargs.items():
+            arg_name = key.lower()  # todo, why this?
+
+            if val.__class__.__name__ in ['Integer', "Real", "Categorical"]:
+                self.opt_paras[key] = val
+                val2 = val
+                val = jsonize(val.rvs(1)[0])
+
+                val2.name = key
+                original_other_conf[key] = val2
+
+            if key == 'model':
+                val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
+                self.opt_paras.update(_opt_paras)
+
+            if key == 'ts_args':
+                val, _opt_paras = find_opt_paras_from_ts_args(val)
+                self.opt_paras.update(_opt_paras)
+
+            if arg_name in model_config:
+                update_dict(arg_name, val, model_args, model_config)
+
+            elif arg_name in self.config:
+                update_dict(arg_name, val, data_args, self.config)
+
+            elif arg_name in ['x_transformer_', 'y_transformer_']:
+                self.config[arg_name] = val
+
+            # config may contain additional user defined args which will not be checked
+            elif not accept_additional_args:
+                raise ValueError(f"Unknown keyworkd argument '{key}' provided")
+            else:
+                self.config[key] = val
+
+        if self.config['allow_nan_labels'] > 0:
+            assert 'layers' in model_config['model'], f"""
+    The model appears to be deep learning based because 
+    the argument `model` does not have layers. But you are
+    allowing nan labels in the targets.
+    However, `allow_nan_labels` should be > 0 only for deep learning models
     """
-    This functions fills the default arguments needed to run all the models.
-    All the input arguments can be overwritten
-    by providing their name.
-    :return
-      nn_config: `dict`, contais parameters to build and train the neural network
-        such as `layers`
-      data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
-    """
 
-    kwargs = process_io(**kwargs)
+        self.config.update(model_config)
 
-    kwargs, model_name, is_custom_model = check_kwargs(**kwargs)
+        if isinstance(self.config['input_features'], dict):
+            for data in [self.config['input_features'], self.config['output_features']]:
+                for k, v in data.items():
+                    assert isinstance(v, list), f"""
+                    {k} is of type {v.__class__.__name__} but it must of of type list
+                    {k}: {v}"""
 
-    model = kwargs.get('model', None)
-    def_cat = None
+        self.data_config = {}
+        for key, val in self.config.items():
+            if key in data_args:
+                self.data_config[key] = val
 
-    if model is not None:
-        if 'layers' in model:
-            def_cat = "DL"
-            # for DL, the default mode case will be regression
-        else:
-            def_cat = "ML"
+        self.config['model_name_'] = model_name
+        self.config['is_custom_model_'] = is_custom_model
+        self.orig_model = {'model': original_mod_conf, 'other': original_other_conf}
 
-    accept_additional_args = False
-    if 'accept_additional_args' in kwargs:
-        accept_additional_args = kwargs.pop('accept_additional_args')
-
-    model_args = {
-
-        'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
-        # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'x_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
-                             'upper': None, 'between': None},
-        'y_transformation': {"type": (str, type(None), dict, list), "default": None, 'lower': None,
-                             'upper': None, 'between': None},
-        # for auto-encoders
-        'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
-        'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
-        # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
-        'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},
-        'loss':         {'type': (str, Callable), 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
-        'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
-        'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
-        'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
-        'patience':     {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
-        'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
-        # to save the best models using checkpoints
-        'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
-        'backend':       {'type': None, 'default': 'tensorflow', 'lower': None, 'upper': None,
-                          'between': ['tensorflow', 'pytorch']},
-        # buffer_size is only relevant if 'val_data' is same and shuffle is true.
-        # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
-        # It is used to shuffle tf.Dataset of training data.
-        'buffer_size': {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
-        # comes handy if we want to skip certain batches from last
-        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
-        # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
-        'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
-        # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'monitor': {"type": (list, type(None), str), "default": None, 'lower': None, 'upper': None, 'between': None},
-        # todo, is it  redundant?
-        # If the model takes one kind of input_features that is it consists of
-        # only 1 Input layer, then the shape of the batches
-        # will be inferred from the Input layer but for cases, the model takes
-        # more than 1 Input, then there can be two
-        # cases, either all the input_features are of same shape or they
-        # are not. In second case, we should overwrite `train_paras`
-        # method. In former case, define whether the batches are 2d or 3d. 3d
-        # means it is for an LSTM and 2d means it is
-        # for Dense layer.
-        'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
-        'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
-        'wandb_config': {'type': dict, 'default': None, 'between': None},
-        'val_metric': {'type': (str, Callable), 'default': None},
-        'model_name_': {'default': None},
-        'is_custom_model_': {"default": None},
-    }
-
-    data_args = {
-        # if the shape of last batch is smaller than batch size and if we
-        # want to skip this last batch, set following to True.
-        # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
-        'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
-                 'between': ["regression", "classification"]},
-        'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
-        'split_random': {'type': bool, 'default': False, 'between': [True, False]},
-        # fraction of data to be used for validation
-        'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
-        # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
-        # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
-        # If this is not string and not None, this will overwite `val_fraction`
-        'indices':          {"type": dict,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
-        # fraction of data to be used for test
-        'train_fraction':     {"type": float, "default": 0.7, 'lower': None, 'upper': None, 'between': None},
-        # write the data/batches as hdf5 file
-        'save':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
-        'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
-
-        'nan_filler':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
-
-        # for reproducability
-        'seed':              {"type": None, "default": 313, 'lower': None, 'upper': None, 'between': None},
-        # input features in data_frame
-        'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        # column in dataframe to bse used as output/target
-        'output_features':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        # tuple of tuples where each tuple consits of two integers, marking the start and end
-        # of interval. An interval here
-        # means chunk/rows from the input file/dataframe to be skipped when when preparing
-        # data/batches for NN. This happens
-        # when we have for example some missing values at some time in our data.
-        # For further usage see `examples/using_intervals`
-        "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
-        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'dataset_args': {'type': dict, 'default': {}},
-        'ts_args': {"type": dict, "default": {'lookback': 1,
-                                              'forecast_len': 1,
-                                              'forecast_step': 0,
-                                              'known_future_inputs': False,
-                                              'input_steps': 1,
-                                              'output_steps': 1}}
-    }
-
-    model_config = {key: val['default'] for key, val in model_args.items()}
-
-    config = {key: val['default'] for key, val in data_args.items()}
-
-    opt_paras = {}
-    # because there are two kinds of hpos which can be optimized
-    # some can be in model config and others are in main config
-    original_other_conf = {}
-    original_mod_conf = {}
-
-    for key, val in kwargs.items():
-        arg_name = key.lower()  # todo, why this?
-
-        if val.__class__.__name__ in ['Integer', "Real", "Categorical"]:
-            opt_paras[key] = val
-            val2 = val
-            val = jsonize(val.rvs(1)[0])
-
-            val2.name = key
-            original_other_conf[key] = val2
-
-        if key == 'model':
-            val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
-            opt_paras.update(_opt_paras)
-
-        if key == 'ts_args':
-            val, _opt_paras = find_opt_paras_from_ts_args(val)
-            opt_paras.update(_opt_paras)
-
-        if arg_name in model_config:
-            update_dict(arg_name, val, model_args, model_config)
-
-        elif arg_name in config:
-            update_dict(arg_name, val, data_args, config)
-
-        elif arg_name in ['x_transformer_', 'y_transformer_']:
-            config[arg_name] = val
-
-        # config may contain additional user defined args which will not be checked
-        elif not accept_additional_args:
-            raise ValueError(f"Unknown keyworkd argument '{key}' provided")
-        else:
-            config[key] = val
-
-    if config['allow_nan_labels'] > 0:
-        assert 'layers' in model_config['model'], f"""
-The model appears to be deep learning based because 
-the argument `model` does not have layers. But you are
-allowing nan labels in the targets.
-However, `allow_nan_labels` should be > 0 only for deep learning models
-"""
-
-    config.update(model_config)
-
-    if isinstance(config['input_features'], dict):
-        for data in [config['input_features'], config['output_features']]:
-            for k, v in data.items():
-                assert isinstance(v, list), f"""
-                {k} is of type {v.__class__.__name__} but it must of of type list
-                {k}: {v}"""
-
-    _data_config = {}
-    for key, val in config.items():
-        if key in data_args:
-            _data_config[key] = val
-
-    config['model_name_'] = model_name
-    config['is_custom_model_'] = is_custom_model
-
-    return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
+        return
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
@@ -491,15 +490,7 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     between = dict_to_lookup[key].get('between', None)
 
     if dtype is not None:
-        # if isinstance(dtype, list):
-        #     val_type = type(val)
-        #     if 'callable' in dtype:
-        #         if callable(val):
-        #             pass
-        #
-        #     elif val_type not in dtype:
-        #         raise TypeError("{} must be any of the type {} but it is of type {}"
-        #                         .format(key, dtype, val.__class__.__name__))
+
         if not isinstance(val, dtype):
             # the default value may be None which will be different than dtype
             if val != dict_to_lookup[key]['default']:

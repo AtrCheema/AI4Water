@@ -26,6 +26,7 @@ data = busan_beach()
 input_features = data.columns.to_list()[0:-1]
 output_features = data.columns.to_list()[-1:]
 
+
 def get_lstm():
 
     return {"layers": {
@@ -121,6 +122,23 @@ class TestOptimizeHyperparas(unittest.TestCase):
     config = {"XGBRegressor": {"n_estimators": Integer(low=10, high=20, num_samples=10),
                                "max_depth": Categorical([10, 20, 30]),
                                "learning_rate": Real(0.00001, 0.1, num_samples=10)}}
+
+    def test_no_space(self):
+        # We don't provide space, it is inferred from Model name
+        model = Model(model="RandomForestRegressor",
+                      verbosity=0)
+        optimizer = model.optimize_hyperparameters(data=data,
+                                                   algorithm='bayes',
+                                                   num_iterations=11,
+                                                   process_results=False
+                                                   )
+        s = set([xy['x']['n_estimators'] for xy in optimizer.xy_of_iterations().values()])
+        assert len(s) >= 5, s  # assert that all suggestions are not same
+
+        # make sure that model's config has been updated
+        for k, v in optimizer.best_paras().items():
+            assert model.config['model']['RandomForestRegressor'][k] == v
+        return
 
     def test_no_opt_paras(self):
         conf = "XGBRegressor"

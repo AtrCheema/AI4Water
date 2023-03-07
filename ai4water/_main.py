@@ -2732,9 +2732,28 @@ class BaseModel(NN):
         else:
             setattr(self, 'dh_', DataSet(data, **self.data_config))
 
+        if self.opt_paras:
+            space = list(self.opt_paras.values())
+
+        elif self.category == "ML":
+
+            from .experiments.utils import regression_models, classification_models
+            from .experiments.utils import regression_space, classification_space
+
+            if self.model_name in regression_models():
+                space = regression_space(len(data), 5)[self.model_name]['param_space']
+
+            elif self.model_name in classification_models():
+                space = classification_space(len(data), 5)[self.model_name]['param_space']
+
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
         _optimizer = OptimizeHyperparameters(
             self,
-            list(self.opt_paras.values()),
+            space = space,
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
@@ -2743,10 +2762,15 @@ class BaseModel(NN):
 
         algo_type = list(self.config['model'].keys())[0]
 
-        new_model_config = update_model_config(self._original_model_config['model'],
+        if self.opt_paras:
+            new_model_config = update_model_config(self._original_model_config['model'],
                                                _optimizer.best_paras())
+        else:
+            new_model_config = _optimizer.best_paras()
         self.config['model'][algo_type] = new_model_config
 
+        # find parameters which were in model_config but not optimized
+        # and update the config!
         new_other_config = update_model_config(self._original_model_config['other'],
                                                _optimizer.best_paras())
         self.config.update(new_other_config)

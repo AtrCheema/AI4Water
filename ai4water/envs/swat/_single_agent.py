@@ -33,15 +33,16 @@ class SWATSingleReservoir(gym.Env):
         copied from backup_path to swat_path so that the user has a backup of original
         results.
     weir_location : int
-        reservoir/reach on which weir is located. The outflow from this
+        reach on which weir/reservoir is located. The outflow from this
         reservoir will be controlled by using .day file and
         the reservoir parameters in downstream to this reservoir
         will be read from corresponding .wql and .rch files and used
         used as ``state``.
-    start_day : int
+    start_day : int (default=5)
         julian day to start. The actual start day of SWAT will be start_day - lookback
-    end_day : int
-    lookback : int
+    end_day : int (default=365)
+        julian day to end one episode.
+    lookback : int (default=4)
         The simulation duration of SWAT for each time-step of RL in an episode
     year : int
         simulation year
@@ -329,6 +330,10 @@ class SWATSingleReservoir(gym.Env):
 
         return
 
+    def at_step_start(self, *args, **kwargs):
+        """any code that needs to be run before running swat.exe"""
+        return
+
     def run_swat(
             self,
             outflow:float,
@@ -342,6 +347,8 @@ class SWATSingleReservoir(gym.Env):
         >>> a,b = swat_env.run_swat(50, 51)
         """
 
+        self.at_step_start()
+
         # write outflow in .day file
         outflow_df = self.swat.get_weir_outflow(self.weir_location)
         self.swat.write_outflow(self.weir_location, np.full(len(outflow_df), outflow))
@@ -351,8 +358,10 @@ class SWATSingleReservoir(gym.Env):
         self.swat.change_end_day(day + self.delta)
         self.swat(executable='swat_683_silent')
 
-        # read new chl-a concentration
+        # read new state
         rch_out = self.swat.channel_output(self.downstream_rch_id, self.year)  # from output.rch file
+
+        # read new chl-a concentration
         wql_out = self.swat.read_wql_output(self.downstream_rch_id)  # from output.wql
 
         chla = wql_out.loc[:, constituent].mean()

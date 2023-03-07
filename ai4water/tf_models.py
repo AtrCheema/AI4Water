@@ -128,6 +128,8 @@ class DualAttentionModel(FModel):
 
         super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
+        setattr(self, 'category', "DL")
+
     def build(self, input_shape=None):
 
         self.config['dec_config'] = self.dec_config

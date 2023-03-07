@@ -11,7 +11,8 @@ from ._global_vars import DEF_WQL_COLUMNS, RES_COLUMNS, DEF_RCH_COLUMNS, \
 
 
 class SWAT(object):
-    """interface to swat model
+    """
+    interface to Soil and Water Assessment Tool (SWAT)
 
     parameters
     -----------
@@ -44,8 +45,23 @@ class SWAT(object):
         assert len(fig_files) == 1
         return fig_files[0].split(".fig")[0] + ".fig"
 
-    def get_wq_rch(self, wq_name, rch_id):
-        """get wq data for weir"""
+    @property
+    def num_reaches(self)->int:
+        return len(self.reaches())
+
+    @property
+    def num_subbasins(self)->int:
+        return len(self.subbasins())
+
+    @property
+    def num_reservoirs(self)->int:
+        return len(self.reservoirs())
+
+    def get_wq_rch(
+            self,
+            wq_name:Union[List[str], str],
+            rch_id):
+        """get wq data for reach"""
         if not isinstance(wq_name, list):
             wq_name = [wq_name]
         if not isinstance(rch_id, list):
@@ -55,9 +71,10 @@ class SWAT(object):
 
         return df[wq_name + ["rch_id"]]
 
-    def read_wql_output(self,
-                        rch_id:Union[str, int, list]
-                        )->pd.DataFrame:
+    def read_wql_output(
+            self,
+            rch_id:Union[str, int, list]
+    )->pd.DataFrame:
 
         if not isinstance(rch_id, list):
             rch_id = [rch_id]
@@ -411,7 +428,12 @@ class SWAT(object):
         """
         reads water quality of all weirs
         """
-        # todo, are we reading weirs or rches
+        raise NotImplementedError
+
+    def wq_all_reaches(self, wq_name:str = "ALGAE_INppm")->pd.DataFrame:
+        """
+        reads water quality of all reaches
+        """
         rch_wq_df = self.wq_rches(self.weir_codes, wq_name)
         #cols = {v:k for k,v in self.weir_codes.items()}
         #rch_wq_df.rename(cols, axis='columns', inplace=True)
@@ -439,7 +461,14 @@ class SWAT(object):
         return out
 
     def __call__(self, executable:str="swat2012.exe")->None:
-        """run the swat model"""
+        """
+        run the swat model
+
+        Parameters
+        ----------
+        executable : str
+        name of executable file. Must be present in self.path.
+        """
 
         old_wd = os.getcwd()
 
@@ -530,7 +559,7 @@ class SWAT(object):
             f.writelines(new_lines)
         return
 
-    def change_sim_start_yr(self, year):
+    def change_sim_start_yr(self, year:int):
         """changes simulation start year i.e. IYR variable in file.cio"""
 
         fname = os.path.join(self.path, "file.cio")
@@ -549,6 +578,7 @@ class SWAT(object):
         return
 
     def get_weirs_outflow(self, start_date=None)->pd.DataFrame:
+        """get outflow from a weir/reservoir by deading xxxx.day file"""
         weir_outflow = {}
         for idx, code in enumerate(self.weir_codes):
 
@@ -928,9 +958,3 @@ def jday_to_date(year:int, jday:int)->str:
     date = datetime.datetime(year, 1, 1) + datetime.timedelta(jday - 1)
 
     return f"{date.year}{str(date.month).rjust(2, '0')}{str(date.day).rjust(2, '0')}"
-
-
-if __name__ == "__main__":
-
-    pass
-
