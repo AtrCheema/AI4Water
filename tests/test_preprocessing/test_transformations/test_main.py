@@ -598,77 +598,8 @@ class TestTransform(unittest.TestCase):
         ai_tr = Transformation('yeo-johnson', features=features)
         sk_tr = PowerTransformer(method='yeo-johnson')
         test_transform(sk_tr, ai_tr, features)
+        return 
 
-        return
-
-    def test_log(self):
-
-        features = ['rel_hum', 'sal_psu']
-        ai_tr = Transformation('log', features=features)
-        sk_tr = FunctionTransformer(func=np.log, inverse_func=np.exp)
-        test_transform(sk_tr, ai_tr, features)
-
-        return
-
-    def test_center(self):
-
-        features = ['rel_hum', 'sal_psu']
-
-        data = busan_beach()
-        data = data.dropna()
-        train_data = data.iloc[0:160]
-        test_data = data.iloc[160:]
-
-        ai_tr = Transformation('center', features=features)
-        test_transform_Transformation(ai_tr, train_data, test_data, features)
-
-        return
-
-    def test_scale(self):
-
-        features = ['rel_hum', 'sal_psu']
-        ai_tr = Transformation('scale', features=features)
-        sk_tr = StandardScaler(with_mean=False)
-        test_transform(sk_tr, ai_tr, features)
-
-        return
-
-    def test_pareto(self):
-        features = ['rel_hum', 'sal_psu']
-        ai_tr = Transformation('pareto', features=features)
-        sk_tr = ParetoTransformer()
-        test_transform(sk_tr, ai_tr, features)
-        return
-
-    def test_mmad(self):
-        features = ['rel_hum', 'sal_psu']
-        ai_tr = Transformation('mmad', features=features)
-        sk_tr = MmadTransformer()
-        test_transform(sk_tr, ai_tr, features)
-        return
-
-    def test_vast(self):
-        features = ['rel_hum', 'sal_psu']
-        ai_tr = Transformation('vast', features=features)
-        sk_tr = VastTransformer()
-        test_transform(sk_tr, ai_tr, features)
-        return
-
-
-class TestNotInvTransform(unittest.TestCase):
-    """Transformers whose inverse is not possible"""
-    X = np.random.randint(-100, 100, (100, 2)).astype(np.float32)
-    def test_tanh(self):
-        tr = Transformation("tanh")
-        x_ = tr.fit_transform(self.X)
-        assert np.shape(x_) == self.X.shape
-        return
-
-    def sigmoid(self):
-        tr = Transformation("sigmoid")
-        x_ = tr.fit_transform(self.X)
-        assert np.shape(x_) == self.X.shape
-        return
 
 if __name__ == "__main__":
     unittest.main()

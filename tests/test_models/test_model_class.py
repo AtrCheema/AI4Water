@@ -5,6 +5,7 @@ import unittest
 import site
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -58,7 +59,7 @@ def test_user_defined_data(_model, x, y):
 
 def _test_ml_inbuilt_data_reg(_model):
     model = _model(model="RandomForestRegressor",
-                   verbosity=0)
+                   verbosity=-1)
     model.fit(data=data)
 
     test_user_defined_data(model, x_reg, y_reg)
@@ -90,7 +91,7 @@ def _test_ml_inbuilt_data_cls(_model):
 
 
 def _test_ml_userdefined_data(_model, model_name, x, y):
-    model = _model(model=model_name, verbosity=0)
+    model = _model(model=model_name, verbosity=-1)
     model.fit(x=x, y=y)
 
     test_user_defined_data(model, x, y)
@@ -100,7 +101,7 @@ def _test_ml_userdefined_data(_model, model_name, x, y):
 
 def _test_ml_userdefined_non_kw(_model, model_name, x, y):
     # using non-keyword arguments to .predict
-    model = _model(model=model_name, verbosity=0)
+    model = _model(model=model_name, verbosity=-1)
     model.fit(x=x, y=y)
 
     p = model.predict(x)
@@ -109,7 +110,7 @@ def _test_ml_userdefined_non_kw(_model, model_name, x, y):
 
 
 def _test_hydro_metrics(_model, model_name, x, y):
-    model = _model(model=model_name, verbosity=0)
+    model = _model(model=model_name, verbosity=-1)
     model.fit(x=x, y=y)
 
     for metrics in ["minimal", "hydro_metrics", "all"]:
@@ -176,7 +177,7 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    verbosity=0)
+                    verbosity=-1)
         p = model.predict_on_test_data(data=data)
         assert isinstance(p, np.ndarray)
         return
@@ -187,7 +188,7 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    verbosity=0)
+                    verbosity=-1)
         t, p = model.predict(x=x_reg, y=y_reg, return_true=True)
         assert isinstance(t, np.ndarray)
         assert isinstance(p, np.ndarray)
@@ -199,7 +200,7 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    verbosity=0)
+                    verbosity=-1)
         p = model.predict(x=x_reg)
         assert isinstance(p, np.ndarray)
         return
@@ -207,7 +208,7 @@ class TestPredictMethod(unittest.TestCase):
     def test_with_no_test_data(self):
         """we have only training and validation data and not test data"""
         model = Model(model="RandomForestRegressor",
-            train_fraction=1.0, verbosity=0)
+            train_fraction=1.0, verbosity=-1)
         model.fit(data=data)
         statement = model.predict_on_test_data
 
@@ -218,7 +219,7 @@ class TestPredictMethod(unittest.TestCase):
         """we have only training data and no validation and test data"""
         model = Model(model="RandomForestRegressor",
             train_fraction=1.0,
-            val_fraction=0.0, verbosity=0)
+            val_fraction=0.0, verbosity=-1)
         model.fit(data=data)
         statement = model.predict_on_test_data
 
@@ -232,7 +233,7 @@ class TestPredictMethod(unittest.TestCase):
         model = Model(model={"layers": {"Dense": 1}},
                       input_features=data.columns.tolist()[0:-1],
                       output_features=data.columns.tolist()[-1:],
-                      verbosity=0
+                      verbosity=-1
                       )
         x,y = DataSet(data=data, verbosity=0).training_data()
         tr_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size=32)
@@ -244,7 +245,7 @@ class TestPermImp(unittest.TestCase):
 
     def test_basic0(self):
         model = Model(model="XGBRegressor",
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         imp = model.permutation_importance(data_type="validation", data=data)
         assert isinstance(imp, PermutationImportance)
@@ -254,7 +255,7 @@ class TestPermImp(unittest.TestCase):
         time.sleep(1)
         model = Model(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         imp = model.permutation_importance(data=data, data_type="validation")
         assert isinstance(imp, PermutationImportance)
@@ -265,22 +266,22 @@ class TestPDP(unittest.TestCase):
 
     def test_basic0(self):
         model = Model(model="XGBRegressor",
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         pdp = model.partial_dependence_plot(x=data.iloc[:, 0:-1],
                                             feature_name='tide_cm',
-                                            num_points=2)
+                                            num_points=2, show=False)
         assert isinstance(pdp, PartialDependencePlot)
         return
 
     def test_lookback(self):
         model = Model(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         pdp = model.partial_dependence_plot(data=data,
                                             feature_name='tide_cm',
-                                            num_points=2)
+                                            num_points=2, show=False)
         assert isinstance(pdp, PartialDependencePlot)
         return
 
@@ -289,7 +290,7 @@ class TestShapValues(unittest.TestCase):
 
     def test_basic0(self):
         model = Model(model="XGBRegressor",
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         sv = model.shap_values(data=data)
         assert isinstance(sv, np.ndarray)
@@ -299,7 +300,7 @@ class TestShapValues(unittest.TestCase):
         time.sleep(1) # todo
         model = FModel(model=LSTM(1, input_shape=(3, 3)),
                       ts_args={"lookback": 3},
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         sv = model.shap_values(data=data)
         assert isinstance(sv, (np.ndarray, list)), f"{type(sv)}"
@@ -311,7 +312,7 @@ class TestCustomModel(unittest.TestCase):
     def test_uninitiated(self):
 
         model = Model(model=MyRF,
-                      ts_args={'lookback':1}, verbosity=0, mode="regression")
+                      ts_args={'lookback':1}, verbosity=-1, mode="regression")
         model.fit(data=data)
         test_user_defined_data(model, x_reg, y_reg)
         model.evaluate()
@@ -320,7 +321,7 @@ class TestCustomModel(unittest.TestCase):
     def test_uninitiated_with_kwargs(self):
         model = Model(model={MyRF: {"n_estimators": 10}},
                       ts_args={'lookback': 1},
-                      verbosity=0,
+                      verbosity=-1,
                       mode="regression")
         model.fit(data=data)
         test_user_defined_data(model, x_reg, y_reg)
@@ -328,7 +329,7 @@ class TestCustomModel(unittest.TestCase):
         return
 
     def test_initiated(self):
-        model = Model(model=MyRF(), mode="regression", verbosity=0)
+        model = Model(model=MyRF(), mode="regression", verbosity=-1)
         model.fit(data=data)
         test_user_defined_data(model, x_reg, y_reg)
         model.evaluate()
@@ -366,7 +367,7 @@ class TestChangeNQuantiles(unittest.TestCase):
     def test_x_transformation_str(self):
         model = Model(model="RandomForestRegressor",
                       x_transformation="quantile",
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         assert model.config['x_transformation']['n_quantiles']<1000
         return
@@ -374,7 +375,7 @@ class TestChangeNQuantiles(unittest.TestCase):
     def test_x_transformation_dict(self):
         model = Model(model="RandomForestRegressor",
                       x_transformation={'method': 'quantile', 'n_quantiles': 1000},
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         assert model.config['x_transformation']['n_quantiles']<1000
         return
@@ -382,7 +383,7 @@ class TestChangeNQuantiles(unittest.TestCase):
     def test_y_transformation_str(self):
         model = Model(model="RandomForestRegressor",
                       y_transformation="quantile",
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         assert model.config['y_transformation']['n_quantiles']<1000
         return
@@ -390,7 +391,7 @@ class TestChangeNQuantiles(unittest.TestCase):
     def test_y_transformation_dict(self):
         model = Model(model="RandomForestRegressor",
                       y_transformation={'method': 'quantile', 'n_quantiles': 1000},
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         assert model.config['y_transformation']['n_quantiles']<1000
         return
@@ -399,7 +400,7 @@ class TestChangeNQuantiles(unittest.TestCase):
         model = Model(model="RandomForestRegressor",
                       x_transformation=[{'method': 'quantile', 'n_quantiles': 1000},
                                         {'method': 'quantile', 'n_quantiles': 2000}],
-                      verbosity=0)
+                      verbosity=-1)
         model.fit(data=data)
         assert model.config['x_transformation'][0]['n_quantiles'] < 1000
         assert model.config['x_transformation'][1]['n_quantiles'] < 1000
@@ -407,11 +408,66 @@ class TestChangeNQuantiles(unittest.TestCase):
         return
 
 
+class TestTransformation(unittest.TestCase):
+
+    def test_x_transformation_single(self):
+        model = Model(model="RandomForestRegressor",
+                      x_transformation="minmax", verbosity=-1)
+        model.fit(data=data)
+        test_user_defined_data(model, x_reg, y_reg)
+        return
+
+    def test_y_transformation_single(self):
+        model = Model(model="RandomForestRegressor",
+                      y_transformation="yeo-johnson", verbosity=-1)
+        model.fit(data=data)
+        test_user_defined_data(model, x_reg, y_reg)
+        return
+
+    def test_2output_single_y_transformation(self):
+        df = pd.DataFrame(np.random.random((100, 4)), columns=['a', 'b', 'c', 'd'])
+        model = Model(model="RandomForestRegressor",
+                      y_transformation="yeo-johnson",
+                      verbosity=-1,
+                      output_features=['c', 'd'],
+                      input_features=['a', 'b'],
+                      )
+        model.fit(data=df)
+        test_user_defined_data(model, df.iloc[:, 0:2].values, df.iloc[:, 2:].values)
+        return
+
+    def test_2output_single_y_transformation_as_dict(self):
+        df = pd.DataFrame(np.random.random((100, 4)), columns=['a', 'b', 'c', 'd'])
+        model = Model(model="RandomForestRegressor",
+                      y_transformation={'method': 'minmax', 'features': ['c', 'd']},
+                      verbosity=-1,
+                      output_features=['c', 'd'],
+                      input_features=['a', 'b'],
+                      )
+        model.fit(data=df)
+        test_user_defined_data(model, df.iloc[:, 0:2].values, df.iloc[:, 2:].values)
+        return
+
+    def test_2output_two_y_transformation(self):
+        df = pd.DataFrame(np.random.random((100, 4)), columns=['a', 'b', 'c', 'd'])
+        model = Model(
+            model="RandomForestRegressor",
+            y_transformation=[{'method': 'scale', 'features': ['d']},
+                              {'method': 'minmax', 'features': ['c']}],
+                      verbosity=-1,
+                      output_features=['c', 'd'],
+                      input_features=['a', 'b']
+                      )
+        model.fit(data=df)
+        test_user_defined_data(model, df.iloc[:, 0:2].values, df.iloc[:, 2:].values)
+        return
+
+
 class TestPredictionAnalysis(unittest.TestCase):
 
     def test_prediction_dist(self):
 
-        model = Model(model="XGBRegressor")
+        model = Model(model="XGBRegressor", verbosity=-1)
         model.fit(data=busan_beach())
         ax = model.prediction_analysis(features="tide_cm",
         data=busan_beach(), show=False, save_metadata=False)
@@ -420,7 +476,7 @@ class TestPredictionAnalysis(unittest.TestCase):
 
     def test_interaction(self):
 
-        model = Model(model="XGBRegressor")
+        model = Model(model="XGBRegressor", verbosity=-1)
         model.fit(data=busan_beach())
         ax = model.prediction_analysis(
             ['tide_cm', 'sal_psu'],

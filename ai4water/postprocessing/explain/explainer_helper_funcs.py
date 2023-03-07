@@ -233,7 +233,11 @@ def explain_model_with_shap(
 
     features = model.input_features
 
-    shap_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "shap"))
+    shap_exp_path = None
+    save = True
+    if model.verbosity>=0:
+        shap_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "shap"))
+        save = False
 
     if not isinstance(model.dh_, DataSet):
         raise NotImplementedError
@@ -259,7 +263,8 @@ def explain_model_with_shap(
                               framework=framework,
                               feature_names=features_to_explain,
                               layer=layer,
-                              show=False
+                              show=False,
+                              save=save
                               )
 
     if plot_name == "all":

@@ -1002,27 +1002,30 @@ def imshow_3d(values,
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis, im = easy_mpl.imshow(data[:, :, idx].transpose(),
+        im = easy_mpl.imshow(data[:, :, idx].transpose(),
                           yticklabels=yticklabels,
                           ax=ax1,
                           vmin=vmin,
                           vmax=vmax,
-                          title=feat,
-                          cmap=cmap,
-                          show=False
-                          )
-        fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
-
-        axis, im = easy_mpl.imshow(values[:, :, idx].transpose(),
-                          yticklabels=yticklabels,
-                          vmin=vmin, vmax=vmax,
-                          xlabel="Examples",
-                          title=f"SHAP Values",
+                          ax_kws=dict(title=feat),
                           cmap=cmap,
                           show=False,
-                          ax=ax2)
+                             colorbar=True,
+                          )
+        #fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
+        im = easy_mpl.imshow(values[:, :, idx].transpose(),
+                          yticklabels=yticklabels,
+                          vmin=vmin, vmax=vmax,
+                          ax_kws=dict(xlabel="Examples",
+                          title=f"SHAP Values"),
+                          cmap=cmap,
+                          show=False,
+                          ax=ax2,
+                             colorbar=True
+                             )
+
+        #fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
         _name = f'{name}_{feat}_shap_values'
         plt.savefig(os.path.join(path, _name), dpi=400, bbox_inches='tight')

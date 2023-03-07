@@ -2169,7 +2169,7 @@ class BaseModel(NN):
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
 
-        if true_outputs is None:
+        if true_outputs is None or self.verbosity<0:
             process_results = False
 
         if process_results:
@@ -2621,9 +2621,6 @@ class BaseModel(NN):
         # importing EDA earlier will import numpy etc as well
         from ai4water.eda import EDA
 
-        # todo, Uniform Manifold Approximation and Projection (UMAP) of input data
-
-        # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
         eda = EDA(data=data,
                   path=self.path,
                   in_cols=self.input_features,
@@ -3046,6 +3043,12 @@ class BaseModel(NN):
             x, y = data
 
         from .postprocessing.explain import PermutationImportance
+
+        save = False
+        path = None
+        if self.verbosity >= 0:
+            path = os.path.join(self.path, "explain")
+
         pm = PermutationImportance(
             model=self.predict,
             inputs=x,
@@ -3054,11 +3057,11 @@ class BaseModel(NN):
             n_repeats=n_repeats,
             noise=noise,
             use_noise_only=use_noise_only,
-            path=os.path.join(self.path, "explain"),
+            path=path,
             feature_names=self.input_features,
             weights=weights,
             seed=self.config['seed'],
-            save=True
+            save=save
         )
 
         if plot_type is not None:
@@ -3649,9 +3652,7 @@ class BaseModel(NN):
             # it is ndarray, either num_outs>1 or quantiles>1 or forecast_len>1 some combination of them
             if y.size > len(y):
                 if y.ndim == 2:
-                    for out in range(y.shape[1]):
-                        y[:, out] = getattr(transformer, method)(y[:, out],
-                                                                 postprocess=postprocess).reshape(-1, )
+                    y = getattr(transformer, method)(y, postprocess=postprocess)
                 else:
                     # (exs, outs, quantiles) or (exs, outs, forecast_len) or (exs, forecast_len, quantiles)
                     for out in range(y.shape[1]):

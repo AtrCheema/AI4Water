@@ -19,6 +19,8 @@ create_subplots = ep.utils.create_subplots
 
 # qq plot
 # decompose into trend/seasonality and noise
+# todo, Uniform Manifold Approximation and Projection (UMAP) of input data
+# todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
 
 
 class EDA(Plot):
