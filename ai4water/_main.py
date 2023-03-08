@@ -1078,7 +1078,6 @@ class BaseModel(NN):
         while the prepared targets have shape {outputs.shape[1:]}."""
         return outputs
 
-
     def load_best_weights(self) -> None:
         if self.config['backend'] != 'pytorch':
             # load the best weights so that the best weights can be used during model.predict calls

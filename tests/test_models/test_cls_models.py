@@ -72,7 +72,7 @@ def make_dl_model(n_classes, activation='softmax'):
 
 def build_and_run_class_problem(n_classes,
                                 loss,
-                                model=None,
+                                model,
                                 is_multilabel=False,
                                 ):
 
@@ -100,7 +100,7 @@ def build_and_run_class_problem(n_classes,
         input_features=input_features,
         loss=loss,
         output_features=outputs,
-        verbosity=0,
+        verbosity=-1,
     )
     model.fit(data=df)
     test_evaluation(model, df)
@@ -108,8 +108,8 @@ def build_and_run_class_problem(n_classes,
     test_prediction(model, df)
 
     assert model.mode == 'classification'
-    assert len(model.classes_) == n_classes, len(model.classes_)
-    assert model.num_classes_ == n_classes
+    assert len(getattr(model, "classes_")) == n_classes, len(getattr(model, "classes_"))
+    assert getattr(model, "num_classes_") == n_classes
     return model
 
 
@@ -132,9 +132,9 @@ class TestClassifications(unittest.TestCase):
             'binary_crossentropy',
             model=make_dl_model(2, "sigmoid"))
 
-        assert model.is_binary_
-        assert not model.is_multiclass_
-        assert not model.is_multilabel_
+        assert getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert not getattr(model, "is_multilabel_")
 
         return
 
@@ -144,9 +144,9 @@ class TestClassifications(unittest.TestCase):
                                             'binary_crossentropy',
                                             model=make_dl_model(2))
 
-        assert model.is_binary_
-        assert not model.is_multiclass_
-        assert not model.is_multilabel_
+        assert getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert not getattr(model, "is_multilabel_")
 
         return
 
@@ -161,9 +161,9 @@ class TestClassifications(unittest.TestCase):
                 2,
                 'binary_crossentropy',
                 model=algo)
-            assert model.is_binary_
-            assert not model.is_multiclass_
-            assert not model.is_multilabel_
+            assert getattr(model, "is_binary_")
+            assert not getattr(model, "is_multiclass_")
+            assert not getattr(model, "is_multilabel_")
 
         return
 
@@ -176,9 +176,9 @@ class TestClassifications(unittest.TestCase):
             model = build_and_run_class_problem(5,
                                                 'binary_crossentropy',
                                                 model=algo)
-            assert model.is_multiclass_
-            assert not model.is_binary_
-            assert not model.is_multilabel_
+            assert getattr(model, "is_multiclass_")
+            assert not getattr(model, "is_binary_")
+            assert not getattr(model, "is_multilabel_")
 
         return
 
@@ -188,9 +188,9 @@ class TestClassifications(unittest.TestCase):
                                             'binary_crossentropy',
                                             model=make_dl_model(3))
 
-        assert not model.is_binary_
-        assert model.is_multiclass_
-        assert not model.is_multilabel_
+        assert not getattr(model, "is_binary_")
+        assert getattr(model, "is_multiclass_")
+        assert not getattr(model, "is_multilabel_")
 
         return
 
@@ -202,9 +202,9 @@ class TestClassifications(unittest.TestCase):
                                             model=make_dl_model(5)
                                             )
 
-        assert not model.is_binary_
-        assert not model.is_multiclass_
-        assert model.is_multilabel_
+        assert not getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert getattr(model, "is_multilabel_")
 
         return
 
@@ -216,9 +216,9 @@ class TestClassifications(unittest.TestCase):
                                             model=make_dl_model(5)
                                             )
 
-        assert not model.is_binary_
-        assert not model.is_multiclass_
-        assert model.is_multilabel_
+        assert not getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert getattr(model, "is_multilabel_")
 
         return
 
@@ -229,9 +229,10 @@ class TestClassifications(unittest.TestCase):
                                             model=make_dl_model(5, "sigmoid"),
                                             is_multilabel=True)
 
-        assert not model.is_binary_
-        assert not model.is_multiclass_
-        assert model.is_multilabel_
+
+        assert not getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert getattr(model, "is_multilabel_")
 
         return
 
@@ -242,9 +243,9 @@ class TestClassifications(unittest.TestCase):
                                             make_dl_model(5, "sigmoid"),
                                             is_multilabel=True)
 
-        assert not model.is_binary_
-        assert not model.is_multiclass_
-        assert model.is_multilabel_
+        assert not getattr(model, "is_binary_")
+        assert not getattr(model, "is_multiclass_")
+        assert getattr(model, "is_multilabel_")
 
         return
 

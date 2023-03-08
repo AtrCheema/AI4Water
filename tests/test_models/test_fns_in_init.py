@@ -39,7 +39,7 @@ class TestModels(unittest.TestCase):
                       input_features=input_features,
                       output_features=output_features,
                       epochs=1,
-                      verbosity=0
+                      verbosity=-1
                       )
         assert model.category == "DL"
         return
@@ -49,7 +49,7 @@ class TestModels(unittest.TestCase):
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
-                      verbosity=0)
+                      verbosity=-1)
         assert model.category == "DL"
         return
 
@@ -58,7 +58,7 @@ class TestModels(unittest.TestCase):
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
-                      verbosity=0)
+                      verbosity=-1)
         assert model.category == "DL"
         model.fit(data=data)
         return
@@ -67,7 +67,7 @@ class TestModels(unittest.TestCase):
         model = Model(model=FTTransformer(len(input_features)),
                       input_features=input_features,
                       output_features=output_features,
-                      verbosity=0)
+                      verbosity=-1)
         assert model.category == "DL"
         model.fit(data=data)
         return
@@ -77,7 +77,7 @@ class TestModels(unittest.TestCase):
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
-                      verbosity=0)
+                      verbosity=-1)
         assert model.category == "DL"
         return
 
@@ -86,7 +86,7 @@ class TestModels(unittest.TestCase):
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 9},
-                      verbosity=0)
+                      verbosity=-1)
         assert model.category == "DL"
         return
 
@@ -98,7 +98,7 @@ class TestModels(unittest.TestCase):
                       output_features=output_features_cls,
                       epochs=2,
                       loss="binary_crossentropy",
-                      verbosity=0
+                      verbosity=-1
                       )
         model.fit(data=cls_data)
         return
@@ -113,7 +113,7 @@ class TestModels(unittest.TestCase):
                       output_features=output_features_cls,
                       epochs=2,
                       loss="binary_crossentropy",
-                      verbosity=0
+                      verbosity=-1
                       )
 
         model.fit(data=cls_data)
@@ -126,7 +126,7 @@ class TestModels(unittest.TestCase):
                       output_features=multi_cls_out,
                       epochs=2,
                       loss="categorical_crossentropy",
-                      verbosity=0,
+                      verbosity=-1,
                       )
         model.fit(data=multi_cls_data)
         return
@@ -135,7 +135,7 @@ class TestModels(unittest.TestCase):
         model = FModel(model=TFT(input_shape=(14, 13)),
                        ts_args={"lookback": 14}, verbosity=-1,
                        epochs=1)
-        model.fit(data=busan_beach(), verbose=0)
+        model.fit(data=busan_beach(), verbose=-1)
         return
 
     def test_lstm_autoencoder_1lyr(self):
@@ -148,7 +148,7 @@ class TestModels(unittest.TestCase):
                       output_features=output_features, ts_args={"lookback": lookback_steps},
                       verbosity=0)
         # train the model
-        model.fit(data=data, verbose=0, epochs=1)
+        model.fit(data=data, verbose=-1, epochs=1)
 
         return
 
@@ -162,8 +162,9 @@ class TestModels(unittest.TestCase):
                       output_features=output_features, ts_args={"lookback": lookback_steps},
                       verbosity=0)
         # train the model
-        model.fit(data=data, verbose=0, epochs=1)
+        model.fit(data=data, verbose=-1, epochs=1)
         return
+
 
 if __name__ == "__main__":
     unittest.main()

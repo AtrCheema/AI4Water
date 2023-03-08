@@ -598,7 +598,7 @@ class TestTransform(unittest.TestCase):
         ai_tr = Transformation('yeo-johnson', features=features)
         sk_tr = PowerTransformer(method='yeo-johnson')
         test_transform(sk_tr, ai_tr, features)
-        return 
+        return
 
 
 if __name__ == "__main__":
