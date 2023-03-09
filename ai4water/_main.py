@@ -5,7 +5,7 @@ import time
 import warnings
 from types import MethodType
 from pickle import PicklingError
-from typing import Union, Callable, Tuple, List
+from typing import Union, Callable, List
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
@@ -209,8 +209,10 @@ class BaseModel(NN):
             verbosity : int default is 1
                 determines the amount of information being printed. 0 means no
                 print information. Can be between 0 and 3. Setting this value to 0
-                will also reqult in not showing some plots such as loss curve or
+                will also result in not showing some plots such as loss curve or
                 regression plot. These plots will only be saved in self.path.
+                Setting this value to -1 will result in not saving any file in the disk.
+                This value is also passed to XGBoost, LGBM and CatBoost libraries.
             accept_additional_args : bool  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
@@ -220,17 +222,18 @@ class BaseModel(NN):
         Note
         -----
             The transformations applied on `x` and `y` data using `x_transformation`
-            and `y_transformations` are part of **model**. See `transformation`_
+            and `y_transformation` are part of **model**. See `transformation`_
 
         Examples
         -------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
+            >>> from ai4water.models import MLP
             >>> df = busan_beach()
             >>> ann = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
             ...              output_features=df.columns.tolist()[-1:],
-            ...              model={'layers': {'Dense': 64, 'Dense': 1}},
+            ...              model=MLP(64),
             ... )
             >>> history = ann.fit(data=df)
             >>> y = ann.predict()
@@ -762,11 +765,12 @@ class BaseModel(NN):
                 self.use_wandb = True
                 for key in ['project', 'entity']:
                     assert key in wandb_config, f"wandb_config must have {key} key in it"
-                wandb.init(name=os.path.basename(self.path),
-                           project=wandb_config.pop('project'),
-                           notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
-                           tags=['ai4water', self.api, self.category, self.mode],
-                           entity=wandb_config.pop('entity'))
+                wandb.init(
+                    name=os.path.basename(self.path),
+                    project=wandb_config.pop('project'),
+                    notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
+                    tags=['ai4water', self.api, self.category, self.mode],
+                    entity=wandb_config.pop('entity'))
 
                 monitor = self.config.get('monitor', 'val_loss')
                 if 'monitor' in wandb_config:
@@ -782,10 +786,11 @@ class BaseModel(NN):
 
                 assert callable(WandbCallback)
 
-                callback['wandb_callback'] = WandbCallback(monitor=monitor,
-                                                           training_data=train_data if add_train_data else None,
-                                                           validation_data=validation_data if add_val_data else None,
-                                                           **wandb_config)
+                callback['wandb_callback'] = WandbCallback(
+                    monitor=monitor,
+                    training_data=train_data if add_train_data else None,
+                    validation_data=validation_data if add_val_data else None,
+                    **wandb_config)
         return callback
 
     def post_fit_wandb(self):
@@ -800,7 +805,7 @@ class BaseModel(NN):
 
         if self.category == "DL":
             if K.BACKEND == 'pytorch':
-                history = self.torch_learner.history
+                history = getattr(self, "torch_learner").history
 
             elif hasattr(self, 'history'):
                 history = self.history
@@ -854,7 +859,7 @@ class BaseModel(NN):
         if estimator in ["CatBoostRegressor", "CatBoostClassifier"]:
             # https://stackoverflow.com/a/52921608/5982232
             if not any([arg in kwargs for arg in ['verbose', 'silent', 'logging_level']]):
-                if self.verbosity == 0:
+                if self.verbosity <= 0:
                     kwargs['logging_level'] = 'Silent'
                 elif self.verbosity == 1:
                     kwargs['logging_level'] = 'Verbose'
@@ -866,6 +871,7 @@ class BaseModel(NN):
         if estimator in ["XGBRegressor", "XGBClassifier"]:
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
+            kwargs['verbosity'] = self.verbosity
 
         # following sklearn based models accept random_state argument
         if estimator in [
@@ -911,6 +917,7 @@ class BaseModel(NN):
                 # todo, user must be notified
                 kwargs['bagging_freq'] = 1
                 kwargs['bagging_fraction'] = 0.5
+            kwargs['verbosity'] = self.verbosity  # https://lightgbm.readthedocs.io/en/latest/Parameters.html#verbosity
 
         if self.is_custom_model:
             if hasattr(estimator, '__call__'):  # initiate the custom model
@@ -928,8 +935,7 @@ class BaseModel(NN):
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
                                             xgboost=xgboost)
-            if estimator in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
-                             'GammaRegressor']:
+            if estimator in ['TweedieRegressor', 'PoissonRegressor', 'GammaRegressor']:
                 sk_maj_ver = int(sklearn.__version__.split('.')[0])
                 sk_min_ver = int(sklearn.__version__.split('.')[1])
 
@@ -1061,11 +1067,12 @@ class BaseModel(NN):
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
                 elif self.mode == 'classification':
+                    num_classes = getattr(self, "num_clases_")
                     activation = self.layers[-1].get_config()['activation']
-                    if self.is_binary_:
+                    if getattr(self, "is_binary_"):
                         if activation == "softmax":
-                            assert model_output_shape[0] == self.num_classes_, f"""inferred number of classes are 
-                                        {self.num_classes_} while model's output has {model_output_shape[0]} nodes """
+                            assert model_output_shape[0] == num_classes, f"""inferred number of classes are 
+                                        {num_classes} while model's output has {model_output_shape[0]} nodes """
                         else:
                             if outputs.shape[1] > model_output_shape[0]:
                                 outputs = np.argmax(outputs, 1).reshape(-1, 1)
@@ -1174,12 +1181,12 @@ class BaseModel(NN):
         We can also have our own performance metric as scoring
 
         >>> from ai4water.datasets import MtropicsLaos
-        >>> data = MtropicsLaos().make_classification(lookback_steps=1)
+        >>> df = MtropicsLaos().make_classification(lookback_steps=1)
         >>> def f1_score_(t,p)->float:
         >>>    return ClassificationMetrics(t, p).f1_score(average="macro")
         >>> model = Model(model="RandomForestClassifier",
         ... cross_validator={"KFold": {"n_splits": 5}},)
-        >>> model.cross_val_score(data=data, scoring=f1_score_)
+        >>> model.cross_val_score(data=df, scoring=f1_score_)
 
         Note
         ----
@@ -1354,7 +1361,7 @@ class BaseModel(NN):
         else:
             AttribtueSetter(self, y)
 
-        if self.is_binary_:
+        if getattr(self, "is_binary_"):
             if len(y) != y.size: # when sigmoid is used for binary
                 # convert the output to 1d
                 y = np.argmax(y, 1).reshape(-1, 1)
@@ -1469,28 +1476,28 @@ class BaseModel(NN):
 
         Examples
         --------
-            >>> import numpy as np
+            >>> import numpy
             >>> from ai4water import Model
             >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model=MLP(),
             ...               input_features=data.columns.tolist()[0:-1],
             ...               output_features=data.columns.tolist()[-1:])
-            >>> model.fit(data=data)
+            >>> model.fit(data=df)
 
             for evaluation on test data
 
-            >>> model.evaluate(data=data)
+            >>> model.evaluate(data=df)
             ...
 
             evaluate on any metric from SeqMetrics_ library
 
-            >>> model.evaluate(data=data, metrics='pbias')
+            >>> model.evaluate(data=df, metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
-            >>> new_inputs = np.random.random((10, 13))
-            >>> new_outputs = np.random.random((10, 1, 1))
+            >>> new_inputs = numpy.random.random((10, 13))
+            >>> new_outputs = numpy.random.random((10, 1, 1))
             >>> model.evaluate(new_inputs, new_outputs)
 
             backward compatability
@@ -1544,19 +1551,20 @@ class BaseModel(NN):
             by `evaluate` method of underlying model. Otherwise the model is evaluated
             for given metric or group of metrics and the result is returned as float
             or dictionary
+
         Examples
         --------
             >>> from ai4water import Model
             >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model=MLP(),
             ...               input_features=data.columns.tolist()[0:-1],
             ...               output_features=data.columns.tolist()[-1:])
-            >>> model.fit(data=data)
+            >>> model.fit(data=df)
             ... # for evaluation on training data
-            >>> model.evaluate_on_training_data(data=data)
-            >>> model.evaluate(data=data, metrics='pbias')
+            >>> model.evaluate_on_training_data(data=df)
+            >>> model.evaluate(data=df, metrics='pbias')
         """
         x, y = self.training_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
@@ -1594,19 +1602,20 @@ class BaseModel(NN):
             by `evaluate` method of underlying model. Otherwise the model is evaluated
             for given metric or group of metrics and the result is returned as float
             or dictionary
+
         Examples
         --------
             >>> from ai4water import Model
             >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model=MLP(),
             ...               input_features=data.columns.tolist()[0:-1],
             ...               output_features=data.columns.tolist()[-1:])
-            >>> model.fit(data=data)
+            >>> model.fit(data=df)
             ... # for evaluation on validation data
-            >>> model.evaluate_on_validation_data(data=data)
-            >>> model.evaluate_on_validation_data(data=data, metrics='pbias')
+            >>> model.evaluate_on_validation_data(data=df)
+            >>> model.evaluate_on_validation_data(data=df, metrics='pbias')
         """
 
         x, y = self.validation_data(data=data)
@@ -1655,14 +1664,14 @@ class BaseModel(NN):
             >>> from ai4water import Model
             >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model=MLP(),
             ...               input_features=data.columns.tolist()[0:-1],
             ...               output_features=data.columns.tolist()[-1:])
-            >>> model.fit(data=data)
+            >>> model.fit(data=df)
             ... # for evaluation on test data
-            >>> model.evaluate_on_test_data(data=data)
-            >>> model.evaluate_on_test_data(data=data, metrics='pbias')
+            >>> model.evaluate_on_test_data(data=df)
+            >>> model.evaluate_on_test_data(data=df, metrics='pbias')
         """
         x, y = self.test_data(data=data)
         if not _find_num_examples(x):
@@ -1671,19 +1680,20 @@ class BaseModel(NN):
 
     def evaluate_on_all_data(self, data, metrics=None, **kwargs):
         """evaluates the model on all i.e. training+validation+test data.
+
         Examples
         --------
             >>> from ai4water import Model
             >>> from ai4water.models import MLP
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model=MLP(),
             ...               input_features=data.columns.tolist()[0:-1],
             ...               output_features=data.columns.tolist()[-1:])
-            >>> model.fit(data=data)
+            >>> model.fit(data=df)
             ... # for evaluation on all data
-            >>> print(model.evaluate_on_all_data(data=data)))
-            >>> print(model.evaluate_on_all_data(data=data, metrics='pbias'))
+            >>> print(model.evaluate_on_all_data(data=df)))
+            >>> print(model.evaluate_on_all_data(data=df, metrics='pbias'))
         """
         x, y = self.all_data(data=data)
         return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
@@ -1749,7 +1759,7 @@ class BaseModel(NN):
 
             errs = RegressionMetrics(t, p)
         else:
-            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass_)
+            errs = ClassificationMetrics(t, p, multiclass=getattr(self, "is_multiclass_"))
 
         if isinstance(metrics, str):
 
@@ -1835,8 +1845,8 @@ class BaseModel(NN):
 
         using your own data
 
-        >>> import numpy as np
-        >>> new_input = np.random.random((10, 13))
+        >>> import numpy
+        >>> new_input = numpy.random.random((10, 13))
         >>> pred = model.predict(x = new_input)
         """
 
@@ -2234,7 +2244,7 @@ class BaseModel(NN):
             kwargs['learning_rate'] = kwargs.pop('lr')
 
         if self.config['backend'] == 'pytorch':
-            kwargs.update({'params': self.parameters()})  # parameters from pytorch model
+            kwargs.update({'params': getattr(self, "parameters")()})  # parameters from pytorch model
         return kwargs
 
     def get_metrics(self) -> list:
@@ -2437,7 +2447,7 @@ class BaseModel(NN):
         Example
         -------
             >>> from ai4water import Model
-            >>> import numpy as np
+            >>> import numpy
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
             >>> old_model = Model(model="XGBRegressor")
@@ -2445,7 +2455,7 @@ class BaseModel(NN):
             ... # now construct a new model instance from config dictionary
             >>> model = Model.from_config(old_model.config)
             >>> model.update_weights()
-            >>> x = np.random.random((100, 14))
+            >>> x = numpy.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
         return cls._get_config_and_path(
@@ -2482,9 +2492,9 @@ class BaseModel(NN):
         -------
             >>> from ai4water import Model
             >>> config_file_path = "../path/to/config.json"
-            >>> model = Model.from_config_file(config_file_path)
+            >>> model_ = Model.from_config_file(config_file_path)
             >>> x = np.random.random((100, 14))
-            >>> prediction = model.predict(x=x)
+            >>> prediction = model_.predict(x=x)
         """
 
         # when an instance of Model is created, config is written, which
@@ -2593,25 +2603,20 @@ class BaseModel(NN):
             if self.api == 'functional' and self.config['backend'] == 'tensorflow':
                 self._model.load_weights(weight_file_path)
             elif self.config['backend'] == 'pytorch':
-                self.load_state_dict(torch.load(weight_file_path))
+                getattr(self, "load_state_dict")(torch.load(weight_file_path))
             else:
-                self.load_weights(weight_file_path)
+                getattr(self, "load_weights")(weight_file_path)
 
         if self.verbosity > 0:
             print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
         return
 
-    def eda(self, data, freq: str = None):
+    def eda(self, data, *args, **kwargs):
         """Performs comprehensive Exploratory Data Analysis.
 
         Parameters
         ----------
             data :
-            freq :
-                if specified, small chunks of data will be plotted instead of
-                whole data at once. The data will NOT be resampled. This is valid
-                only `plot_data` and `box_plot`. Possible values are `yearly`,
-                weekly`, and  `monthly`.
 
         Returns
         -------
@@ -2624,7 +2629,8 @@ class BaseModel(NN):
                   path=self.path,
                   in_cols=self.input_features,
                   out_cols=self.output_features,
-                  save=True)
+                  save=True,
+                  *args, **kwargs)
 
         eda()
 
@@ -2711,7 +2717,7 @@ class BaseModel(NN):
 
             Same can be done if a model is defined using neural networks
 
-            ... lookback = 14
+            >>> lookback = 14
             >>> model_config = {"layers": {
             ...     "Input": {"input_shape": (lookback, 13)},
             ...     "LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
@@ -3155,8 +3161,7 @@ class BaseModel(NN):
             """)
             return {}
 
-        from ai4water.postprocessing._sa import sensitivity_analysis, sensitivity_plots
-        from ai4water.postprocessing._sa import _make_predict_func
+        from ai4water.postprocessing._sa import sensitivity_analysis, sensitivity_plots, make_predict_func
 
         if data is not None:
             if not isinstance(data, np.ndarray):
@@ -3179,9 +3184,9 @@ class BaseModel(NN):
 
         if self.lookback >1:
             if self.category == "DL":
-                func = _make_predict_func(self, verbose=0)
+                func = make_predict_func(self, verbose=0)
             else:
-                func = _make_predict_func(self)
+                func = make_predict_func(self)
         else:
             func = self.predict
 
@@ -3233,10 +3238,10 @@ class BaseModel(NN):
         --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
-            >>> model.fit(data=data)
-            >>> model.shap_values(data=data)
+            >>> model.fit(data=df)
+            >>> model.shap_values(data=df)
 
         """
 
@@ -3271,10 +3276,10 @@ class BaseModel(NN):
         --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
-            >>> model.fit(data=data)
-            >>> model.explain_example(data=data, example_num=2)
+            >>> model.fit(data=df)
+            >>> model.explain_example(data=df, example_num=2)
 
         """
 
@@ -3335,12 +3340,12 @@ class BaseModel(NN):
         --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
+            >>> df = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
-            >>> model.fit(data=data)
-            >>> model.partial_dependence_plot(x=data.iloc[:, 0:-1], feature_name="tide_cm")
+            >>> model.fit(data=df)
+            >>> model.partial_dependence_plot(x=df.iloc[:, 0:-1], feature_name="tide_cm")
             ...
-            >>> model.partial_dependence_plot(data=data, feature_name="tide_cm")
+            >>> model.partial_dependence_plot(data=df, feature_name="tide_cm")
 
         """
         if x is None:
@@ -3519,7 +3524,7 @@ class BaseModel(NN):
                 prediction=y,
                 feature=features[0],
                 feature_name=feature_names[0],
-                n_classes=self.num_classes_,
+                n_classes=getattr(self, "num_classes_"),
                 num_grid_points=num_grid_points or 10,
                 grid_type=grid_types,
                 percentile_range=percentile_ranges,
@@ -3578,6 +3583,11 @@ class BaseModel(NN):
             arguments.""")
 
         transformer = Transformations.from_config(self.config[name_in_config])
+
+        # because in _fit_transform(), DataFrame is also converted so we do it here
+        # as well
+        if isinstance(data, pd.DataFrame):
+            data = data.values
         return transformer.transform(data=data)
 
     def _transform_x(self, x):
@@ -3603,10 +3613,11 @@ class BaseModel(NN):
     def _fit_transform_y(self, y):
         """fits and transforms y and puts the transformer in config witht he key
         'y_transformer_'"""
-        return self._fit_transform(y,
-                                   'y_transformer_',
-                                   self.config['y_transformation'],
-                                   self.output_features)
+        return self._fit_transform(
+            y,
+            'y_transformer_',
+            self.config['y_transformation'],
+            self.output_features)
 
     def _fit_transform(self, data, key, transformation, feature_names):
         """fits and transforms the `data` using `transformation` and puts it in config
@@ -3722,10 +3733,10 @@ class BaseModel(NN):
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="XGBRegressor")
-        >>> train_x, train_y = model.training_data(data=data)
-        >>> print(train_x.shape, train_y.shape)
-        >>> val_x, val_y = model.validation_data(data=data)
-        >>> print(val_x.shape, val_y.shape)
+        >>> x_train, y_train = model.training_data(data=data)
+        >>> print(x_train.shape, y_train.shape)
+        >>> x_valid, y_valid = model.validation_data(data=data)
+        >>> print(x_valid.shape, y_valid.shape)
         ... # all_data will contain both training and validation data
         >>> all_x, all_y = model.all_data(data=data)
         >>> print(all_x.shape, all_y.shape

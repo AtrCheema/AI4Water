@@ -1020,6 +1020,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
 
+    def _prep_parallel_coord_data(self):
+        d = self.xy_of_iterations()
+
+        data = pd.DataFrame([list(v['x'].values()) for v in d.values()],
+                            columns=[s for s in self.space()])
+        categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+        return data, categories
+
     def plot_parallel_coords(self, save=True, show=False, **kwargs):
         """ parallel coordinates of hyperparameters
 
@@ -1030,11 +1038,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         **kwargs :
             any keyword arguments for easy_mpl.parallel_coordinates
         """
-        d = self.xy_of_iterations()
-
-        data = pd.DataFrame([list(v['x'].values()) for v in d.values()],
-                            columns=[s for s in self.space()])
-        categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+        data, categories = self._prep_parallel_coord_data()
 
         _kws = dict(coord_title_kws=dict(rotation=10, fontsize=12))
         if kwargs is not None:

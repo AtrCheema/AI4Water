@@ -265,7 +265,7 @@ def _show_save(path=None, show=True):
     return
 
 
-def _make_predict_func(model, **kwargs):
+def make_predict_func(model, **kwargs):
 
     from ai4water.preprocessing import DataSet
 
