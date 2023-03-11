@@ -298,9 +298,21 @@ def plot_hyperparameters(
         plt.show()
 
 
-def post_process_skopt_results(skopt_results, results, opt_path, rename=True):
+def post_process_skopt_results(
+        skopt_results, results,
+        opt_path,
+        rename=True,
+        threshold=20
+):
 
-    skopt_plots(skopt_results, pref=opt_path)
+    pref=opt_path
+    if len(skopt_results.x) < threshold:
+        if skopt_results.space.n_dims == 1:
+            pass
+        else:
+            plt.close('all')
+            _ = plot_objective(skopt_results)
+            plt.savefig(os.path.join(pref, 'objective'), dpi=400, bbox_inches='tight')
 
     clear_weights(results=results, opt_dir=opt_path, rename=rename)
 
@@ -325,58 +337,34 @@ def save_skopt_results(skopt_results, opt_path):
     return
 
 
-def _plot_objective(search_results, pref="", threshold=20):
-    if len(search_results.x) < threshold:
-        if search_results.space.n_dims == 1:
-            pass
-        else:
-            plt.close('all')
-            _ = plot_objective(search_results)
-            plt.savefig(os.path.join(pref, 'objective'), dpi=400, bbox_inches='tight')
-    return
+def plot_convergence(
+        array,
+        ax=None,
+        show=True,
+        **kwargs
+):
+    n_calls = len(array)
 
+    if ax is None:
+        ax = plt.gca()
 
-def skopt_plots(search_result,
-                pref=os.getcwd(),
-                threshold=20):
+    _kwargs = {
+        "marker":".",
+        "markersize": 12,
+        "lw": 2,
+        "show":show,
+        "ax_kws": {"title": 'Convergence plot',
+        "xlabel": 'Number of calls $n$',
+        "ylabel": '$\min f(x)$ after $n$ calls',
+        'grid': True},
+        'ax': ax,
+    }
 
-    if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
-        plt.close('all')
-        _ = plot_evaluations(search_result)
-        plt.savefig(os.path.join(pref, 'evaluations'), dpi=400, bbox_inches='tight')
+    _kwargs.update(kwargs)
 
-    _plot_objective(search_result, pref=pref, threshold=threshold)
+    ax = plot(range(1, n_calls + 1), array, **_kwargs)
+    return ax
 
-    convergence(search_result.func_vals)
-    plt.savefig(os.path.join(pref, 'convergence'), dpi=300, bbox_inches='tight')
-    convergence(search_result.func_vals, show_original=True)
-    plt.savefig(os.path.join(pref, 'convergence_original'), dpi=300, bbox_inches='tight')
-    return
-
-
-def convergence(func_vals, color=None,
-                show_original=False):
-
-    _, ax = plt.subplots()
-    ax.grid()
-
-    n_calls = len(func_vals)
-    mins = [np.min(func_vals[:i])
-            for i in range(1, n_calls + 1)]
-
-    if show_original:
-        data = func_vals
-    else:
-        data = mins
-
-    return plot(data,
-         color=color,
-         marker=".", markersize=12, lw=2,
-         ax_kws=dict(title="Convergence plot",
-         xlabel="Number of calls $n$",
-         ylabel=r"$\min f(x)$ after $n$ calls"),
-         show=False,
-         ax=ax)
 
 class SerializeSKOptResults(object):
     """
@@ -650,7 +638,7 @@ def to_skopt_space(x):
         else:
             # x consits of one or multiple tuples
             assert all([isinstance(obj, tuple) for obj in x])
-            _space = [make_space(i) for i in x]
+            _space = Space([make_space(i) for i in x])
 
     elif isinstance(x, dict):  # todo, in random, should we build Only Categorical space?
         space_ = []
@@ -943,7 +931,7 @@ def space_from_list(v: list, k: str):
     return s
 
 
-def plot_convergence(func_vals, show=False, ax=None, **kwargs):
+def plot_convergence1(func_vals, show=False, ax=None, **kwargs):
 
     func_vals = np.array(func_vals)
     n_calls = len(func_vals)

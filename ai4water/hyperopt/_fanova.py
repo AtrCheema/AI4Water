@@ -537,6 +537,7 @@ class fANOVA(object):
                 importances_mean[name] /= importances_sum
 
         importances = {k: v for k, v in reversed(sorted(importances_mean.items(), key=lambda item: item[1]))}
+        setattr(self, "importances", importances)
 
         if return_raw:
             return importances_mean, importances_std

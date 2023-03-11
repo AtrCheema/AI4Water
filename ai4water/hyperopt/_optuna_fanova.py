@@ -1,8 +1,10 @@
-# This file contains code mostly or 90% from optuna library. The reason to rewrite this code is because
+# This file contains code mostly or 90% from optuna library.
+# The reason to rewrite this code is because
 # I was unable to create an Optuna Study instance without `Storage` attribute. But it appears that
 # we can calculate parameter importance without Storage attribute from Study instance. Thus
 # the importance is calculated from Study instance without it having Storage attribute.
 # also support to handle nan values in target array is added.
+# Also the function `calc_param_importances` returns absolute importance as well as mean and std
 # The optuna library comes with following MIT licence.
 """
 MIT License
@@ -166,7 +168,7 @@ class ImportanceEvaluator1(FanovaImportanceEvaluator):
         return sorted_importances
 
 
-def plot_param_importances(
+def calc_param_importances(
         study: Study,
         evaluator=None,
         params: Optional[List[str]] = None,
@@ -199,17 +201,13 @@ def plot_param_importances(
             study, evaluator=evaluator, params=params, target=target
         )
     except RuntimeError:  # sometimes it is returning error e.g. when number of trials are < 4
-        return None, None, None
+        return None, None
 
     importances = OrderedDict(reversed(list(importances.items())))
-    importance_values = list(importances.values())
-    param_names = list(importances.keys())
 
-    ax = bar_chart(importance_values, param_names, orient='h', show=False,
-                   ax_kws={'title':"fANOVA hyperparameter importance",
-                   'xlabel':"Relative Importance"})
-
-    return importances, evaluator.importance_paras, ax
+    mean = {k:v['mean'] for k,v in evaluator.importance_paras.items()}
+    std = {k:v['std'] for k,v in evaluator.importance_paras.items()}
+    return importances, mean, std
 
 
 def _get_distribution(param_name: str, study: Study):

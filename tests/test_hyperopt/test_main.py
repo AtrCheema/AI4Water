@@ -324,16 +324,20 @@ class TestUnifiedInterface(unittest.TestCase):
     def test_tpe_optuna(self):
 
         run_unified_interface('tpe', 'optuna', 5)
+        return
 
     def test_cmaes_optuna(self):
         run_unified_interface('cmaes', 'optuna', 5)
+        return
 
     def test_random_optuna(self):
 
         run_unified_interface('random', 'optuna', 5)
+        return
 
     def test_grid_optuna(self):
         run_unified_interface('grid', 'optuna', 5, num_samples=3)
+        return
 
     def test_tpe_hyperopt(self):
         run_unified_interface('tpe', 'hyperopt', 5)
@@ -344,9 +348,11 @@ class TestUnifiedInterface(unittest.TestCase):
 
     def test_random_hyperopt(self):
         run_unified_interface('random', 'hyperopt', 5)
+        return
 
     def test_bayes_skopt(self):
         run_unified_interface('bayes', 'skopt', 12)
+        return
 
     def test_bayes_rf_skopt(self):
         run_unified_interface('bayes_rf', 'skopt', 12)

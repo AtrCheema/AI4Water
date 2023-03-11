@@ -12,7 +12,7 @@ from .utils import post_process_skopt_results
 from .utils import to_skopt_space
 from .utils import save_skopt_results
 from .utils import Dimension
-from .utils import plot_convergence
+from .utils import plot_convergence, plot_convergence1
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
@@ -1044,7 +1044,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if kwargs is not None:
             _kws.update(kwargs)
 
-        parallel_coordinates(
+        out = parallel_coordinates(
             data=data,
             categories=categories,
             title="Hyperparameters",
@@ -1057,16 +1057,56 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if show:
             plt.show()
-        return
+        return out
 
-    def _plot_evaluations(self, save=True):
-        plt.close('all')
-        plot_evaluations(self.skopt_results(), dimensions=self.best_paras(as_list=True))
+    def _plot_evaluations(self, threshold=20, save=True):
+        out = None
+        search_result = self.skopt_results()
+        if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
+            plt.close('all')
+            out = plot_evaluations(search_result, dimensions=self.best_paras(as_list=True))
+            if save:
+                plt.savefig(os.path.join(self.opt_path, "evaluations.png"),
+                            dpi=300,
+                            bbox_inches='tight')
+        return out
+
+    def plot_convergence(
+            self,
+            original: bool = False,
+            ax=None,
+            save=True,
+            show=False,
+            **kwargs
+    ):
+        """plots the convergence of optimization"""
+        array = self.get_convergence(original=original)
+        ax= plot_convergence(array, ax=ax, show=False, **kwargs)
         if save:
-            plt.savefig(os.path.join(self.opt_path, "evaluations.png"),
-                        dpi=300,
-                        bbox_inches='tight')
-        return
+            fname = "convergence_original" if original else "convergence"
+            fname = os.path.join(self.opt_path, f"{fname}.png")
+            plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+        if show:
+            plt.show()
+        return ax
+
+    def get_convergence(
+            self,
+            original:bool = False
+    )->np.ndarray:
+        """gets the convergence array"""
+        func_vals = self.func_vals()
+
+        if original:
+            return func_vals
+
+        n_calls = len(func_vals)
+
+        mins = [np.min(func_vals[:i])
+                for i in range(1, n_calls + 1)]
+
+        return np.array(mins)
 
     def _plot_convergence(self,
                           original:bool=False,
@@ -1086,7 +1126,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                show=False,
                                **kwargs)
         else:
-            ax = plot_convergence(self.func_vals(), ax=ax, show=False, **kwargs)
+            ax = plot_convergence1(self.func_vals(), ax=ax, show=False, **kwargs)
         if save:
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
@@ -1121,10 +1161,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         # convergence plot,
         #if sr.x_iters is not None and self.backend != "skopt": # todo
-        self._plot_convergence(show=show)
+        self.plot_convergence(show=show)
+        self.plot_convergence(original=True, show=show)
 
         # plot of hyperparameter space as explored by the optimizer
-        if self.backend != 'skopt' and len(self.space()) < 20 and skopt is not None:
+        if len(self.space()) < 20 and skopt is not None:
             self._plot_evaluations()
 
         if len(self.best_paras(True))>1:
@@ -1156,18 +1197,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(
+    def calc_importance(
             self,
-            save=True,
-            show:bool=False,
-            plot_type="box",
             with_optuna:bool = False,
             **tree_kws
-    )->plt.Axes:
-        """plots hyperparameter importance using fANOVA"""
+    ):
 
         if with_optuna:
-            return self._calc_importance_with_optuna(plot_type, save=save, show=show)
+            from ._optuna_fanova import calc_param_importances
+
+            return calc_param_importances(self.optuna_study())
 
         X = pd.DataFrame([list(iter_xy['x'].values()) for iter_xy in self.xy_of_iterations().values()])
         Y = np.array([iter_xy['y'] for iter_xy in self.xy_of_iterations().values()])
@@ -1179,21 +1218,28 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         kws.update(tree_kws)
 
+        fanova = fANOVA(**kws)
+        mean, std = fanova.feature_importance(return_raw=True)
+        return mean, std, getattr(fanova, "importances")
+
+    def plot_importance(
+            self,
+            save=True,
+            show:bool=False,
+            plot_type="box",
+            with_optuna:bool = False,
+            **tree_kws
+    )->plt.Axes:
+        """calculates and plots hyperparameter importance using fANOVA"""
+
+        try:
+            abs_imp, mean, std = self.calc_importance(with_optuna=with_optuna, **tree_kws)
+        except (AttributeError, RuntimeError):
+            raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
+
         if plot_type == "bar":
-            try:
-                importance = fANOVA(**kws).feature_importance()
-            except (AttributeError, RuntimeError):
-                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
-
-            ax = self._plot_importance_as_barchart(importance, save=save)
-
+            ax = self._plot_importance_as_barchart(abs_imp, save=save)
         else:
-
-            try:
-                mean, std = fANOVA(**kws).feature_importance(return_raw=True)
-            except (AttributeError, RuntimeError):
-                raise ValueError(f"Error encountered during fANOVA, try setting `with_optuna` to True")
-
             ax = self._plot_importance_as_boxplot(mean, std, save)
 
         if show:
@@ -1221,7 +1267,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def _plot_importance_as_barchart(self, importance, save=False):
         df = pd.DataFrame.from_dict(importance, orient='index')
-        ax = bar_chart(df, orient='h', show=False,
+        ax = bar_chart(df,
+        labels=df.index,               
+                       orient='h', 
+                       show=False,
                        ax_kws={'title': "fANOVA hyperparameter importance",
                                'xlabel': "Relative Importance"})
 
@@ -1233,39 +1282,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         with open(os.path.join(self.opt_path, fname), 'w') as fp:
             json.dump(jsonize(df.to_dict()), fp, indent=4, sort_keys=True)
-        return ax
-
-    def _calc_importance_with_optuna(self, plot_type="bar", save=False, show=True):
-        # todo, it is plotting both bar_chart and boxplot on same axes
-        from ._optuna_fanova import plot_param_importances
-
-        importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-
-        if plot_type == "bar":
-            if save:
-                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
-                            bbox_inches="tight", dpi=300)
-        else:
-            plt.close('all')  # because bar chart has already been drawn
-            df = pd.DataFrame.from_dict(importance_paras)
-            ax = df.boxplot(rot=70, return_type="axes")
-            ax.set_ylabel("Relative Importance")
-            if save:
-                plt.savefig(os.path.join(
-                    self.opt_path,
-                    "fanova_importance_hist.png"),
-                    dpi=300,
-                    bbox_inches='tight')
-
-        with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-            json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
-
-        with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-            json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
-
-        if show:
-            plt.show()
-
         return ax
 
     def optuna_study(self):
