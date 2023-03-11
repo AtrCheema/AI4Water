@@ -206,22 +206,6 @@ def to_real(hp_space, prior_name=None):
     return Real(low=limits['low'], high=limits['high'], prior=prior, name=prior_name)
 
 
-def loss_histogram(losses,  # array like
-                   xlabel='objective_fn',
-                   ylabel='Frequency',
-                   save=True,
-                   fname="histogram.png"):
-
-    plt.hist(losses)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
-    if save:
-        plt.savefig(fname, dpi=300, bbox_inches='tight')
-    else:
-        plt.show()
-
-
 def plot_hyperparameters(
         trials,
         save=True,
@@ -245,7 +229,7 @@ def plot_hyperparameters(
 
     loss_min = min(finite_losses)
     loss_max = max(finite_losses)
-    print("finite loss range", loss_min, loss_max, colorize_thresh)
+    #print("finite loss range", loss_min, loss_max, colorize_thresh)
 
     loss_by_tid = dict(zip(trials.tids, losses))
 
@@ -295,7 +279,9 @@ def plot_hyperparameters(
     if save:
         plt.savefig(fname, dpi=300, bbox_inches='tight')
     else:
+        plt.tight_layout()
         plt.show()
+    return
 
 
 def post_process_skopt_results(

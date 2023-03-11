@@ -15,7 +15,7 @@ from .utils import Dimension
 from .utils import plot_convergence, plot_convergence1
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
-from .utils import loss_histogram, plot_hyperparameters
+from .utils import plot_hyperparameters
 
 from ai4water.utils.utils import JsonEncoder
 from ai4water.utils.utils import clear_weights
@@ -33,6 +33,7 @@ ParameterSampler = sklearn.model_selection.ParameterSampler
 bar_chart = easy_mpl.bar_chart
 parallel_coordinates = easy_mpl.parallel_coordinates
 create_subplots = easy_mpl.utils.create_subplots
+hist = easy_mpl.hist
 
 if skopt is None:
     pass
@@ -46,22 +47,17 @@ else:
     from skopt.plots import plot_evaluations
 
 if _hyperopt is not None:
-    space_eval = _hyperopt.space_eval
     hp = _hyperopt.hp
-    miscs_to_idxs_vals = _hyperopt.base.miscs_to_idxs_vals
     Apply = _hyperopt.pyll.base.Apply
     fmin_hyperopt = _hyperopt.fmin
     tpe = _hyperopt.tpe
-    STATUS_OK = _hyperopt.STATUS_OK
     Trials = _hyperopt.Trials
     rand = _hyperopt.rand
 else:
-    space_eval, hp = None, None
-    miscs_to_idxs_vals = None
+    hp = None
     Apply = None
     fmin_hyperopt = None
     tpe = None
-    STATUS_OK = None
     Trials = None
     rand = None
 
@@ -82,7 +78,6 @@ from ._fanova import fANOVA
 
 # TODO RayTune libraries under the hood https://docs.ray.io/en/master/tune/api_docs/suggestion.html#summary
 # TODO add generic algorithm, deap/pygad
-# TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 # todo loading gpmin_results is not consistent.
 
 SEP = os.sep
@@ -927,6 +922,27 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if callable(self.objective_fn) and not self.use_named_args:
             return self.objective_fn(*args)
 
+    def _hpo_trials(self):
+        if self.backend == "hyperopt":
+           return self.trials
+
+        class Trials:
+
+            def __init__(self1):
+
+                self1.tids = list(range(self.num_iterations))
+                self1.miscs = []
+                for tid, xy in self.xy_of_iterations().items():
+                    misc = {'tid': tid,
+                            'vals': {para:[val] for para, val in xy['x'].items()},
+                            'idxs': {para:[tid] for para in xy['x'].keys()}
+                            }
+                    self1.miscs.append(misc)
+            def losses(self1):
+                return np.array(self.func_vals()).reshape(-1,)
+
+        return Trials()
+
     def hp_space(self) -> dict:
         """returns a dictionary whose values are hyperopt equivalent space instances."""
         return {k: v.as_hp(False if self.algorithm == 'atpe' else True) for k,v in self.space().items()}
@@ -1136,11 +1152,20 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return ax
 
-    def process_results(self, show=False):
+    def process_results(
+            self,
+            convergence:bool = True,
+            loss_histogram:bool = True,
+            importance:bool = True,
+            parallel_coordinates_plot:bool = True,
+            show=False
+    ):
         """post processing of results"""
         self.save_iterations_as_xy()
 
-        self.plot_parallel_coords()
+        if parallel_coordinates_plot:
+            plt.close('all')
+            self.plot_parallel_coords()
 
         # deep learning related results
         if self.objective_fn_is_dl:
@@ -1153,39 +1178,52 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 what='loss',
                 ylabel='MSE',
                 leg_pos="upper right")
-
+        plt.close('all')
         self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
+        plt.close('all')
         self._plot_distributions(show=show)
 
-        # convergence plot,
-        #if sr.x_iters is not None and self.backend != "skopt": # todo
-        self.plot_convergence(show=show)
-        self.plot_convergence(original=True, show=show)
+        if convergence:
+            # convergence plot,
+            plt.close('all')
+            self.plot_convergence(show=show)
+            plt.close('all')
+            self.plot_convergence(original=True, show=show)
 
         # plot of hyperparameter space as explored by the optimizer
+        plt.close('all')
         if len(self.space()) < 20 and skopt is not None:
             self._plot_evaluations()
 
-        if len(self.best_paras(True))>1:
-            plt.close('all')
-            try:
-                self.plot_importance()
+        if importance:
+            if len(self.best_paras(True))>1:
                 plt.close('all')
-                self.plot_importance(plot_type="bar", show=show)
-            except (RuntimeError, AttributeError):
-                warnings.warn(f"Error encountered during fanova calculation")
+                try:
+                    self.plot_importance()
+                    plt.close('all')
+                    self.plot_importance(plot_type="bar", show=show)
+                except (RuntimeError, AttributeError):
+                    warnings.warn(f"Error encountered during fanova calculation")
 
-        if self.backend == 'hyperopt':
-            loss_histogram([y for y in self.trials.losses()],
-                           save=True,
-                           fname=os.path.join(self.opt_path, "loss_histogram.png")
-                           )
-            plot_hyperparameters(
-                self.trials,
-                fname=os.path.join(self.opt_path, "hyperparameters.png"),
-                save=True)
+        if loss_histogram:
+            # loss histogram
+            plt.close('all')
+            hist(
+                self.func_vals(),
+                show=False,
+                edgecolor="k", grid=False,
+                ax_kws=dict(xlabel="objective function", ylabel="Frequency")
+            )
+            plt.savefig(fname=os.path.join(self.opt_path, "loss_histogram.png"),
+                        bbox_inches="tight")
+
+        plt.close('all')
+        plot_hyperparameters(
+            self._hpo_trials(),
+            fname=os.path.join(self.opt_path, "hyperparameters.png"),
+            save=True)
 
         if plotly is not None:
 
@@ -1202,7 +1240,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             with_optuna:bool = False,
             **tree_kws
     ):
-
+        """calculates hyperparameter importance"""
         if with_optuna:
             from ._optuna_fanova import calc_param_importances
 
