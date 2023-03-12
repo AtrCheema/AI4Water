@@ -14,8 +14,13 @@ inputs = list(data.columns)[0:-1]
 outputs = [list(data.columns)[-1]]
 
 
-def check_attrs(optimizer, paras):
-    optimizer.eval_with_best()
+def check_attrs(optimizer, paras, use_kws_in_fit=False):
+
+    if use_kws_in_fit:
+        optimizer.eval_with_best(x=10, y=10)
+    else:
+        optimizer.eval_with_best()
+
     space = optimizer.space()
     assert isinstance(space, dict)
     assert len(space)==paras
@@ -50,6 +55,7 @@ def run_unified_interface(algorithm,
                           num_samples=None,
                           process_results=True,
                           use_kws=False,
+                          use_kws_in_fit=False,
                           ):
 
     prefix = f'test_{algorithm}_xgboost_{backend}{dateandtime_now()}'
@@ -70,6 +76,13 @@ def run_unified_interface(algorithm,
             mse = RegressionMetrics(t, p).mse()
 
             return mse
+    elif use_kws_in_fit:
+        def fn(x=None, y=None, **suggestion):
+            assert x is not None, x
+            assert y is not None, y
+            assert len(suggestion)>0
+
+            return np.random.randn()
     else:
 
         def fn(a=2, **suggestion):
@@ -96,8 +109,11 @@ def run_unified_interface(algorithm,
                          process_results=process_results
                          )
 
-    optimizer.fit()
-    check_attrs(optimizer, len(search_space))
+    if use_kws_in_fit:
+        optimizer.fit(x=np.random.random(), y=np.random.random())
+    else:
+        optimizer.fit()
+    check_attrs(optimizer, len(search_space), use_kws_in_fit)
 
     files_to_check = ["convergence.png",
                       "iterations.json",

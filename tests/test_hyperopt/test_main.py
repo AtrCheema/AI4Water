@@ -341,9 +341,11 @@ class TestUnifiedInterface(unittest.TestCase):
 
     def test_tpe_hyperopt(self):
         run_unified_interface('tpe', 'hyperopt', 5)
+        return
 
     def test_atpe_hyperopt(self):
-        #run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        run_unified_interface('atpe', 'hyperopt', 5,
+                              process_results=False)  # todo
         return
 
     def test_random_hyperopt(self):
@@ -378,8 +380,14 @@ class TestUnifiedInterfaceKws(unittest.TestCase):
     def test_tpe_hyperopt(self):
         run_unified_interface('tpe', 'hyperopt', 5, process_results=False, use_kws=True)
 
-    def test_atpe_hyperopt(self):
-        # run_unified_interface('atpe', 'hyperopt', 5)  # todo
+    def test_atpe_hyperopt_with_kws(self):
+        run_unified_interface('atpe', 'hyperopt', 5,
+                              process_results=False, use_kws=True)
+        return
+
+    def test_atpe_hyperopt_with_fit_kws(self):
+        run_unified_interface('atpe', 'hyperopt', 5,
+                              process_results=False, use_kws_in_fit=True)
         return
 
     def test_random_hyperopt(self):

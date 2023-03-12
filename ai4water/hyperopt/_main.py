@@ -868,7 +868,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return study
 
     def fmin(self, **kwargs):
-
+        """
+        kwargs are the arguments that will go to objective function
+        """
         suggest_options = {
             'tpe': tpe.suggest,
             'random': rand.suggest
@@ -881,10 +883,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if 'num_iterations' in model_kws:
             model_kws['max_evals'] = model_kws.pop('num_iterations')
 
+        model_kws['verbose'] = bool(self.verbosity)
+
         space = self.hp_space()
         if self.use_named_args:
             def objective_fn(kws):
                 # the objective function in hyperopt library receives a dictionary
+                kws.update(kwargs)
                 return self.objective_fn(**kws)
             objective_f = objective_fn
         else:
@@ -901,7 +906,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                              space=space,
                              algo=suggest_options[self.algorithm],
                              trials=trials,
-                             **kwargs,
                              **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
@@ -1464,7 +1468,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return xkv
 
-    def eval_with_best(self):
+    def eval_with_best(self, **kwargs):
         """
         Find the best parameters and evaluate the objective_fn with them.
         Arguments:
@@ -1477,7 +1481,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             x = self.best_paras(True)
 
         if self.use_named_args:
-            return self.objective_fn(**x)
+            return self.objective_fn(**x, **kwargs)
 
         if callable(self.objective_fn) and not self.use_named_args:
             if isinstance(x, list) and self.backend == 'hyperopt':  # when x = [x]

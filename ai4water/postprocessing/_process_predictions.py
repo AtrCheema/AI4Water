@@ -788,7 +788,7 @@ class ProcessPredictions(Plot):
         metrics = getattr(metrics_instance, f"calculate_{metrics}")()
         dict_to_file(fpath,
                      errors=metrics,
-                     name=f"{prefix}_{dateandtime_now()}.json"
+                     name=f"{prefix}.json"
                      )
 
         fname = os.path.join(fpath, f"{prefix}_.csv")
