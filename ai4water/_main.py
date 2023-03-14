@@ -33,7 +33,6 @@ from .models._tensorflow.custom_training import train_step, test_step
 
 import ai4water.backend as K
 from .backend import sklearn_models
-from ai4water.backend import wandb, WandbCallback
 from ai4water.backend import np, pd, plt, os, random
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 
@@ -88,7 +87,7 @@ class BaseModel(NN):
                 name of name of model as key and the keyword arguments to that
                 model as dictionary. For example to build a decision forest based model
 
-                >>> model = {'DecisionTreeRegressor': {"max_depth": 3,
+                >>> {'DecisionTreeRegressor': {"max_depth": 3,
                 ...                                    "criterion": "mae"}}
 
                 The key 'DecisionTreeRegressor' should exactly match the name of
@@ -110,7 +109,7 @@ class BaseModel(NN):
                 must be 'layers' and the value must itself be a dictionary defining layers
                 of neural networks. For example we can build an MLP as following
 
-                >>> model = {'layers': {
+                >>> {'layers': {
                 ...             "Dense_0": {'units': 64, 'activation': 'relu'},
                 ...              "Flatten": {},
                 ...              "Dense_3": {'units': 1}
@@ -131,11 +130,11 @@ class BaseModel(NN):
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
 
-                >>> x_transformation = 'minmax'
+                >>> 'minmax'
 
                 To apply different transformations on different input and output features
 
-                >>> x_transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                >>> [{'method': 'minmax', 'features': ['input1', 'input2']},
                 ...                {'method': 'zscore', 'features': ['input3', 'input4']}
                 ...                 ]
 
@@ -177,11 +176,11 @@ class BaseModel(NN):
                 means validation will be done using `validation_data`. To use
                 kfold cross validation,
 
-                >>> cross_validator = {'KFold': {'n_splits': 5}}
+                >>> {'KFold': {'n_splits': 5}}
 
             batches : str
                 either `2d` or 3d`.
-            wandb_config : dict
+            wandb_config : dict (default=None)
                 Only valid if wandb package is installed.  Default value is None,
                 which means, wandb will not be utilized. For simplest case, pass
                 a dictionary with at least two keys namely `project` and `entity`.
@@ -190,7 +189,7 @@ class BaseModel(NN):
                 `training_data` and `validation_data` in `WandbCallback`, pass
                 `True` instead of providing a tuple as shown below
 
-                >>> wandb_config = {'entity': 'entity_name', 'project': 'project_name',
+                >>> {'entity': 'entity_name', 'project': 'project_name',
                 ...                 'training_data':True, 'validation_data': True}
 
             seed : int, (default=313)
@@ -311,7 +310,20 @@ class BaseModel(NN):
 
             self.mode = self.config.get('mode', None)
 
+            if self.config['wandb_config']:
+                self.use_wb = True
+            else:
+                self.use_wb = False
+
             self.info = {}
+
+    @property
+    def use_wb(self):
+        return self._use_wb
+
+    @use_wb.setter
+    def use_wb(self, x):
+        self._use_wb = x
 
     @property
     def is_custom_model(self):
@@ -480,10 +492,20 @@ class BaseModel(NN):
         else:
             return None
 
+    def reset_global_seed(self, seed:int = None)->None:
+        """resets seeds of numpy, os, random, tensorflow, torch.
+        If any of these module is not available, the seed for that module
+        is not set."""
+        if seed is None:
+            seed = seed or self.config['seed'] or 313
+        reset_seed(seed=seed, os=os, np=np, tf=tf, torch=torch, random=random)
+        return
+
     def seed_everything(self, seed = None)->None:
         """resets seeds of numpy, os, random, tensorflow, torch.
         If any of these module is not available, the seed for that module
         is not set."""
+        warnings.warn("Use `reset_global_seed` instead", DeprecationWarning)
         if seed is None:
             seed = seed or self.config['seed'] or 313
         reset_seed(seed=seed, os=os, np=np, tf=tf, torch=torch, random=random)
@@ -688,8 +710,6 @@ class BaseModel(NN):
                 if np.isnan(out_array).sum() > 0:
                     nans_in_y_exist = True
 
-        validation_data = self.get_val_data(validation_data)
-
         outputs = get_values(outputs)
 
         if isinstance(validation_data, tuple):
@@ -698,13 +718,6 @@ class BaseModel(NN):
             val_outs = validation_data[-1]
             val_outs = get_values(val_outs)
             validation_data = (validation_data[0], val_outs)
-
-        if K.BACKEND == 'tensorflow':
-            callbacks = self.get_wandb_cb(
-                callbacks,
-                train_data=(inputs, outputs),
-                validation_data=validation_data,
-            )
 
         callbacks = self.get_callbacks(validation_data, callbacks=callbacks)
 
@@ -753,50 +766,17 @@ class BaseModel(NN):
 
         return out
 
-    def get_wandb_cb(self, callback, train_data, validation_data) -> dict:
+    def get_wandb_cb(self, callbacks, *args, **kwargs) -> dict:
         """Makes WandbCallback and add it in callback"""
-        if callback is None:
-            callback = {}
+        if self.use_wb:
+            from ._wb import WB
+            self.wb_ = WB(self, self.config['wandb_config'])
+            return self.wb_.callbacks_tf(callbacks, *args, **kwargs)
+        return callbacks
 
-        self.use_wandb = False
-        if wandb is not None:
-            wandb_config: dict = self.config['wandb_config']
-            if wandb_config is not None:
-                self.use_wandb = True
-                for key in ['project', 'entity']:
-                    assert key in wandb_config, f"wandb_config must have {key} key in it"
-                wandb.init(
-                    name=os.path.basename(self.path),
-                    project=wandb_config.pop('project'),
-                    notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
-                    tags=['ai4water', self.api, self.category, self.mode],
-                    entity=wandb_config.pop('entity'))
-
-                monitor = self.config.get('monitor', 'val_loss')
-                if 'monitor' in wandb_config:
-                    monitor = wandb_config.pop('monitor')
-
-                add_train_data = False
-                if 'training_data' in wandb_config:
-                    add_train_data = wandb_config.pop('training_data')
-
-                add_val_data = False
-                if 'validation_data' in wandb_config:
-                    add_val_data = wandb_config.pop('validation_data')
-
-                assert callable(WandbCallback)
-
-                callback['wandb_callback'] = WandbCallback(
-                    monitor=monitor,
-                    training_data=train_data if add_train_data else None,
-                    validation_data=validation_data if add_val_data else None,
-                    **wandb_config)
-        return callback
-
-    def post_fit_wandb(self):
+    def wb_finish(self):
         """does some stuff related to wandb at the end of training."""
-        if K.BACKEND == 'tensorflow' and self.use_wandb:
-            getattr(wandb, 'finish')()
+        self.wb_.finish()
 
         return
 
@@ -871,7 +851,7 @@ class BaseModel(NN):
         if estimator in ["XGBRegressor", "XGBClassifier"]:
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
-            kwargs['verbosity'] = self.verbosity
+            kwargs['verbosity'] = max(self.verbosity, 0)  # xgboost does not accept -1
 
         # following sklearn based models accept random_state argument
         if estimator in [
@@ -977,7 +957,7 @@ class BaseModel(NN):
                 to tensorboard, then just use `callbacks={'tensorboard':{}}` or
                 to provide additional arguments
 
-                >>> callbacks={'tensorboard': {'histogram_freq': 1}}
+                >>> {'tensorboard': {'histogram_freq': 1}}
 
             kwargs :
                 Any keyword argument for the `fit` method of the underlying library.
@@ -995,9 +975,9 @@ class BaseModel(NN):
 
             using your own data for training
 
-            >>> import numpy as np
-            >>> new_inputs = np.random.random((100, 10))
-            >>> new_outputs = np.random.random(100)
+            >>> import numpy
+            >>> new_inputs = numpy.random.random((100, 10))
+            >>> new_outputs = numpy.random.random(100)
             >>> model.fit(x=new_inputs, y=new_outputs)
         """
 
@@ -1038,12 +1018,21 @@ class BaseModel(NN):
 
         self.info['training_start'] = dateandtime_now()
 
+        validation_data = self.get_val_data(kwargs.pop('validation_data', None))
+
+        callbacks = self.get_wandb_cb(
+            callbacks,
+            train_data=(inputs, outputs),
+            validation_data=validation_data,
+        )
+
         if self.category == "DL":
 
             history = self._fit(
                 inputs,
                 outputs,
                 callbacks=callbacks,
+                validation_data=validation_data,
                 **kwargs)
         else:
             history = self.fit_ml_models(inputs, outputs, **kwargs)
@@ -1108,7 +1097,7 @@ class BaseModel(NN):
 
         self._maybe_change_residual_threshold(outputs)
 
-        history = self._model.fit(inputs, outputs, **kwargs)
+        out = self._model.fit(inputs, outputs, **kwargs)
 
         if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
             # by default feature_names of booster as set to f0, f1,...
@@ -1117,7 +1106,7 @@ class BaseModel(NN):
         if self.verbosity >= 0:
             self._save_ml_model()
 
-        return history
+        return out
 
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
@@ -2077,8 +2066,9 @@ class BaseModel(NN):
             process_results=True,
             metrics="minimal",
             return_true: bool = False,
-            plots=None,
-            prefix=None,
+            plots:Union[list, str]=None,
+            prefix:str=None,
+            log_on_wb:bool = False,
             **kwargs
     ):
 
@@ -2086,7 +2076,7 @@ class BaseModel(NN):
         if x is None and data is None:
             data = "test"
 
-        if isinstance(data, str) and data in ['training', 'validation', 'test']:
+        if isinstance(x, type(None)) and data in ['training', 'validation', 'test']:
             warnings.warn(f"""
             argument {data} is deprecated and will be removed in future. Please 
             use 'predict_on_{data}_data' method instead.""")
@@ -2180,6 +2170,13 @@ class BaseModel(NN):
 
         if true_outputs is None or self.verbosity<0:
             process_results = False
+
+        if log_on_wb:
+            self.wb_.log_predict(
+                true_outputs, predicted,
+                mode=self.mode,
+                prefix=prefix or source,
+                                 )
 
         if process_results:
             # initialize post-processes
@@ -2638,27 +2635,16 @@ class BaseModel(NN):
 
     def update_info(self):
 
-        self.info["version_info"] =get_version_info()
+        self.info["version_info"] = get_version_info()
         return
 
     def print_info(self):
-        class_type = ''
-
-        if isinstance(self.config['model'], dict):
-            if 'layers' in self.config['model']:
-                model_name = self.__class__.__name__
-            else:
-                model_name = list(self.config['model'].keys())[0]
-        else:
-            if isinstance(self.config['model'], str):
-                model_name = self.config['model']
-            else:
-                model_name = self.config['model'].__class__.__name__
 
         if self.verbosity > 0:
+            class_type = ''
             print(f"""
             building {self.category} model for {class_type} 
-            {self.mode} problem using {model_name}""")
+            {self.mode} problem using {self.model_name}""")
         return
 
     def get_optimizer(self):
@@ -3605,10 +3591,11 @@ class BaseModel(NN):
     def _fit_transform_x(self, x):
         """fits and transforms x and puts the transformer in config witht he key
         'x_transformer_'"""
-        return self._fit_transform(x,
-                                   'x_transformer_',
-                                   self.config['x_transformation'],
-                                   self.input_features)
+        return self._fit_transform(
+            x,
+            'x_transformer_',
+            self.config['x_transformation'],
+            self.input_features)
 
     def _fit_transform_y(self, y):
         """fits and transforms y and puts the transformer in config witht he key

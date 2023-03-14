@@ -21,7 +21,7 @@ class Model(BaseModel):
     are available in this class as well.
 
     Example:
-        >>>from ai4water.functional import Model
+        >>> from ai4water.functional import Model
     """
 
     def __init__(self, *args, **kwargs):

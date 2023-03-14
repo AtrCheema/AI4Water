@@ -39,7 +39,6 @@ if skopt is None:
     pass
 else:
     Space = skopt.space.space.Space
-    #Dimension = skopt.space.space.Dimension
     forest_minimize = skopt.forest_minimize
     gp_minimize = skopt.gp_minimize
     BayesSearchCV = skopt.BayesSearchCV
@@ -1223,11 +1222,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(fname=os.path.join(self.opt_path, "loss_histogram.png"),
                         bbox_inches="tight")
 
-        plt.close('all')
-        plot_hyperparameters(
-            self._hpo_trials(),
-            fname=os.path.join(self.opt_path, "hyperparameters.png"),
-            save=True)
+        if hp is not None:
+            plt.close('all')
+            plot_hyperparameters(
+                self._hpo_trials(),
+                fname=os.path.join(self.opt_path, "hyperparameters.png"),
+                save=True)
 
         if plotly is not None:
 

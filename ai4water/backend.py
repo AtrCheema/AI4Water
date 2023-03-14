@@ -289,10 +289,8 @@ tf = tf
 
 
 try:
-    from wandb.keras import WandbCallback
     import wandb
 except ModuleNotFoundError:
-    WandbCallback = None
     wandb = None
 
 if tf is not None:

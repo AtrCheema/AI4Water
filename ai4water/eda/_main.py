@@ -17,6 +17,11 @@ from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 ticker = mpl.ticker
 create_subplots = ep.utils.create_subplots
 
+NP_BOOL = bool
+if np.__version__<"1.21":
+    NP_BOOL = np.bool
+
+
 # qq plot
 # decompose into trend/seasonality and noise
 # todo, Uniform Manifold Approximation and Projection (UMAP) of input data
@@ -833,7 +838,7 @@ class EDA(Plot):
         elif split == "neg":
             corr = corr.where((corr <= threshold) & (corr < 0))
 
-        mask = np.zeros_like(corr, dtype=np.bool)
+        mask = np.zeros_like(corr, dtype=NP_BOOL)
 
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)

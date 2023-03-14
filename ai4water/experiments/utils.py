@@ -256,7 +256,7 @@ def regression_space(
             "param_space": [
                 # todo, during optimization not working with 'rf'
                 Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),
-                Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
+                Integer(low=5, high=lgbm_num_leaves(num_examples), name='num_leaves', num_samples=num_samples),
                 Real(low=0.0001, high=0.1,  name='learning_rate', prior='log-uniform', num_samples=num_samples),
                 Integer(low=20, high=100, name='n_estimators', num_samples=num_samples)],
             "x0":
@@ -415,9 +415,12 @@ def regression_space(
     return spaces
 
 
-def classification_space(num_samples:int,
-                         verbosity=0,
-                         n_features:int = None):
+def classification_space(
+        num_samples:int,
+        verbosity=0,
+        n_features:int = None,
+        num_examples=None,
+):
 
     ridge_cls = _ridge_classifier(num_samples=num_samples)
     ridge_cls_cv = _ridge_classifiercv()
@@ -548,7 +551,7 @@ def classification_space(num_samples:int,
         "LGBMClassifier": {
             "param_space": [
                 Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
-                Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
+                Integer(low=5, high=lgbm_num_leaves(num_examples), name='num_leaves', num_samples=num_samples),
                 Real(low=0.0001, high=0.1, prior='log-uniform', name='learning_rate', num_samples=num_samples),
                 Integer(low=10, high=100, name='min_child_samples', num_samples=num_samples),
                 Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
@@ -867,3 +870,9 @@ class _ridge_classifiercv(object):
         if sklearn.__version__ > "1.0.0":
             self.space.pop(1)
             self.x0.pop(1)
+
+def lgbm_num_leaves(num_samples:int = None):
+    if num_samples and num_samples > 1000:
+        return 72
+    return 32
+

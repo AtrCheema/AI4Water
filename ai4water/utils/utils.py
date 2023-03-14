@@ -948,7 +948,7 @@ class TrainTestSplit(object):
     >>> y = np.random.random(100)
     ...
     >>> train_x, test_x, train_y, test_y = TrainTestSplit().split_by_random(x, y)
-    >>> # works as well when only a single array i.e. is provided
+    >>> # works as well when only a single array is provided
     >>> train_x, test_x, _, _ = TrainTestSplit().split_by_random(x)
     ... # if we have a time-series like data, where we want to use earlier samples
     ... # for training and later samples for test then we can do slice based
@@ -978,7 +978,11 @@ class TrainTestSplit(object):
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
             y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
     ):
-        """splits the x and y by slicing which is defined by `test_fraction`
+        """
+        splits the x and y by slicing which is defined by `test_fraction`. This means
+        the first (1. - test_fraction) is retained for trained and rest is considered
+        for test.
+
         Arguments:
             x:
                 arrays to split
@@ -990,6 +994,21 @@ class TrainTestSplit(object):
 
                 - array like such as list, numpy array or pandas dataframe/series
                 - list of array like objects
+
+        Examples
+        --------
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> input_features = data.columns.tolist()[0:-1]
+        >>> output_features = data.columns.tolist()[-1:]
+        >>> tr_features = input_features[0:-1]
+
+        >>> TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
+        ... data[input_features],
+        ... data[output_features])
+
+        >>> x_train, x_val, y_train, y_val = TrainTestSplit(seed=313).split_by_slicing(
+        ...     TrainX, TrainY)
         """
         def split_arrays(array):
 
@@ -1101,6 +1120,9 @@ class TrainTestSplit(object):
             shuffle=True,
             **kwargs
     ):
+        if isinstance(x, (pd.DataFrame, pd.Series)):
+            x = x.values
+
         from sklearn.model_selection import KFold
         kf = KFold(n_splits=n_splits,
                    random_state=self.random_state,
