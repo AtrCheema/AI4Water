@@ -43,10 +43,13 @@ class TestOptimize(unittest.TestCase):
 
     def test_optimize_transformations(self):
 
-        df = busan_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum", "sal_psu"])
+        inputs = ["tide_cm", "wat_temp_c", "rel_hum", "sal_psu"]
+        df = busan_beach(inputs=inputs)
 
         setattr(Model, 'from_check_point', False)
-        model = Model(model="XGBRegressor")
+        model = Model(model="XGBRegressor",
+                      input_features=inputs,
+                      output_features=df.columns.to_list()[-1:])
 
         model.optimize_transformations(
             data=df,
@@ -61,10 +64,13 @@ class TestOptimize(unittest.TestCase):
 
     def test_optimize_xy_transformations(self):
 
-        df = busan_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum"])
+        inputs=["tide_cm", "wat_temp_c", "rel_hum"]
+        df = busan_beach(inputs=inputs)
 
         setattr(Model, 'from_check_point', False)
-        model = Model(model="XGBRegressor")
+        model = Model(model="XGBRegressor",
+                      input_features=inputs,
+                      output_features=df.columns.to_list()[-1:])
 
         model.optimize_transformations(
             data=df,
@@ -78,7 +84,6 @@ class TestOptimize(unittest.TestCase):
         assert isinstance(model.config['x_transformation'], list)
         assert isinstance(model.config['y_transformation'], list)
         return
-
 
     def test_make_space(self):
         space = make_space(data.columns.to_list(),

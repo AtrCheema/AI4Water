@@ -5,7 +5,7 @@ import time
 import warnings
 from types import MethodType
 from pickle import PicklingError
-from typing import Union, Callable, List
+from typing import Union, Callable, List, Tuple
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
@@ -157,7 +157,8 @@ class BaseModel(NN):
                 minimum value of validatin loss/error to be used for early stopping.
             patience : int, (default=100)
                 number of epochs to wait before early stopping. Set this value to None
-                if you don't want to use EarlyStopping.
+                if you don't want to use EarlyStopping. For gradient boosting algorithms
+                it is equal to ``early_stopping_rounds``
             save_model : bool (default=True)
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
@@ -1085,17 +1086,23 @@ class BaseModel(NN):
                 self.update_weights(os.path.join(self.w_path, best_weights))
         return
 
-    def fit_ml_models(self, inputs, outputs, **kwargs):
+    def ml_callbacks(self, validation_data=None, **kwargs):
+        """any callback created here needs to be put into kwargs which
+        will then go to .fit as keyword arguments"""
+        return kwargs
+
+    def fit_ml_models(self, inputs, outputs, validation_data=None, **kwargs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
         for arg in ["composite", "optimizer", "lr", "epochs"]:
-            if arg in self.config:
-                self.config.pop(arg)
+            self.config.pop(arg, None)
 
         if len(outputs) == outputs.size:
             outputs = outputs.reshape(-1, )
 
         self._maybe_change_residual_threshold(outputs)
+
+        kwargs = self.ml_callbacks(validation_data=validation_data, **kwargs)
 
         out = self._model.fit(inputs, outputs, **kwargs)
 
@@ -1218,7 +1225,7 @@ class BaseModel(NN):
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 
             verbosity = self.verbosity
-            self.verbosity = 0
+            self.verbosity = min(-1, verbosity)
             # make a new classifier/regressor at every fold
             self.build(self._get_dummy_input_shape())
 
@@ -1723,7 +1730,7 @@ class BaseModel(NN):
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
-            return self._manual_eval(x, y, metrics)
+            return self._manual_eval(x, y, metrics, **kwargs)
 
         # after this we call evaluate function of underlying model
         # therefore we must transform inputs and outptus
@@ -1740,9 +1747,9 @@ class BaseModel(NN):
             metrics = self.val_metric
         return self._manual_eval(x, y, metrics)
 
-    def _manual_eval(self, x, y, metrics):
+    def _manual_eval(self, x, y, metrics, **kwargs):
         """manual evaluation"""
-        t, p = self.predict(x=x, y=y, return_true=True, process_results=False)
+        t, p = self.predict(x=x, y=y, return_true=True, process_results=False, **kwargs)
 
         if self.mode == "regression":
 
@@ -2789,7 +2796,7 @@ class BaseModel(NN):
 
     def optimize_transformations(
             self,
-            data:Union[np.ndarray, pd.DataFrame],
+            data:Union[np.ndarray, pd.DataFrame, Tuple[np.ndarray, np.ndarray]],
             transformations: Union[list, str] = None,
             include: Union[str, list, dict] = None,
             exclude: Union[str, list] = None,
@@ -2800,7 +2807,8 @@ class BaseModel(NN):
             process_results: bool = True,
             update_config: bool = True
     ):
-        """optimizes the transformations for the input/output features
+        """
+        optimizes the transformations for the input/output features
 
         The 'val_score' parameter given as input to the Model is used as objective
         function for optimization problem.
@@ -2837,19 +2845,20 @@ class BaseModel(NN):
             include : list, dict, str, optional
                 the name/names of input features to include. If you don't want
                 to include any feature. Set this to an empty list
-            exclude: the name/names of input features to exclude
-            append:
+            exclude :
+                the name/names of input features to exclude
+            append :
                 the input features with custom candidate transformations. For example
                 if we want to try only `minmax` and `zscore` on feature `tide_cm`, then
                 it can be done as following
 
-                >>> append={"tide_cm": ["minmax", "zscore"]}
+                >>> {"tide_cm": ["minmax", "zscore"]}
 
-            y_transformations:
+            y_transformations : list/str
                 It can either be a list of transformations to be considered for
                 output features for example
 
-                >>> y_transformations = ['log', 'log10', 'log2', 'sqrt']
+                >>> ['log', 'log10', 'log2', 'sqrt']
 
                 would mean that consider `log`, `log10`, `log2` and `sqrt` are
                 to be considered for output transformations during optimization.
@@ -2857,15 +2866,15 @@ class BaseModel(NN):
                 and whose values are lists of transformations to be considered for output
                 features. For example
 
-                >>> y_transformations = {'output1': ['log2', 'log10'], 'output2': ['log', 'sqrt']}
+                >>> {'output1': ['log2', 'log10'], 'output2': ['log', 'sqrt']}
 
                 Default is None, which means do not optimize transformation for output
                 features.
-            algorithm: str
+            algorithm : str
                 The algorithm to use for optimizing transformations
-            num_iterations: int
+            num_iterations : int
                 The number of iterations for optimizatino algorithm.
-            process_results :
+            process_results : bool
                 whether to perform postprocessing of optimization results or not
             update_config: whether to update the config of model or not.
 
@@ -2885,10 +2894,10 @@ class BaseModel(NN):
         from ._optimize import OptimizeTransformations  # optimize_transformations
         from .preprocessing.transformations.utils import InvalidTransformation
 
-        if isinstance(data, list) or isinstance(data, tuple):
-            pass
-        else:
-            setattr(self, 'dh_', DataSet(data=data, **self.data_config))
+        # if isinstance(data, list) or isinstance(data, tuple):
+        #     pass
+        # else:
+        #     setattr(self, 'dh_', DataSet(data=data, **self.data_config))
 
         allowed_transforamtions = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",

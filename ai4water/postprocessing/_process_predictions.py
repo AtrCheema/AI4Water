@@ -253,7 +253,7 @@ class ProcessPredictions(Plot):
     def prediction_distribution_across_feature(self, true, predicted, feature):
         raise NotImplementedError
 
-    def edf_plot(self, true, predicted, prefix, where, **kwargs):
+    def edf_plot(self, true, predicted, prefix='', where='', **kwargs):
         """cumulative distribution function of absolute error between true and
         predicted.
 
@@ -300,8 +300,8 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
-            prefix,
-            where,
+            prefix='',
+            where='',
             hist_kws:dict = None,
             **kwargs
     ):
@@ -322,8 +322,11 @@ class ProcessPredictions(Plot):
 
         fig, axis = plt.subplots(2, sharex="all")
 
-        x = predicted.values
-        y = true.values - predicted.values
+        if isinstance(predicted, (pd.DataFrame, pd.Series)):
+            predicted = predicted.values
+
+        if isinstance(true, (pd.DataFrame, pd.Series)):
+            true = true.values - predicted.values
 
         _hist_kws = dict(bins=20, linewidth=0.5,
                 edgecolor="k", grid=False, color='khaki')
@@ -331,10 +334,10 @@ class ProcessPredictions(Plot):
         if hist_kws is not None:
             _hist_kws.update(hist_kws)
 
-        ep.hist(y, show=False, ax=axis[0], **_hist_kws)
+        ep.hist(true, show=False, ax=axis[0], **_hist_kws)
         axis[0].set_xticks([])
 
-        ep.plot(x, y, 'o', show=False,
+        ep.plot(predicted, true, 'o', show=False,
                 ax=axis[1],
                 color="darksalmon",
                 markerfacecolor=np.array([225, 121, 144]) / 256.0,
@@ -372,7 +375,7 @@ class ProcessPredictions(Plot):
             true,
             predicted,
             target_name,
-            where,
+            where='',
             annotate_with="r2"
     ):
         annotation_val = getattr(RegressionMetrics(true, predicted), annotate_with)()

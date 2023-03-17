@@ -31,9 +31,9 @@ class ModelOptimizerMixIn(object):
         self.process_results = process_results
         self.prefix = prefix
 
-    def fit(self, data=None, ):
+    def fit(self, data, validation_data=None):
 
-        if isinstance(data, tuple) or isinstance(data, list):
+        if isinstance(data, (tuple, list)):
             assert len(data) == 2
             xy = True
         else:
@@ -60,6 +60,9 @@ class ModelOptimizerMixIn(object):
 
         config = jsonize(self.model.config)
         SEED = config['seed']
+
+        if xy:
+            train_x, train_y, test_x, test_y = _train_test_xy(data, SEED, config)
 
         if self.model.mode == "classification":
             Metrics = ClassificationMetrics
@@ -90,27 +93,18 @@ class ModelOptimizerMixIn(object):
                     val_score = _model.cross_val_score(data=data)[0]
             else:
 
-                if xy:  # todo, it is better to split data outside objective_fn
-                    splitter = TrainTestSplit(seed=SEED,
-                                              test_fraction=config['val_fraction'])
-
-                    if config['split_random']:
-                        # for reproducibility, we should use SEED so that at everay optimization
-                        # iteration, we split the data in the same way
-                        train_x, test_x, train_y, test_y = splitter.split_by_random(*data)
-                    else:
-                        train_x, test_x, train_y, test_y = splitter.split_by_slicing(*data)
-
+                if xy:
                     _model.fit(x=train_x, y=train_y)
-                    p = _model.predict(x=test_x)
+                    test_pred = _model.predict(x=test_x)
+                    metrics = Metrics(test_y, test_pred)
                 else:
                     _model.fit(data=data)
-                    test_y, p = _model.predict_on_validation_data(
+                    test_true, test_pred = _model.predict_on_validation_data(
                         data=data,
                         return_true=True,
                         process_results=False)
+                    metrics = Metrics(test_true, test_pred)
 
-                metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
 
             orig_val_score = val_score
@@ -316,3 +310,16 @@ def make_space(
             space[k] = v
 
     return list(space.values())
+
+
+def _train_test_xy(data, seed, config:dict):
+    splitter = TrainTestSplit(seed=seed,
+                              test_fraction=config['val_fraction'])
+
+    if config['split_random']:
+        # for reproducibility, we should use SEED so that at everay optimization
+        # iteration, we split the data in the same way
+        train_x, test_x, train_y, test_y = splitter.split_by_random(*data)
+    else:
+        train_x, test_x, train_y, test_y = splitter.split_by_slicing(*data)
+    return train_x, train_y, test_x, test_y
