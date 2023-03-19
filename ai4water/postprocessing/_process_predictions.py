@@ -267,10 +267,8 @@ class ProcessPredictions(Plot):
         where :
         """
 
-        if isinstance(true, (pd.DataFrame, pd.Series)):
-            true = true.values
-        if isinstance(predicted, (pd.DataFrame, pd.Series)):
-            predicted = predicted.values
+        true = _to_1darray(true)
+        predicted = _to_1darray(predicted)
 
         error = np.abs(true - predicted)
 
@@ -322,11 +320,10 @@ class ProcessPredictions(Plot):
 
         fig, axis = plt.subplots(2, sharex="all")
 
-        if isinstance(predicted, (pd.DataFrame, pd.Series)):
-            predicted = predicted.values
+        true = _to_1darray(true)
+        predicted = _to_1darray(predicted)
 
-        if isinstance(true, (pd.DataFrame, pd.Series)):
-            true = true.values - predicted.values
+        y = true - predicted
 
         _hist_kws = dict(bins=20, linewidth=0.5,
                 edgecolor="k", grid=False, color='khaki')
@@ -334,10 +331,10 @@ class ProcessPredictions(Plot):
         if hist_kws is not None:
             _hist_kws.update(hist_kws)
 
-        ep.hist(true, show=False, ax=axis[0], **_hist_kws)
+        ep.hist(y, show=False, ax=axis[0], **_hist_kws)
         axis[0].set_xticks([])
 
-        ep.plot(predicted, true, 'o', show=False,
+        ep.plot(predicted, y, 'o', show=False,
                 ax=axis[1],
                 color="darksalmon",
                 markerfacecolor=np.array([225, 121, 144]) / 256.0,
@@ -849,3 +846,9 @@ def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
     })
     return
 
+def _to_1darray(array):
+    if isinstance(array, (pd.DataFrame, pd.Series)):
+        array = array.values
+
+    assert len(array) == array.size
+    return array.reshape(-1,)
