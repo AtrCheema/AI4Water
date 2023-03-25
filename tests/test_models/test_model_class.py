@@ -124,11 +124,11 @@ class TestPredictMethod(unittest.TestCase):
 
     def test_ml_inbuilt_data(self):
         _test_ml_inbuilt_data_reg(Model)
-        #_test_ml_inbuilt_data_cls(Model)
+        _test_ml_inbuilt_data_cls(Model)
         return
 
     def test_ml_inbuilt_data_fn(self):
-        #_test_ml_inbuilt_data_reg(FModel)
+        _test_ml_inbuilt_data_reg(FModel)
         _test_ml_inbuilt_data_cls(FModel)
         return
 
@@ -237,7 +237,7 @@ class TestPredictMethod(unittest.TestCase):
                       )
         x,y = DataSet(data=data, verbosity=0).training_data()
         tr_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size=32)
-        p = model.predict(x=tr_ds)
+        _ = model.predict(x=tr_ds)
         return
 
 

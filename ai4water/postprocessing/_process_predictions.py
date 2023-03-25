@@ -242,7 +242,7 @@ class ProcessPredictions(Plot):
 
         for plot in self.plots:
             if plot == "murphy":
-                self.murphy_plot(true, predicted, prefix, where, inputs)
+                self.murphy_plot(true, predicted, prefix=prefix, where=where, inputs=inputs)
             else:
                 getattr(self, f"{plot}_plot")(true, predicted, prefix, where)
         return
@@ -275,7 +275,13 @@ class ProcessPredictions(Plot):
         edf_plot(error, xlabel="Absolute Error", show=False)
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
-    def murphy_plot(self, true, predicted, prefix, where, inputs, **kwargs):
+    def murphy_plot(
+            self, true,
+            predicted,
+            inputs,
+            prefix='',
+            where='',
+            **kwargs):
 
         murphy_diagram(true,
                        predicted,
@@ -287,7 +293,7 @@ class ProcessPredictions(Plot):
 
         return self.save_or_show(fname=f"{prefix}_murphy", where=where)
 
-    def fdc_plot(self, true, predicted, prefix, where, **kwargs):
+    def fdc_plot(self, true, predicted, prefix='', where='', **kwargs):
 
         fdc_plot(predicted, true, show=False, **kwargs)
 
@@ -353,7 +359,9 @@ class ProcessPredictions(Plot):
         return self.save_or_show(fname=f"{prefix}_residual",
                                  where=where)
 
-    def errors_plot(self, true, predicted, prefix, where, **kwargs):
+    def errors_plot(
+            self, true, predicted,
+            prefix='', where='', **kwargs):
 
         errors = Metrics[self.mode](true, predicted, multiclass=self.is_multiclass_)
 
@@ -371,7 +379,7 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
-            target_name,
+            target_name='',
             where='',
             annotate_with="r2"
     ):
@@ -426,7 +434,11 @@ class ProcessPredictions(Plot):
         return self.save_or_show(fname=f"{target_name}_regression",
                                  where=where)
 
-    def prediction_plot(self, true, predicted, prefix, where):
+    def prediction_plot(
+            self,
+            true,
+            predicted,
+            prefix='', where=''):
         mpl.rcParams.update(mpl.rcParamsDefault)
 
         _, axis = init_subplots(width=12, height=8)

@@ -138,6 +138,17 @@ class Model(MODEL, BaseModel):
         self._torch_learner = x
 
     @property
+    def output_shape_(self)->tuple:
+        if self.category == "DL":
+            return self.output_shape
+        elif self.mode == "regression":
+            return None, 1
+        elif self.is_binary_:
+            return None, 1
+        else:
+            raise NotImplementedError
+
+    @property
     def layer_names(self) -> List[str]:
         """Returns a list of names of layers/nn.modules
         for deep learning model. For ML models, returns empty list"""

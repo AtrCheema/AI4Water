@@ -493,6 +493,12 @@ class BaseModel(NN):
         else:
             return None
 
+    @property
+    def output_shape_(self)->tuple:
+        # for Keras, this calls output_shape attribute of Model class
+        # for ML models, this method should calculate output shape
+        raise NotImplementedError
+
     def reset_global_seed(self, seed:int = None)->None:
         """resets seeds of numpy, os, random, tensorflow, torch.
         If any of these module is not available, the seed for that module
@@ -654,7 +660,7 @@ class BaseModel(NN):
                 return None
             else:  # x,y is numpy array
                 if not user_defined and self.is_binary_:
-                    if y.shape[1] > self.output_shape[1]:
+                    if y.shape[1] > self.output_shape_[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
                 x = self._transform_x(x)

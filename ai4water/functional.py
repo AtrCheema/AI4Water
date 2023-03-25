@@ -83,10 +83,19 @@ class Model(BaseModel):
         return self._model.outputs
 
     @property
+    def output_shape_(self)->tuple:
+        return self.output_shape
+
+    @property
     def output_shape(self)->tuple:
-        if self.category == "ML":
+        if self.category == "DL":
+            return self._model.output_shape
+        elif self.mode == "regression":
+            return None, 1
+        elif self.is_binary_:
+            return None, 1
+        else:
             raise NotImplementedError
-        return self._model.output_shape
 
     @property
     def trainable_weights(self):
