@@ -502,9 +502,12 @@ class BaseModel(NN):
     def reset_global_seed(self, seed:int = None)->None:
         """resets seeds of numpy, os, random, tensorflow, torch.
         If any of these module is not available, the seed for that module
-        is not set."""
+        is not set. Also puts the seed in config."""
         if seed is None:
             seed = seed or self.config['seed'] or 313
+
+        self.config['seed'] = seed
+        self.data_config['seed'] = seed
         reset_seed(seed=seed, os=os, np=np, tf=tf, torch=torch, random=random)
         return
 
@@ -1100,7 +1103,7 @@ class BaseModel(NN):
     def fit_ml_models(self, inputs, outputs, validation_data=None, **kwargs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
-        for arg in ["composite", "optimizer", "lr", "epochs"]:
+        for arg in ["composite", "optimizer", "lr", "epochs", "learning_rate"]:
             self.config.pop(arg, None)
 
         if len(outputs) == outputs.size:
@@ -2250,11 +2253,16 @@ class BaseModel(NN):
         """
         kwargs = {'lr': self.config['lr']}
 
-        if self.config['backend'] == 'tensorflow' and int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
-            kwargs['learning_rate'] = kwargs.pop('lr')
+        if self.config['backend'] == 'tensorflow':
+            if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
+                kwargs['learning_rate'] = kwargs.pop('lr')
+            if tf.__version__ >= "2.10":
+                kwargs.pop('lr', None)
+                kwargs['learning_rate'] = self.config['lr']
 
         if self.config['backend'] == 'pytorch':
-            kwargs.update({'params': getattr(self, "parameters")()})  # parameters from pytorch model
+            # parameters from pytorch model
+            kwargs.update({'params': getattr(self, "parameters")()})
         return kwargs
 
     def get_metrics(self) -> list:
