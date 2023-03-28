@@ -950,6 +950,17 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """returns a dictionary whose values are hyperopt equivalent space instances."""
         return {k: v.as_hp(False if self.algorithm == 'atpe' else True) for k,v in self.space().items()}
 
+    def results_as_df(self)->pd.DataFrame:
+        """results the hyperaparamters tried at each iteration and the
+        corresponding value of objective function as pandas DataFrame."""
+        d = self.xy_of_iterations()
+        df = pd.DataFrame()
+        df['iteration'] = d.keys()
+        hp_names = list([v['x'].keys() for v in d.values()][0])
+        df[hp_names] = [list(v['x'].values()) for v in d.values()]
+        df['y'] = [v['y'] for v in d.values()]
+        return df
+
     def xy_of_iterations(self) -> Dict[int,Dict[str, Union[str, dict]]]:
         """returns a dictionary whose keys are iteration numbers are values are xy parirs
         at those iterations.

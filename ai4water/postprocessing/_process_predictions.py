@@ -438,8 +438,9 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
-            prefix='', where=''):
-        mpl.rcParams.update(mpl.rcParamsDefault)
+            prefix='',
+            where=''
+    ):
 
         _, axis = init_subplots(width=12, height=8)
 
