@@ -1101,13 +1101,13 @@ Available cases are {self.models} and you wanted to include
         -------
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> from ai4water.datasets import busan_beach
-            >>> data = busan_beach()
-            >>> inputs = list(data.columns)[0:-1]
-            >>> outputs = list(data.columns)[-1]
+            >>> df = busan_beach()
+            >>> inputs = list(df.columns)[0:-1]
+            >>> outputs = list(df.columns)[-1]
             >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
-            >>> experiment.fit(data=data)
-            >>> experiment.compare_errors('mse', data=data)
-            >>> experiment.compare_errors('r2', data=data, cutoff_val=0.2, cutoff_type='greater')
+            >>> experiment.fit(data=df)
+            >>> experiment.compare_errors('mse', data=df)
+            >>> experiment.compare_errors('r2', data=df, cutoff_val=0.2, cutoff_type='greater')
         """
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
@@ -1121,7 +1121,7 @@ Available cases are {self.models} and you wanted to include
         plt.close('all')
         fig, axis = plt.subplots(1, 2, sharey='all', figsize=figsize)
 
-        labels = [model.split('model_')[1] for model in models.index.tolist()]
+        labels = [shred_model_name(model_name) for model_name in models.index.tolist()]
         models.index = labels
 
         if kwargs is not None:
