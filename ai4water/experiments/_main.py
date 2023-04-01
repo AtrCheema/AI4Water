@@ -2302,10 +2302,7 @@ Available cases are {self.models} and you wanted to include
                 train_y,
                 validation_data=validation_data))
 
-        if self.category == "DL":
-            model.fit(x=train_x, y=train_y, validation_data=validation_data)
-        else:
-            model.fit(x=train_x, y=train_y)
+        model.fit(x=train_x, y=train_y, validation_data=validation_data)
 
         # model_ is used in the class for prediction so it must be the
         # updated/trained model

@@ -2092,7 +2092,7 @@ class BaseModel(NN):
         if x is None and data is None:
             data = "test"
 
-        if isinstance(x, type(None)) and data in ['training', 'validation', 'test']:
+        if isinstance(x, type(None)) and isinstance(data, str) in ['training', 'validation', 'test']:
             warnings.warn(f"""
             argument {data} is deprecated and will be removed in future. Please 
             use 'predict_on_{data}_data' method instead.""")

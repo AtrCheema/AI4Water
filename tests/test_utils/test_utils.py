@@ -993,6 +993,11 @@ class TestJsonize(unittest.TestCase):
         assert isinstance(jsonize(True), bool)
         return
 
+    def test_npbool(self):
+        # numpy boolean should also be converted to python boolean
+        assert isinstance(jsonize(np.array([True])[0]), bool)
+        return
+
     def test_none(self):
         # None should be None
         assert jsonize(None) is None

@@ -708,6 +708,9 @@ def jsonize(
     if isinstance(obj, bool):
         return obj
 
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+
     if 'int' in obj.__class__.__name__:
         return int(obj)
 
