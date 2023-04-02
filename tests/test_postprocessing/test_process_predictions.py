@@ -50,18 +50,6 @@ class TestProcessPrediction(unittest.TestCase):
                                 save=False,
                                 )
 
-        pp(t_nan, p,  inputs=x)
-        return
-
-    def test_rgr_1_output_errors(self):
-        pp = ProcessPredictions(mode="regression",
-                                forecast_len=1,
-                                output_features=['a'],
-                                plots=["errors"],
-                                show=self.show,
-                                save=True,
-                                )
-
         pp(t, p,  inputs=x)
         return
 

@@ -1121,8 +1121,12 @@ Available cases are {self.models} and you wanted to include
         plt.close('all')
         fig, axis = plt.subplots(1, 2, sharey='all', figsize=figsize)
 
+        # The returned df will have legal names
+        model_names = [model.split('model_')[1] for model in models.index.tolist()]
+        models.index = model_names
+
+        # for labeling only
         labels = [shred_model_name(model_name) for model_name in models.index.tolist()]
-        models.index = labels
 
         if kwargs is not None:
             for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws', 'color']:
@@ -1155,14 +1159,18 @@ Available cases are {self.models} and you wanted to include
                   **kwargs,
                   )
 
+        TITLLE = {
+            'test': "Test",
+        }
         bar_chart(ax=axis[1],
                   labels=labels,
                   values=models.iloc[:, 1],
                   color=color2,
                   cmap=cmap2,
-                  ax_kws={'title': models.columns.tolist()[1],
-                          'xlabel':ERROR_LABELS.get(matric_name, matric_name),
-                          'show_yaxis':False},
+                  ax_kws={
+                      'title': TITLLE.get(models.columns.tolist()[1], models.columns.tolist()[1]),
+                      'xlabel':ERROR_LABELS.get(matric_name, matric_name),
+                      'show_yaxis':False},
                   show=False,
                   **kwargs
                   )

@@ -1,6 +1,6 @@
 
 
-from typing import Union
+from typing import Union, List, Tuple
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 from SeqMetrics.utils import plot_metrics
@@ -244,7 +244,7 @@ class ProcessPredictions(Plot):
             if plot == "murphy":
                 self.murphy_plot(true, predicted, prefix=prefix, where=where, inputs=inputs)
             else:
-                getattr(self, f"{plot}_plot")(true, predicted, prefix, where)
+                getattr(self, f"{plot}_plot")(true, predicted, prefix=prefix, where=where)
         return
 
     def average_target_across_feature(self, true, predicted, feature):
@@ -253,7 +253,12 @@ class ProcessPredictions(Plot):
     def prediction_distribution_across_feature(self, true, predicted, feature):
         raise NotImplementedError
 
-    def edf_plot(self, true, predicted, prefix='', where='', **kwargs):
+    def edf_plot(
+            self,
+            true, predicted,
+            for_prediction:bool = False,
+            prefix='', where='',
+            **kwargs):
         """cumulative distribution function of absolute error between true and
         predicted.
 
@@ -263,6 +268,8 @@ class ProcessPredictions(Plot):
             array like
         predicted :
             array like
+        for_prediction : bool
+            whether to plot edf of prediction as well or not
         prefix :
         where :
         """
@@ -272,7 +279,13 @@ class ProcessPredictions(Plot):
 
         error = np.abs(true - predicted)
 
-        edf_plot(error, xlabel="Absolute Error", show=False)
+        ax = edf_plot(error, xlabel="Absolute Error",
+                      label="Error", color="#005066", show=False)
+
+        if for_prediction:
+            edf_plot(error, xlabel="Absolute Error", show=False,
+                     color = "#B3331D", label="Prediction", ax=ax)
+
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
     def murphy_plot(
@@ -304,9 +317,12 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
+            axes:Union[List[plt.Axes], Tuple[plt.Axes]] = None,
+            figsize=None,
+            hist_kws:dict = None,
+            plot_kws:dict = None,
             prefix='',
             where='',
-            hist_kws:dict = None,
             **kwargs
     ):
         """
@@ -318,50 +334,58 @@ class ProcessPredictions(Plot):
             array like
         predicted :
             array like
+        axes : tuple
+        figsize : tuple
+        plot_kws : dict
         prefix :
         where :
         hist_kws :
 
         """
-
-        fig, axis = plt.subplots(2, sharex="all")
-
         true = _to_1darray(true)
         predicted = _to_1darray(predicted)
 
         y = true - predicted
 
-        _hist_kws = dict(bins=20, linewidth=0.5,
-                edgecolor="k", grid=False, color='khaki')
+        if axes is None:
+            fig, axes = plt.subplots(1, 2,
+                                     figsize=figsize,
+                                     sharey="all",
+                                     gridspec_kw={'width_ratios': [3, 1]})
+        else:
+            assert len(axes)==2, axes
 
-        if hist_kws is not None:
+        _hist_kws = dict(bins=20, linewidth=0.5,
+                              edgecolor="k", grid=False, color="#009E73",
+                              orientation='horizontal')
+
+        if hist_kws:
             _hist_kws.update(hist_kws)
 
-        ep.hist(y, show=False, ax=axis[0], **_hist_kws)
-        axis[0].set_xticks([])
+        ep.hist(y, show=False, ax=axes[1],
+             **_hist_kws)
+
+        _plot_kws = dict(color="#009E73",
+             markerfacecolor="#009E73",
+             markeredgecolor="black", markeredgewidth=0.5,
+             alpha=0.7)
+        if plot_kws:
+            _plot_kws.update(plot_kws)
 
         ep.plot(predicted, y, 'o', show=False,
-                ax=axis[1],
-                color="darksalmon",
-                markerfacecolor=np.array([225, 121, 144]) / 256.0,
-                markeredgecolor="black", markeredgewidth=0.5,
-                ax_kws=dict(
-                    xlabel="Predicted",
-                    ylabel="Residual",
-                    xlabel_kws={"fontsize": 14},
-                    ylabel_kws={"fontsize": 14}),
-                )
+             ax=axes[0],
+             **_plot_kws
+             )
 
-        # draw horizontal line on y=0
-        axis[1].axhline(0.0)
-        plt.suptitle("Residual")
-
+        axes[0].axhline(0.0, color="black")
         return self.save_or_show(fname=f"{prefix}_residual",
                                  where=where)
 
     def errors_plot(
-            self, true, predicted,
-            prefix='', where='', **kwargs):
+            self, true,
+            predicted,
+            prefix='',
+            where='', **kwargs):
 
         errors = Metrics[self.mode](true, predicted, multiclass=self.is_multiclass_)
 
@@ -379,9 +403,10 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
-            target_name='',
+            prefix = '',
             where='',
-            annotate_with="r2"
+            annotate_with="r2",
+            **kwargs,
     ):
         annotation_val = getattr(RegressionMetrics(true, predicted), annotate_with)()
 
@@ -431,7 +456,7 @@ class ProcessPredictions(Plot):
                      horizontalalignment='right', verticalalignment='top',
                      fontsize=16)
 
-        return self.save_or_show(fname=f"{target_name}_regression",
+        return self.save_or_show(fname=f"{prefix}_regression",
                                  where=where)
 
     def prediction_plot(
