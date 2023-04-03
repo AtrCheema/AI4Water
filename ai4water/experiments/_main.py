@@ -349,8 +349,10 @@ class Experiments(object):
             model_type,
             model_name,
             cross_validate,
-            train_x, train_y,
-            val_x, val_y):
+            train_x,
+            train_y,
+            val_x,
+            val_y):
 
         """runs the `.fit` of allt he models being considered once.
         Also populates following attributes
@@ -364,20 +366,19 @@ class Experiments(object):
 
         config = self._get_config(model_type, model_name, **self._named_x0())
 
+        # since it is a dry run, we will combine training and validation data
+        # so that the model is trained on all the training data
+        train_x, train_y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
+
         model = self._build_fit(
             train_x, train_y,
             title=f"{self.exp_name}{SEP}{model_name}",
-            validation_data=(val_x, val_y),
             cross_validate=cross_validate,
             **config)
 
         train_results = self._predict(model=model, x=train_x, y=train_y)
 
         self._populate_results(model_name, train_results)
-
-        if val_x is not None and (hasattr(val_x, '__len__') and len(val_x)>0):
-            val_results = self._predict(model=model, x=val_x, y=val_y)
-            self._populate_results(model_name, train_results=train_results, val_results=val_results)
 
         if cross_validate:
             cv_scoring = model.val_metric
@@ -2721,13 +2722,21 @@ def _combine_training_validation_data(
         if hasattr(y_val, '__len__') and len(y_val) > 0:
             y = np.concatenate([y_train, y_val])
 
-    elif isinstance(x_train, np.ndarray):
+    elif isinstance(x_train, (pd.DataFrame, np.ndarray)):
         x, y = x_train, y_train
+
         # if not validation data is available then use only training data
         if x_val is not None:
             if hasattr(x_val, '__len__') and len(x_val)>0:
-                x = np.concatenate([x_train, x_val])
-                y = np.concatenate([y_train, y_val])
+                if isinstance(x_train, pd.DataFrame):
+                    x = pd.concat([x_train, x_val])
+                else:
+                    x = np.concatenate([x_train, x_val])
+
+                if isinstance(y_train, (pd.DataFrame, pd.Series)):
+                    y = pd.concat([y_train, y_val])
+                else:
+                    y = np.concatenate([y_train, y_val])
     else:
         raise NotImplementedError
 

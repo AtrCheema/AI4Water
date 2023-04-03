@@ -11,6 +11,17 @@ DualAttentionModel
 
    .. automethod:: __init__
 
+
+InputAttentionModel
+====================
+.. autoclass:: ai4water.tf_models.InputAttentionModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 TemporalFusionTransformer
 =========================
 .. autoclass:: ai4water.models.tensorflow.TemporalFusionTransformer

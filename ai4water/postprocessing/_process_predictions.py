@@ -128,7 +128,7 @@ class ProcessPredictions(Plot):
             plots = [plots]
 
         assert all([plot in self.available_plots for plot in plots]), f"""
-        {plots}"""
+        {plots} not allowed."""
         self.plots = plots
 
         super().__init__(path, save=save)
@@ -279,8 +279,17 @@ class ProcessPredictions(Plot):
 
         error = np.abs(true - predicted)
 
-        ax = edf_plot(error, xlabel="Absolute Error",
-                      label="Error", color="#005066", show=False)
+        _plot_kws = dict(
+            xlabel="Absolute Error",
+            color="#005066", show=False
+        )
+
+        if for_prediction:
+            _plot_kws['label'] = "Error"
+
+        ax = edf_plot(
+            error, **_plot_kws
+        )
 
         if for_prediction:
             edf_plot(error, xlabel="Absolute Error", show=False,
@@ -323,6 +332,7 @@ class ProcessPredictions(Plot):
             plot_kws:dict = None,
             prefix='',
             where='',
+            xlabel=None,
             **kwargs
     ):
         """
@@ -339,6 +349,7 @@ class ProcessPredictions(Plot):
         plot_kws : dict
         prefix :
         where :
+        xlabel :
         hist_kws :
 
         """
@@ -355,9 +366,12 @@ class ProcessPredictions(Plot):
         else:
             assert len(axes)==2, axes
 
-        _hist_kws = dict(bins=20, linewidth=0.5,
-                              edgecolor="k", grid=False, color="#009E73",
-                              orientation='horizontal')
+        _hist_kws = dict(bins=20,
+                         linewidth=0.5,
+                         edgecolor="k",
+                         grid=False,
+                         color="#009E73",
+                         orientation='horizontal')
 
         if hist_kws:
             _hist_kws.update(hist_kws)
@@ -365,10 +379,16 @@ class ProcessPredictions(Plot):
         ep.hist(y, show=False, ax=axes[1],
              **_hist_kws)
 
-        _plot_kws = dict(color="#009E73",
-             markerfacecolor="#009E73",
-             markeredgecolor="black", markeredgewidth=0.5,
-             alpha=0.7)
+        _plot_kws = dict(
+            color="#009E73",
+            markerfacecolor="#009E73",
+            markeredgecolor="black",
+            markeredgewidth=0.5,
+            alpha=0.7,
+            ax_kws=dict(
+                xlabel= xlabel or f"Predicted {prefix}",
+                ylabel="Residual"),
+        )
         if plot_kws:
             _plot_kws.update(plot_kws)
 
