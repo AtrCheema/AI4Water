@@ -3,7 +3,7 @@ from typing import Callable, Union
 from ai4water.backend import np, plt, pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from easy_mpl import bar_chart
+from easy_mpl import bar_chart, boxplot, violin_plot, hist
 from easy_mpl.utils import make_cols_from_cmap
 
 
@@ -170,6 +170,7 @@ def prediction_distribution_plot(
         show_percentile=False,
         show_outliers=False,
         end_point=True,
+        kind:str = "bar",
         classes=None,
         ncols=2,
         figsize=None,
@@ -249,21 +250,13 @@ def prediction_distribution_plot(
         summary_df = summary_df.merge(box_line, on='x', how='outer').fillna(0)
     summary_df = summary_df[info_cols + ['count'] + actual_prediction_columns_qs]
 
-    # Draw the bar chart
-    fig, ax = plt.subplots(figsize=figsize)
-
-    color = make_cols_from_cmap("PuBu", len(summary_df), 0.2)
-    ax = bar_chart(
-        summary_df['actual_prediction_q2'],
-        summary_df['display_column'],
-        ax_kws={"xlabel":"Mean Prediction", "xlabel_kws":{"fontsize": 14},
-                "ylabel": f"{feature_name}", 'ylabel_kws': {'fontsize': 14}},
-        show=False,
-        color=color,
-        bar_labels=summary_df['count'],
-        bar_label_kws={"color": "black", 'label_type': 'edge', 'fontsize': 14},
-        ax=ax,
-    )
+    ax = _dist_plot(summary_df,
+                    X=inputs,
+                    prediction=prediction,
+                    feature=feature,
+                    feature_name=feature_name,
+                    figsize=figsize,
+                    kind=kind or "bar")
 
     if show:
         plt.tight_layout()
@@ -818,3 +811,70 @@ def _prepare_info_plot_data(feature, feature_type, data, num_grid_points, grid_t
         info_cols += ['percentile_column', 'percentile_lower', 'percentile_upper']
 
     return data_x, summary_df, info_cols
+
+
+def _dist_plot(
+        summary_df,
+        feature,
+        feature_name,
+        X,
+        prediction,
+        figsize,
+               kind="bar"):
+
+    # Draw the bar chart
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if kind=="bar":
+        color = make_cols_from_cmap("PuBu", len(summary_df), 0.2)
+        return bar_chart(
+            summary_df['actual_prediction_q2'],
+            summary_df['display_column'],
+            ax_kws={"xlabel":"Mean Prediction", "xlabel_kws":{"fontsize": 14},
+                    "ylabel": f"{feature_name}", 'ylabel_kws': {'fontsize': 14}},
+            show=False,
+            color=color,
+            bar_labels=summary_df['count'],
+            bar_label_kws={"color": "black", 'label_type': 'edge', 'fontsize': 14},
+            ax=ax,
+        )
+
+    preds = {}
+    for interval in summary_df['display_column']:
+        st, en = interval.split(',')
+        st = float(''.join(e for e in st if e not in ["]", ")", "[", "("]))
+        en = float(''.join(e for e in en if e not in ["]", ")", "[", "("]))
+        df1 = pd.DataFrame(X, columns=X.columns)
+        df1['target'] = prediction
+        df1 = df1[[feature, 'target']]
+        df1 = df1[(df1[feature] >= st) & (df1[feature] < en)]
+        preds[interval] = df1['target'].values
+
+    for k, v in preds.items():
+        assert len(v) > 0, f"{k} has no values in it"
+
+    if kind == "box":
+        ax, _ = boxplot(
+            list(preds.values()), show=False,
+            fill_color="lightpink", patch_artist=True,
+            medianprops={"color": "black"}, flierprops={"ms": 1.0})
+    elif kind == "hist":
+        hist(
+            list(preds.values()), show=False,
+            ax = ax, edgecolor = "k",
+            share_axes=False,
+            linewidth=0.5,
+        )
+    elif kind == "violin":
+        ax = violin_plot(list(preds.values()), cut=0.4,  show=False)
+        ax.set_xticks(range(len(preds)))
+        ax.set_facecolor("#fbf9f4")
+    else:
+        raise ValueError(f"{kind}")
+
+    if kind != "hist":
+        ax.set_xlabel(feature_name)
+        ax.set_xticklabels(list(preds.keys()))
+        ax.set_yticklabels(ax.get_yticks().astype(int))
+
+    return ax

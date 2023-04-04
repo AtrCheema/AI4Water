@@ -3399,6 +3399,7 @@ class BaseModel(NN):
             which_classes=None,
             ncols=2,
             figsize: tuple = None,
+            kind:str = None,
             annotate:bool = True,
             annotate_kws:dict = None,
             cmap="YlGn",
@@ -3421,7 +3422,10 @@ class BaseModel(NN):
                 The kind of data to be used. It is only valid if ``data`` argument is used.
                 It should be one of ``training``, ``validation``, ``test`` or ``all``.
             features: str/list
-                name or names of features to investigate
+                name or names of features to investigate. If one feauture is given then
+                distribution of prediction within buckets defined by the grid is plotted
+                plotted as bar/box/violin . If two features are given then a heatmap
+                is plotted.
             feature_names: list
                 feature names
             num_grid_points: list, optional, default=None
@@ -3447,6 +3451,9 @@ class BaseModel(NN):
                 size of the figure, (width, height)
             ncols: integer, optional, default=2
                 number subplot columns, used when it is multi-class problem
+            kind : str (default=None)
+                The kind of plot to draw. This is only valid if only one feature
+                is provided for ``features`` argument.
             annotate: bool, default=False
                 whether to annotate the points
             annotate_kws : dict, optional
@@ -3462,7 +3469,9 @@ class BaseModel(NN):
                     annotate_fontsize : int, optinoal (default=7)
                         fontsize for annotation
             cmap :
+                The colormap to use for heatmap.
             border :
+                whether to draw teh border around heatmap or not
             show : bool, optional (default=True)
                 whether to show the  plot or not
             save_metadata : bool, optional, default=True
@@ -3505,10 +3514,10 @@ class BaseModel(NN):
 
         if feature_names is None:
             if isinstance(features, str):
-                feature_names = features
+                feature_names = [features]
             else:
                 assert isinstance(features, list)
-                feature_names = "Feature"
+                feature_names = ["Feature"]
 
         if not isinstance(features, list):
             features = [features]
@@ -3542,6 +3551,7 @@ class BaseModel(NN):
                 show_percentile=show_percentile,
                 show_outliers=show_outliers,
                 end_point=end_point,
+                kind=kind,
                 figsize=figsize,
                 ncols=ncols,
                 show=False,

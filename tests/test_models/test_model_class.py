@@ -465,20 +465,44 @@ class TestTransformation(unittest.TestCase):
 
 class TestPredictionAnalysis(unittest.TestCase):
 
+    model = Model(model="XGBRegressor", verbosity=-1)
+    model.fit(data=busan_beach())
+
     def test_prediction_dist(self):
 
-        model = Model(model="XGBRegressor", verbosity=-1)
-        model.fit(data=busan_beach())
-        ax = model.prediction_analysis(features="tide_cm",
+        ax = self.model.prediction_analysis(features="tide_cm",
         data=busan_beach(), show=False, save_metadata=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_prediction_dist_hist(self):
+
+        ax = self.model.prediction_analysis(features="tide_cm",
+                                            kind="hist",
+        data=busan_beach(), show=False, save_metadata=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_prediction_dist_box(self):
+
+        ax = self.model.prediction_analysis(
+            features="tide_cm",
+            kind="box",
+        data=busan_beach(), show=False, save_metadata=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_prediction_dist_violin(self):
+        ax = self.model.prediction_analysis(
+            features="tide_cm",
+            kind="violin",
+            data=busan_beach(), show=False, save_metadata=False)
         assert isinstance(ax, plt.Axes)
         return
 
     def test_interaction(self):
 
-        model = Model(model="XGBRegressor", verbosity=-1)
-        model.fit(data=busan_beach())
-        ax = model.prediction_analysis(
+        ax = self.model.prediction_analysis(
             ['tide_cm', 'sal_psu'],
             data=busan_beach(),
             custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
