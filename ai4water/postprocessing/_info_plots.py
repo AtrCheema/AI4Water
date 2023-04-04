@@ -313,6 +313,13 @@ def heatmap(
     cbar = fig.colorbar(im, orientation="vertical", pad=0.2, cax=cax)
     cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
 
+    # turnoff border around cbar
+    if isinstance(cbar.ax.spines, dict):
+        for v in cbar.ax.spines.values():
+            v.set_visible(False)
+    else:
+        cbar.ax.spines[:].set_visible(False)
+
     # Show all ticks and label them with the respective list entries.
     ax.set_xticks(np.arange(data.shape[1]))
     ax.set_xticklabels(col_labels)
@@ -857,7 +864,15 @@ def _dist_plot(
         ax, _ = boxplot(
             list(preds.values()), show=False,
             fill_color="lightpink", patch_artist=True,
-            medianprops={"color": "black"}, flierprops={"ms": 1.0})
+            medianprops={"color": "black"}, flierprops={"ms": 1.0},
+            showmeans=True,
+            meanprops={
+                "markerfacecolor": "black",
+                "markeredgecolor": 'black',
+                "marker": "o",
+                    },
+        )
+        ax.grid(visible=True, ls='--', color='lightgrey')
     elif kind == "hist":
         hist(
             list(preds.values()), show=False,

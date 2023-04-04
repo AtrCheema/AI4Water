@@ -292,7 +292,7 @@ class ProcessPredictions(Plot):
         if for_prediction:
             ax.grid(False)
             ax.set_xlabel("Absolute Error", color="#005066")
-            ax.set_xticklabels(ax.get_xticklabels(), color="#005066")
+            #ax.set_xticklabels(ax.get_xticklabels(), color="#005066")
             ax.set_title('')
             ax2 = ax.twiny()
             ax = edf_plot(predicted, show=False,
@@ -300,7 +300,7 @@ class ProcessPredictions(Plot):
             ax.grid(visible=True, ls='--', color='lightgrey')
             ax.set_title('')
             ax.set_xlabel("Prediction", color= "#B3331D")
-            ax.set_xticklabels(ax.get_xticklabels(), color="#B3331D")
+            #ax.set_xticklabels(ax.get_xticklabels(), color="#B3331D")
 
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 

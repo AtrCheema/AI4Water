@@ -1155,7 +1155,6 @@ Available cases are {self.models} and you wanted to include
                   cmap=cmap1,
                   values=models['train'],
                   ax_kws={'title':"Train",
-                          'title_kws': dict(fontsize=14),
                   'xlabel':ERROR_LABELS.get(matric_name, matric_name)
                           },
                   show=False,
@@ -1173,7 +1172,6 @@ Available cases are {self.models} and you wanted to include
                   ax_kws={
                       'title': TITLLE.get(models.columns.tolist()[1], models.columns.tolist()[1]),
                       'xlabel':ERROR_LABELS.get(matric_name, matric_name),
-                      'title_kws': dict(fontsize=14),
                       'show_yaxis':False},
                   show=False,
                   **kwargs
