@@ -678,7 +678,9 @@ class InputAttentionModel(DualAttentionModel):
         super(InputAttentionModel, self).__init__(*args, teacher_forcing=teacher_forcing, **kwargs)
 
     def build(self, input_shape=None):
-
+        """
+        builds the input attention model
+        """
         self.config['enc_config'] = self.enc_config
         setattr(self, 'batch_size', self.config['batch_size'])
         setattr(self, 'drop_remainder', self.config['drop_remainder'])

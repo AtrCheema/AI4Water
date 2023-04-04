@@ -817,7 +817,7 @@ def _dist_plot(
         summary_df,
         feature,
         feature_name,
-        X,
+        X:pd.DataFrame,
         prediction,
         figsize,
                kind="bar"):
@@ -844,7 +844,7 @@ def _dist_plot(
         st, en = interval.split(',')
         st = float(''.join(e for e in st if e not in ["]", ")", "[", "("]))
         en = float(''.join(e for e in en if e not in ["]", ")", "[", "("]))
-        df1 = pd.DataFrame(X, columns=X.columns)
+        df1 = pd.DataFrame(X.copy(), columns=X.columns)
         df1['target'] = prediction
         df1 = df1[[feature, 'target']]
         df1 = df1[(df1[feature] >= st) & (df1[feature] < en)]

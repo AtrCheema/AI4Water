@@ -1130,7 +1130,7 @@ Available cases are {self.models} and you wanted to include
         labels = [shred_model_name(model_name) for model_name in models.index.tolist()]
 
         if kwargs is not None:
-            for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws', 'color']:
+            for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws', 'color', 'data']:
                 assert arg not in kwargs, f"{arg} not allowed in kwargs"
 
         color1, color2 = None, None
@@ -1155,7 +1155,9 @@ Available cases are {self.models} and you wanted to include
                   cmap=cmap1,
                   values=models['train'],
                   ax_kws={'title':"Train",
-                  'xlabel':ERROR_LABELS.get(matric_name, matric_name)},
+                          'title_kws': dict(fontsize=14),
+                  'xlabel':ERROR_LABELS.get(matric_name, matric_name)
+                          },
                   show=False,
                   **kwargs,
                   )
@@ -1171,6 +1173,7 @@ Available cases are {self.models} and you wanted to include
                   ax_kws={
                       'title': TITLLE.get(models.columns.tolist()[1], models.columns.tolist()[1]),
                       'xlabel':ERROR_LABELS.get(matric_name, matric_name),
+                      'title_kws': dict(fontsize=14),
                       'show_yaxis':False},
                   show=False,
                   **kwargs
