@@ -255,9 +255,11 @@ class ProcessPredictions(Plot):
 
     def edf_plot(
             self,
-            true, predicted,
-            for_prediction:bool = False,
-            prefix='', where='',
+            true,
+            predicted,
+            for_prediction:bool = True,
+            prefix='',
+            where='',
             **kwargs):
         """cumulative distribution function of absolute error between true and
         predicted.
@@ -280,20 +282,25 @@ class ProcessPredictions(Plot):
         error = np.abs(true - predicted)
 
         _plot_kws = dict(
-            xlabel="Absolute Error",
             color="#005066", show=False
         )
-
-        if for_prediction:
-            _plot_kws['label'] = "Error"
 
         ax = edf_plot(
             error, **_plot_kws
         )
 
         if for_prediction:
-            edf_plot(error, xlabel="Absolute Error", show=False,
-                     color = "#B3331D", label="Prediction", ax=ax)
+            ax.grid(False)
+            ax.set_xlabel("Absolute Error", color="#005066")
+            ax.set_xticklabels(ax.get_xticklabels(), color="#005066")
+            ax.set_title('')
+            ax2 = ax.twiny()
+            ax = edf_plot(predicted, show=False,
+                     color = "#B3331D", ax=ax2)
+            ax.grid(visible=True, ls='--', color='lightgrey')
+            ax.set_title('')
+            ax.set_xlabel("Prediction", color= "#B3331D")
+            ax.set_xticklabels(ax.get_xticklabels(), color="#B3331D")
 
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
@@ -447,12 +454,17 @@ class ProcessPredictions(Plot):
         if (predicted == predicted[0]).all():
             marginals = False
 
+        scatter_kws = {'marker': "o",
+                       'edgecolors': 'black',
+                       'linewidth': 0.5,
+                       'alpha': 0.7}
+        
         try:
             axes = ep.regplot(true,
                        predicted,
                        marker_color='crimson',
                        line_color='k',
-                       scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth':0.5},
+                       scatter_kws=scatter_kws,
                        show=False,
                        marginals=marginals,
                        marginal_ax_pad=0.25,
@@ -465,7 +477,7 @@ class ProcessPredictions(Plot):
                        predicted,
                        marker_color='crimson',
                        line_color='k',
-                       scatter_kws={'marker': "o", 'edgecolors': 'black', 'linewidth': 0.5},
+                       scatter_kws=scatter_kws,
                        show=False,
                        marginals=False
                        )

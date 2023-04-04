@@ -28,6 +28,7 @@ p2 = np.random.random((100, 2))
 class TestProcessPrediction(unittest.TestCase):
 
     show = False
+    save = True
 
     def test_rgr_1_output(self):
         pp = ProcessPredictions(mode="regression",
@@ -35,7 +36,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=["residual", "murphy"],
                                 show=self.show,
-                                save=False,
+                                save=self.save,
                                 )
 
         pp(t, p,  inputs=x)
@@ -47,7 +48,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=["regression", "residual", "murphy"],
                                 show=self.show,
-                                save=False,
+                                save=self.save,
                                 )
 
         pp(t, p,  inputs=x)
@@ -59,7 +60,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=["residual", "murphy"],
                                 show=self.show,
-                                save=False,
+                                save=self.save,
                                 )
 
         self.assertRaises(ValueError, pp, t, p,  inputs=x_2d)
@@ -71,7 +72,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a', 'b'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=self.save,
                                 )
 
         pp(t2, p2, inputs=x)
@@ -82,7 +83,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=False,
+                                save=self.save,
                                 )
 
         pp(t_cls, p_cls,  inputs=x)
@@ -94,7 +95,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=True,
+                                save=self.save,
                                 )
 
         pp(t_cls.reshape(-1,), p_cls.reshape(-1,),  inputs=x)
@@ -107,7 +108,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=True,
+                                save=self.save,
                                 )
 
         pp(t_cls.reshape(-1,), p_cls.reshape(-1,),  inputs=x)
@@ -119,7 +120,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 #output_features=['a', 'b'],
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=True,
+                                save=self.save,
                                 )
 
         pp(t_m_cls.reshape(-1,), p_m_cls.reshape(-1,),  inputs=x)
@@ -130,7 +131,7 @@ class TestProcessPrediction(unittest.TestCase):
         pp = ProcessPredictions(mode="classification",
                                 plots=ProcessPredictions.available_plots,
                                 show=self.show,
-                                save=True,
+                                save=self.save,
                                 )
 
         pp(t_m_cls.reshape(-1,), p_m_cls.reshape(-1,),  inputs=x)
