@@ -9,6 +9,8 @@ def regression_space(
         verbosity: bool = 0
 )->dict:
 
+    dt_rgr = _dt_regressor(num_samples=num_samples)
+
     spaces = {
         "AdaBoostRegressor":{
             "param_space": [
@@ -281,14 +283,8 @@ def regression_space(
             "x0":
                 [50, 0.01, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']},
         "DecisionTreeRegressor": {
-            "param_space": [
-                Categorical(["best", "random"], name='splitter'),
-                Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
-                # Real(low=1, high=5, name='min_samples_leaf'),
-                Real(low=0.0, high=0.5, name="min_weight_fraction_leaf", num_samples=num_samples),
-                Categorical(categories=['auto', 'sqrt', 'log2'], name="max_features")],
-            "x0":
-                ['best', 2, 0.0, 'auto']},
+            "param_space": dt_rgr.space,
+            "x0": dt_rgr.x0},
         "ElasticNet": {
             "param_space": [
                 Real(low=1.0, high=5.0, name='alpha', num_samples=num_samples),
@@ -871,8 +867,26 @@ class _ridge_classifiercv(object):
             self.space.pop(1)
             self.x0.pop(1)
 
+
+class _dt_regressor(object):
+    """DecisionTreeRegressor"""
+    def __init__(self, num_samples):
+        import sklearn
+        self.space = [
+         Categorical(["best", "random"], name='splitter'),
+         Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
+         Real(low=0.0, high=0.5, name="min_weight_fraction_leaf", num_samples=num_samples),
+         Categorical(categories=['auto', 'sqrt', 'log2'], name="max_features"),
+        ]
+
+        self.x0 = ['best', 2, 0.0, 'auto']
+
+        if sklearn.__version__ > "1.1.0":  # auto is deprecated
+            self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
+            self.space[-1] = "sqrt"
+
+
 def lgbm_num_leaves(num_samples:int = None):
     if num_samples and num_samples > 1000:
         return 72
     return 32
-

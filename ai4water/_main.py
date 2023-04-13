@@ -3458,15 +3458,15 @@ class BaseModel(NN):
                 whether to annotate the points
             annotate_kws : dict, optional
                 a dictionary of keyword arguments with following keys
-                    annotate_counts : bool, default=False
+                    counts : bool, default=False
                         whether to annotate counts or not.
-                    annotate_colors : tuple
+                    colors : tuple
                         pair of colors
-                    annotate_color_threshold : float
+                    color_threshold : float
                         threshold value for annotation
-                    annotate_fmt : str
+                    fmt : str
                         format string for annotation.
-                    annotate_fontsize : int, optinoal (default=7)
+                    fontsize : int, optinoal (default=7)
                         fontsize for annotation
             cmap :
                 The colormap to use for heatmap.
@@ -3495,9 +3495,9 @@ class BaseModel(NN):
         >>> model.prediction_analysis(
         ...     ['tide_cm', 'sal_psu'],
         ...     data=busan_beach(),
-        ...     annotate_kws={"annotate_counts":True,
-        ...     "annotate_colors":("black", "black"),
-        ...     "annotate_fontsize":10},
+        ...     annotate_kws={"counts":True,
+        ...     "colors":("black", "black"),
+        ...     "fontsize":10},
         ...     custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
         ...                       [33.45, 33.7, 33.9, 34.05, 34.4]],
         ... )
@@ -3523,17 +3523,22 @@ class BaseModel(NN):
             features = [features]
 
         _annotate_kws = {
-            'annotate_counts': True,
-            'annotate_colors':("black", "white"),
-            'annotate_color_threshold': None,
-            'annotate_fmt': None,
-            'annotate_fontsize': 7
+            'counts': True,
+            'colors':("black", "white"),
+            'color_threshold': None,
+            'fmt': None,
+            'fontsize': 8
         }
 
         if annotate_kws is None:
             annotate_kws = dict()
 
         _annotate_kws.update(annotate_kws)
+
+        annotate_kws = {}
+        for k,v in _annotate_kws.items():
+            k = "annotate_" + k
+            annotate_kws[k] = v
 
         if len(features) == 1:
             ax, summary_df = prediction_distribution_plot(
@@ -3577,7 +3582,7 @@ class BaseModel(NN):
                 annotate=annotate,
                 cmap=cmap,
                 border=border,
-                **_annotate_kws,
+                **annotate_kws,
             )
 
         fname = f"prediction_analysis_{features[0] if len(features)==1 else features[0]+features[1]}"

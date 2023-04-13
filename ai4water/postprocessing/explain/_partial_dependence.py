@@ -158,7 +158,7 @@ class PartialDependencePlot(ExplainerMixin):
                     else:
                         ax_ = ax
 
-                    self._plot_pdp_1dim(*self.calc_pdp_1dim(self.data, self.features[i]),
+                    self.plot_pdp_1dim(*self.calc_pdp_1dim(self.data, self.features[i]),
                                         self.data,
                                         self.features[i],
                                         show_dist=show_dist,
@@ -446,7 +446,7 @@ class PartialDependencePlot(ExplainerMixin):
 
                     pdp_vals, ice_vals = self.calc_pdp_1dim(self.data, feature)
 
-                    ax = self._plot_pdp_1dim(
+                    ax = self.plot_pdp_1dim(
                         pdp_vals,
                         ice_vals,
                         self.data, feature,
@@ -468,7 +468,7 @@ class PartialDependencePlot(ExplainerMixin):
                 elif self.data_is_3d:
                     for lb in range(self.data.shape[1]):
                         pdp_vals, ice_vals = self.calc_pdp_1dim(self.data, feature, lb)
-                        ax = self._plot_pdp_1dim(
+                        ax = self.plot_pdp_1dim(
                             pdp_vals,
                             ice_vals,
                             data=self.data,
@@ -581,19 +581,23 @@ class PartialDependencePlot(ExplainerMixin):
 
         return ind
 
-    def _plot_pdp_1dim(
+    def plot_pdp_1dim(
             self,
             pd_vals,
             ice_vals,
             data,
             feature,
             lookback=None,
-            show_dist=True, show_dist_as="hist",
-            ice=True, show_ci=False,
+            show_dist=True,
+            show_dist_as="hist",
+            ice=True,
+            show_ci=False,
             show_minima=False,
             feature_expected_value=False,
             model_expected_value=False,
-            show=True, save=False, ax=None,
+            show=True,
+            save=False,
+            ax=None,
             ice_color="lightblue",
             ice_only:bool = False,
             feature_name:str = None,
@@ -659,12 +663,9 @@ class PartialDependencePlot(ExplainerMixin):
             title = f"lookback: {lookback}"
         process_axis(ax,
                      ylabel=ylabel,
-                     ylabel_kws=dict(fontsize=20),
                      right_spine=False,
                      top_spine=False,
-                     tick_params=dict(labelsize=11),
                      xlabel=feature_name,
-                     xlabel_kws=dict(fontsize=20),
                      title=title)
 
         if isinstance(feature, list):
@@ -684,8 +685,7 @@ class PartialDependencePlot(ExplainerMixin):
 
                 ax2.hist(xv, 50, range=(xmin, xmax), **_hist_kws)
             else:
-                _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature,
-                                  xlabel_kws=dict(fontsize=20))
+                _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature)
 
         process_axis(ax2,
                      right_spine=False,
@@ -731,7 +731,7 @@ class PartialDependencePlot(ExplainerMixin):
                      yticklabels=["E[f(x)]"],
                      right_spine=False,
                      top_spine=False,
-                     tick_params=dict(length=0, labelsize=11)
+                     tick_params=dict(length=0)
                      )
 
         original_axis.axhline(model_expected_val, color="#999999", zorder=-1,
@@ -751,7 +751,8 @@ class PartialDependencePlot(ExplainerMixin):
         process_axis(ax3,
                      xlim=(xmin, xmax),
                      xticks=[mval], xticklabels=["E[" + feature_name + "]"],
-                     tick_params={'length': 0, 'labelsize': 11}, top_spine=False,
+                     tick_params={'length': 0},
+                     top_spine=False,
                      right_spine=False)
         original_axis.axvline(mval, color="#999999", zorder=-1, linestyle="--",
                               linewidth=1)
