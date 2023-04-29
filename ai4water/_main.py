@@ -20,7 +20,7 @@ from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .utils.utils import maybe_three_outputs, get_version_info
 
-from .postprocessing.utils import LossCurve
+from .utils import LossCurve
 from .postprocessing import ProcessPredictions
 from .postprocessing import feature_interaction
 from .postprocessing import prediction_distribution_plot

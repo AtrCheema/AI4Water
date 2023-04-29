@@ -1056,6 +1056,7 @@ class TrainTestSplit(object):
                 - list of array like objects
 
         """
+        # todo, test with df without y
         if isinstance(x, list):
             indices = np.arange(len(x[0]))
         else:

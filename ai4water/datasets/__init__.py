@@ -64,6 +64,7 @@ from .water_quality import DoceRiver
 from .water_quality import SeluneRiver
 from .water_quality import busan_beach
 from .water_quality import RiverChemSiberia
+from .water_quality import SyltRoads
 
 
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):

@@ -4,7 +4,7 @@ from typing import Union
 from ...preprocessing import DataSet
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
-from ..utils import choose_examples
+from ai4water.utils.visualizations import choose_examples
 from .utils import convert_ai4water_model, get_features
 from ai4water.backend import os
 

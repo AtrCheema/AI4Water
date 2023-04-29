@@ -28,6 +28,11 @@ edf_plot
 .. automodule:: ai4water.utils.visualizations
    :members: edf_plot
 
+LossCurve
+===========
+.. automodule:: ai4water.utils.visualizations
+   :members: LossCurve
+
 jsonize
 =======
 .. automodule:: ai4water.utils.utils

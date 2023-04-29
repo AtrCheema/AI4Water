@@ -1,6 +1,11 @@
-__all__ = ["Plot", "murphy_diagram", "edf_plot", "fdc_plot"]
 
+__all__ = ["Plot", "murphy_diagram", "edf_plot", "fdc_plot", "LossCurve"]
+
+import warnings
+from itertools import zip_longest
 from typing import Union, Callable
+
+from easy_mpl.utils import create_subplots
 
 from ai4water.backend import os, np, pd, plt, plotly
 from ai4water.backend import easy_mpl as em
@@ -42,7 +47,9 @@ class Plot(object):
             x = os.getcwd()
         self._path = x
 
-    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None,
+    def save_or_show(self,
+                     save: bool = None,
+                     fname=None, where='', dpi=None,
                      bbox_inches='tight',
                      close=True, show=False):
 
@@ -389,3 +396,193 @@ def edf_plot(
         plt.show()
 
     return ax
+
+
+class LossCurve(Plot):
+
+    def __init__(self, path=None, show=1, save:bool=True):
+        self.path = path
+        self.show = show
+
+        super().__init__(path, save=save)
+
+    def plot(
+            self,
+            history: dict,
+            smoothing:str = None,
+            alpha : float = 0.2,
+            only_smoothed_loss:bool = False,
+            name="loss_curve",
+            figsize:tuple=None,
+    )->plt.Axes:
+        """Considering history is a dictionary of different arrays, possible
+        training and validation loss arrays, this method plots those arrays.
+
+        Parameters
+        ----------
+        history : dict
+            a dictionary which contains arrays of losses and validation losses
+        smoothing :
+            The type of smoothing to apply. Available options are
+                - ewma
+        only_smoothed_loss : bool
+            whether to plot only smoothened loss or both. Only valid if smoothing
+            is on.
+        alpha : float
+            For smoothing. Only valid if ``smoothing`` is not None.
+        name :
+        figsize :
+        """
+
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        legends = {
+            'mean_absolute_error': 'Mean Absolute Error',
+            'mape': 'Mean Absolute Percentage Error',
+            'mean_squared_logarithmic_error': 'Mean Squared Logarithmic Error',
+            'pbias': "Percent Bias",
+            "nse": "Nash-Sutcliff Efficiency",
+            "kge": "Kling-Gupta Efficiency",
+            "tf_r2": "$R^{2}$",
+            "r2": "$R^{2}$"
+        }
+
+        epochs = range(1, len(history['loss']) + 1)
+
+        nplots = len(history)
+        val_losses = {}
+        losses = history.copy()
+        for k in history.keys():
+            val_key = f"val_{k}"
+            if val_key in history:
+                nplots -= 1
+                val_losses[val_key] = losses.pop(val_key)
+
+        fig, axis = create_subplots(nplots, figsize=figsize)
+
+        if not isinstance(axis, np.ndarray):
+            axis = np.array([axis])
+
+        axis = axis.flat
+
+        for idx, (key, loss), val_data in zip_longest(range(nplots), losses.items(), val_losses.items()):
+
+            ax = axis[idx]
+
+            if val_data is not None:
+                val_key, val_loss = val_data
+
+                if smoothing:
+                    sm_val_loss = self.smoothen_array(val_loss, smoothing, alpha)
+                    ax.plot(epochs, sm_val_loss, color=[0.96707953, 0.46268314, 0.45772886],
+                            label='Validation ')
+
+                    if not only_smoothed_loss:
+                        ax.plot(epochs, val_loss, color=[0.96707953, 0.46268314, 0.45772886],
+                                alpha=0.2)
+                else:
+                    ax.plot(epochs, val_loss, color=[0.96707953, 0.46268314, 0.45772886],
+                      label='Validation ')
+                ax.legend()
+
+            if smoothing:
+                smooth_loss = self.smoothen_array(loss, smoothing, alpha)
+                ax.plot(epochs, smooth_loss, color=[0.13778617, 0.06228198, 0.33547859],
+                        label='Training ')
+
+                if not only_smoothed_loss:
+                    ax.plot(epochs, loss, color=[0.13778617, 0.06228198, 0.33547859],
+                            alpha=0.2)
+            else:
+                ax.plot(epochs, loss, color=[0.13778617, 0.06228198, 0.33547859],
+                      label='Training ')
+            ax.legend()
+            ax.set_xlabel("Epochs")
+            ax.set_ylabel(legends.get(key, key))
+
+        ax.set(frame_on=True)
+
+        self.save_or_show(fname=name, show=self.show)
+
+        # change the style to default as we changed it to ggplot earlier
+        plt.style.use('default')
+        return ax
+
+    @staticmethod
+    def smoothen_array(data, method:str, alpha:float=0.4):
+        if method == "ewma":
+            data = np.array(data)
+            data = ewmp(data, alpha)
+        else:
+            raise ValueError(f"{method} is not allowed. Allowed values are 'ewma' ")
+        return data
+
+    def plot_loss(self,
+                  history: dict,
+                  name="loss_curve",
+                  figsize:tuple=None)->plt.Axes:
+
+        warnings.warn("please use ``plot`` instead. ", category=DeprecationWarning)
+        return self.plot(history, name=name, figsize=figsize)
+
+
+def choose_examples(x, examples_to_use, y=None):
+    """Chooses examples from x and y"""
+    if isinstance(examples_to_use, int):
+        x = x[examples_to_use]
+        x = np.expand_dims(x, 0)  # dimension must not decrease
+        index = np.array([examples_to_use])
+
+    elif isinstance(examples_to_use, float):
+        assert examples_to_use < 1.0
+        # randomly choose x fraction from test_x
+        x, index = choose_n_imp_exs(x, int(examples_to_use * len(x)), y)
+
+    elif hasattr(examples_to_use, '__len__'):
+        index = np.array(examples_to_use)
+        x = x[index]
+    else:
+        raise ValueError(f"unrecognized value of examples_to_use: {examples_to_use}")
+
+    return x, index
+
+
+def choose_n_imp_exs(x: np.ndarray, n: int, y=None):
+    """Chooses the n important examples from x and y"""
+
+    n = min(len(x), n)
+
+    st = n // 2
+    en = n - st
+
+    if y is None:
+        idx = np.random.randint(0, len(x), n)
+    else:
+        st = np.argsort(y, axis=0)[0:st].reshape(-1, )
+        en = np.argsort(y, axis=0)[-en:].reshape(-1, )
+        idx = np.hstack([st, en])
+
+    x = x[idx]
+
+    return x, idx
+
+
+def ewmp(data:np.ndarray, alpha:float)->np.ndarray:
+    """exponential weighted moving average
+    modified after https://stackoverflow.com/a/42926270
+    """
+    #alpha = 2 /(window + 1.0)
+    alpha_rev = 1-alpha
+    n = data.shape[0]
+
+    pows = alpha_rev**(np.arange(n+1))
+
+    scale_arr = 1/pows[:-1]
+    offset = data[0]*pows[1:]
+    pw0 = alpha*alpha_rev**(n-1)
+
+    mult = data*pw0*scale_arr
+    cumsums = mult.cumsum()
+    out = offset + cumsums*scale_arr[::-1]
+    return out

@@ -13,8 +13,7 @@ else:
 
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import maybe_three_outputs, get_nrows_ncols
-
-from ..utils import choose_examples
+from ai4water.utils.visualizations import choose_examples
 
 try:
     from ai4water.utils.utils_from_see_rnn import rnn_histogram

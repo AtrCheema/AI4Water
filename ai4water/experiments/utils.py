@@ -883,7 +883,7 @@ class _dt_regressor(object):
 
         if sklearn.__version__ > "1.1.0":  # auto is deprecated
             self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
-            self.space[-1] = "sqrt"
+            self.x0[-1] = "sqrt"
 
 
 def lgbm_num_leaves(num_samples:int = None):
