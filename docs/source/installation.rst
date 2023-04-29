@@ -29,6 +29,11 @@ To install the latest branch (`dev`) with all requirements use ``all`` keyword
 ::
     python -m pip install "AI4Water[all] @ git+https://github.com/AtrCheema/AI4Water.git@dev"
 
+You can also install ai4water from a specific commit using the commit code (SHA) as below
+::
+    pip install git+https://github.com/AtrCheema/AI4Water.git@e3ec95c560ff5f43a215a2339f6602980ba06f03
+
+
 using setup.py file
 ===================
 go to folder where repository is downloaded

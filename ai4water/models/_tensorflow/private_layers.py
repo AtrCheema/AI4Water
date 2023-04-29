@@ -954,17 +954,29 @@ class FTTransformer(layers.Layer):
 
 
 class Conditionalize(tf.keras.layers.Layer):
-    """Mimics the behaviour of cond_rnn of Philipperemy but puts the logic
+    """
+    Mimics the behaviour of cond_rnn of Philipperemy but puts the logic
     of condition in a separate layer so that it becomes easier to use it.
 
-    Example
+    Examples
     --------
     >>> from ai4water.models._tensorflow import Conditionalize
-    >>> from tensorflow.keras.layers import Input, LSTM
-    >>> i = Input(shape=(10, 3))
-    >>> raw_conditions = Input(shape=(14,))
-    >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
-    >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
+    >>> from tensorflow.keras.layers import Input, LSTM, Dense
+    >>> ts_inp = Input(shape=(10, 3))  # time series input with 3 features
+    >>> raw_conditions = Input(shape=(14,))  # static/conditional input data
+    >>> processed_conds = Conditionalize(32)([raw_conditions])
+    >>> lstm = LSTM(32)(ts_inp, initial_state=[processed_conds, processed_conds])
+
+    We can even have multiple raw conditions
+
+    >>> cont_inp = Input(shape=(10, 3))
+    >>> raw_conditions1 = Input(shape=(12,))
+    >>> raw_conditions2 = Input(shape=(14,))
+    >>> processed_conds = Conditionalize(32)([raw_conditions1, raw_conditions2])
+    >>> lstm = LSTM(32)(cont_inp, initial_state=[processed_conds, processed_conds])
+    # define the output layer and build the keras Model
+    >>> out = Dense(1)(lstm)
+    >>> model = Model(inputs=[cont_inp, raw_conditions1, raw_conditions2], outputs=out)
 
     This layer can also be used in ai4water model when defining the model
     using declarative model definition style

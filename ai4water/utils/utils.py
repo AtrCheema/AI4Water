@@ -1001,17 +1001,24 @@ class TrainTestSplit(object):
         Examples
         --------
         >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.utils import TrainTestSplit
         >>> data = busan_beach()
         >>> input_features = data.columns.tolist()[0:-1]
         >>> output_features = data.columns.tolist()[-1:]
-        >>> tr_features = input_features[0:-1]
-
+        # split into training and test set
         >>> TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
         ... data[input_features],
         ... data[output_features])
-
+        # Now the validation can be extracted from the training set as well
         >>> x_train, x_val, y_train, y_val = TrainTestSplit(seed=313).split_by_slicing(
         ...     TrainX, TrainY)
+
+        # the y argument is optional. If it is not provided, the corresponding y
+        # arrays will be empty
+        >>> TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
+        ...    data)
+        >>> assert len(TestX) > 0
+        >>> assert len(TrainY) == 0
         """
         def split_arrays(array):
 

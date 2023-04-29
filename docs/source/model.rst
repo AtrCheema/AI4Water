@@ -6,7 +6,7 @@ BaseModel
 =========
 
 The core of `AI4Water` is the `Model` class which builds and trains the machine learning model.
-This class interacts with pre-processing and post-processing modules.
+This class interacts with preprocessing and postprocessing modules.
 
 The `Model` class uses a python dictionary to build layers of neural networks.
 

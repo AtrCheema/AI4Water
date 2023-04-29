@@ -424,79 +424,6 @@ class TestUtils(unittest.TestCase):
                                         val_fraction=0.0)
         return
 
-    def test_train_val_split(self):
-
-        n1 = 175
-        n2 = 380
-        x1 = np.random.random((n1, 10))
-        x3 = np.random.random((n1, 10, 9))
-        x4 = np.random.random((n2, 10))
-        x = [x1,  x3, x4]
-
-        y1 = np.random.random((n1, 1))
-        y2 = np.random.random((n2, 1))
-        y = [y1, y2]
-        # should raise error
-        # train_test_split(x, y, 0.3)
-
-        x1 = np.random.random((n1, 10))
-        x2 = np.random.random((n1, 9))
-        x3 = np.random.random((n1, 10, 9))
-        x4 = np.random.random((n1, 10))
-        x = [x1, x2, x3, x4]
-
-        y1 = np.random.random((n1, 1))
-        y2 = np.random.random((n2, 1))
-        y = [y1, y2]
-        #
-        # train_test_split(x, y, 0.3)
-
-        x1 = np.arange(100).reshape(10, 10)
-        x2 = np.arange(90).reshape(10, 9)
-        x3 = np.arange(900).reshape(10, 10, 9)
-        x4 = np.arange(100).reshape(10, 10, 1)
-        xx = [x1, x2, x3, x4]
-
-        y1 = np.arange(1000, 1010).reshape(10, 1)
-        y2 = np.arange(1000, 1200).reshape(10, 10, 2)
-        yy = [y1, y2]
-
-        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(xx, yy)
-
-        a = set([len(i) for i in tr_x])
-        assert a.pop() == 7
-
-        a = set([len(i) for i in testx])
-        assert a.pop() == 3
-
-        tr_y1, tr_y2 = tr_y
-        assert tr_y1[-1].item() == 1006
-        test_y1, test_y2 = testy
-        assert test_y2[-1][-1][-1].item() == 1199
-
-        tr_x, testx, tr_y, testy = TrainTestSplit(seed=313).split_by_random(xx, yy)
-        tr_y1, tr_y2 = tr_y
-        assert tr_y1[-1].item() == 1001
-        test_y1, test_y2 = testy
-        assert test_y2[-1][-1][-1].item() == 1179
-
-        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y1)
-        assert tr_y[0].item() == 1000
-
-        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y2)
-        assert tr_y[0][0][0].item() == 1000
-
-        splitter = TrainTestSplit().KFold(x1, y1, 4)
-
-        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
-        assert idx == 3
-        assert tr_x.shape[-1] == x1.shape[-1]
-
-        splitter = TrainTestSplit().ShuffleSplit(x1, y1, 4)
-
-        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
-        return
-
     def test_datetimeindex(self):
         # makes sure that using datetime_index=True during prediction, the returned
         # values are in correct order
@@ -1003,6 +930,122 @@ class TestJsonize(unittest.TestCase):
         assert jsonize(None) is None
         return
 
+
+class TestTrainTestSplit(unittest.TestCase):
+
+    def test_train_val_split(self):
+
+        n1 = 175
+        n2 = 380
+        x1 = np.random.random((n1, 10))
+        x3 = np.random.random((n1, 10, 9))
+        x4 = np.random.random((n2, 10))
+        x = [x1,  x3, x4]
+
+        y1 = np.random.random((n1, 1))
+        y2 = np.random.random((n2, 1))
+        y = [y1, y2]
+        # should raise error
+        # train_test_split(x, y, 0.3)
+
+        x1 = np.random.random((n1, 10))
+        x2 = np.random.random((n1, 9))
+        x3 = np.random.random((n1, 10, 9))
+        x4 = np.random.random((n1, 10))
+        x = [x1, x2, x3, x4]
+
+        y1 = np.random.random((n1, 1))
+        y2 = np.random.random((n2, 1))
+        y = [y1, y2]
+        #
+        # train_test_split(x, y, 0.3)
+
+        x1 = np.arange(100).reshape(10, 10)
+        x2 = np.arange(90).reshape(10, 9)
+        x3 = np.arange(900).reshape(10, 10, 9)
+        x4 = np.arange(100).reshape(10, 10, 1)
+        xx = [x1, x2, x3, x4]
+
+        y1 = np.arange(1000, 1010).reshape(10, 1)
+        y2 = np.arange(1000, 1200).reshape(10, 10, 2)
+        yy = [y1, y2]
+
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(xx, yy)
+
+        a = set([len(i) for i in tr_x])
+        assert a.pop() == 7
+
+        a = set([len(i) for i in testx])
+        assert a.pop() == 3
+
+        tr_y1, tr_y2 = tr_y
+        assert tr_y1[-1].item() == 1006
+        test_y1, test_y2 = testy
+        assert test_y2[-1][-1][-1].item() == 1199
+
+        tr_x, testx, tr_y, testy = TrainTestSplit(seed=313).split_by_random(xx, yy)
+        tr_y1, tr_y2 = tr_y
+        assert tr_y1[-1].item() == 1001
+        test_y1, test_y2 = testy
+        assert test_y2[-1][-1][-1].item() == 1179
+
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y1)
+        assert tr_y[0].item() == 1000
+
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y2)
+        assert tr_y[0][0][0].item() == 1000
+
+        splitter = TrainTestSplit().KFold(x1, y1, 4)
+
+        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
+        assert idx == 3
+        assert tr_x.shape[-1] == x1.shape[-1]
+
+        splitter = TrainTestSplit().ShuffleSplit(x1, y1, 4)
+
+        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
+        return
+
+    def test_init_doc(self):
+        import numpy as np
+        from ai4water.utils.utils import TrainTestSplit
+        x1 = np.random.random((100, 10, 4))
+        x2 = np.random.random((100, 4))
+        x = [x1, x2]
+        y = np.random.random(100)
+
+        train_x, test_x, train_y, test_y = TrainTestSplit().split_by_random(x, y)
+        # works as well when only a single array is provided
+        train_x, test_x, _, _ = TrainTestSplit().split_by_random(x)
+        # if we have a time-series like data, where we want to use earlier samples
+        # for training and later samples for test then we can do slice based
+        train_x, test_x, train_y, test_y = TrainTestSplit().split_by_slicing(x, y)
+        return
+
+    def test_split_by_slicing(self):
+        from ai4water.datasets import busan_beach
+        data = busan_beach()
+        input_features = data.columns.tolist()[0:-1]
+        output_features = data.columns.tolist()[-1:]
+
+        TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
+            data[input_features],
+            data[output_features])
+
+        x_train, x_val, y_train, y_val = TrainTestSplit(seed=313).split_by_slicing(
+            TrainX, TrainY)
+        assert len(x_train) == len(y_train)
+        return
+
+    def test_split_by_slicing_without_y(self):
+        from ai4water.datasets import busan_beach
+        from ai4water.utils import TrainTestSplit
+        data = busan_beach()
+        TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
+            data)
+        assert len(TestX) > 0
+        assert len(TrainY) == 0
+        return
 
 if __name__ == "__main__":
     unittest.main()

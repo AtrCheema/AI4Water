@@ -399,8 +399,29 @@ def edf_plot(
 
 
 class LossCurve(Plot):
+    """
+    Helper class to plot loss curve
 
-    def __init__(self, path=None, show=1, save:bool=True):
+    Parameters
+    ----------
+    path : str, Optional
+        the path where to save the plot
+    show : bool, Optional (default=True)
+        whether to show the plot or not
+    save : bool, Optional (default=True)
+        whether to save the plot or not
+
+    Examples
+    ---------
+    >>> from ai4water import Model
+    >>> from ai4water.utils import LossCurve
+    >>> model = Model(mdoel=MLP())
+    >>> h = model.fit(...)
+    >>> LossCurve().plot(h.history)
+    """
+    def __init__(self, path=None,
+                 show:Union[int, bool]=1,
+                 save:bool=True):
         self.path = path
         self.show = show
 
@@ -445,7 +466,8 @@ class LossCurve(Plot):
             "nse": "Nash-Sutcliff Efficiency",
             "kge": "Kling-Gupta Efficiency",
             "tf_r2": "$R^{2}$",
-            "r2": "$R^{2}$"
+            "r2": "$R^{2}$",
+            "loss": "Loss",
         }
 
         epochs = range(1, len(history['loss']) + 1)

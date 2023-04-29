@@ -1,11 +1,11 @@
 
-from typing import Union
+from typing import Union, Tuple, List
 
 import gc
 from SeqMetrics import RegressionMetrics
 
-from ai4water.backend import easy_mpl as ep
-from ai4water.backend import os, np, plt, torch, pd
+from ai4water.postprocessing import ProcessPredictions
+from ai4water.backend import os, np, torch, pd
 
 try:
     import wandb
@@ -261,10 +261,10 @@ class Learner(AttributeContainer):
             x,
             y=None,
             batch_size: int = None,
-            reg_plot: bool = True,
-            name: str = None,
+            plots: List[str] = None,
+            return_true:bool = False,
             **kwargs
-    ) -> np.ndarray:
+    ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Makes prediction on the given data
 
         Arguments:
@@ -278,26 +278,54 @@ class Learner(AttributeContainer):
             y : only relevent if `x` is torch.Tensor. It comprises labels for
                 correspoing x.
             batch_size : None means make prediction on whole data in one go
-            reg_plot : whether to plot regression line or not
-            name : string to be used for title and name of saved plot
+            plots : The type of plots to draw. One or more from following
+                are acceptable. For more see ai4water.postprocessing.ProcessPredictions
+
+                    - ``regression``
+                    - ``residual``
+                    - ``prediction``
+                    - ``edf``
+            return_true : bool
+                if set to True, then a tuple is returned wholse first element is
+                true array and second array
 
         Returns:
-            predicted output as numpy array
+            predicted output as numpy array. If return_true is True, then a tuple
+            is returned whose first element is true array and second element is predicted
+            array
         """
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
-        if y is not None and reg_plot and pred.size > 0.0:
-            ep.regplot(true, pred, show=False)
-            plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
+        if len(true) >0 and plots is not None and pred.size > 0.0:
+            pp = ProcessPredictions(
+                mode="regression",
+                path=self.path,
+                forecast_len=1, # todo, what if this is not satisfied
+                output_features=None,
+                plots=plots,
+                show=bool(self.verbosity),
+            )
+            pp(true, pred, model=self)
 
         #if self.use_cuda:
         torch.cuda.empty_cache()
         gc.collect()
+
+        if return_true:
+            return true, pred
+
         return pred
 
-    def _eval(self, x, y=None, batch_size=None):
+    def _eval(
+            self,
+            x,
+            y=None,
+            batch_size=None
+    )->Tuple[np.ndarray, np.ndarray]:
         loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size, shuffle=False)
-
+        """prepares the loader from x,y and iterate over batches present
+        in loader. The results are concatenated as numpy array and returned as tuple
+        """
         true, pred = [], []
 
         for i, (batch_x, batch_y) in enumerate(loader):
@@ -321,7 +349,7 @@ class Learner(AttributeContainer):
         """Calls the model with x and y data and returns trues and preds"""
         batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
 
-        batch_x = [tensor.float() for tensor in batch_x]
+        batch_x = [tensor.float() for tensor in batch_x]  # todo, do we need it every time?
 
         if self.use_cuda:
             batch_x = [tensor.cuda() for tensor in batch_x]
