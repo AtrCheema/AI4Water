@@ -1168,13 +1168,18 @@ def gw_punjab(
     return df
 
 
-def qe_biochar_ec(
+def ec_removal_biochar(
         input_features:List[str]=None,
         encoding:str = None
-)->tuple:
+)->Tuple[pd.DataFrame, dict]:
     """
-    data of adsorption capacity for removal of emerging pollutants from wastewater
-    using biochar. For more description of this data see `Jaffari et al., 2023 <>_`
+    Data of removal of emerging pollutants from wastewater
+    using biochar. The data consists of three types of features,
+    1) adsorption experimental conditions, 2) elemental composition of
+    adsorbent (biochar) and parameters representing
+    physical and synthesis conditions of biochar.
+    For more description of this data see `Jaffari et al., 2023 <https://doi.org/10.1016/j.cej.2023.143073>_`
+
 
     Parameters
     ----------
@@ -1214,27 +1219,42 @@ def qe_biochar_ec(
     Returns
     --------
     tuple
+        A tuple of length two. The first element is a DataFrame while the
+        second element is a dictionary consisting of encoders with ``adsorbent``
+        ``pollutant``, ``ww_type`` and ``adsorption_type`` as keys.
 
     Examples
     --------
-    >>> from ai4water.datasets import qe_biochar_ec
-    >>> data, *_ = qe_biochar_ec()
+    >>> from ai4water.datasets import ec_removal_biochar
+    >>> data, *_ = ec_removal_biochar()
     >>> data.shape
     (3757, 27)
-    >>> data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+    >>> data, encoders = ec_removal_biochar(encoding="le")
     >>> data.shape
     (3757, 27)
-    >>> ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
-    >>> pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
-    >>> wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
-    >>> adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
-    >>> data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+    >>> len(set(encoders['adsorbent'].inverse_transform(data.iloc[:, 22])))
+    15
+    >>> len(set(encoders['pollutant'].inverse_transform(data.iloc[:, 23])))
+    14
+    >>> set(encoders['ww_type'].inverse_transform(data.iloc[:, 24]))
+    {'Ground water', 'Lake water', 'Secondary effluent', 'Synthetic'}
+    >>> set(encoders['adsorption_type'].inverse_transform(data.iloc[:, 25]))
+    {'Competative', 'Single'}
+
+    We can also use one hot encoding to convert categorical features into
+    numerical features. This will obviously increase the number of features/columns in DataFrame
+
+    >>> data, encoders = ec_removal_biochar(encoding="ohe")
     >>> data.shape
     (3757, 58)
-    >>> adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
-    >>> polt_enc.inverse_transform(data.iloc[:, 37:51].values)
-    >>> wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
-    >>> adspt_enc.inverse_transform(data.iloc[:, 55:-1].values)
+    >>> len(set(encoders['adsorption_type'].inverse_transform(data.iloc[:, 22:37].values)))
+    15
+    >>> len(set(encoders['pollutant'].inverse_transform(data.iloc[:, 37:51].values)))
+    14
+    >>> set(encoders['ww_type'].inverse_transform(data.iloc[:, 51:55].values))
+    {'Ground water', 'Lake water', 'Secondary effluent', 'Synthetic'}
+    >>> set(encoders['adsorption_type'].inverse_transform(data.iloc[:, 55:-1].values))
+    {'Competative', 'Single'}
 
     """
     fpath = os.path.join(os.path.dirname(__file__), 'qe_biochar_ec.csv')
@@ -1300,6 +1320,13 @@ def qe_biochar_ec(
         data, _, wwt_enc = encode_column(data, 'Wastewater type', encoding)
         data, _, adspt_enc = encode_column(data, 'Adsorption type', encoding)
 
+        # putting capacity at the end
         data['Capacity'] = data.pop('Capacity')
 
-    return data, ads_enc, pol_enc, wwt_enc, adspt_enc
+    encoders = {
+        "adsorbent": ads_enc,
+        "pollutant": pol_enc,
+        "ww_type": wwt_enc,
+        "adsorption_type": adspt_enc
+    }
+    return data, encoders

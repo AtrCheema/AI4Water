@@ -175,13 +175,19 @@ class SWAT(object):
 
     def channel_output(
             self,
-            rch_id:Union[int, list],
-            year=None,
-            skip_rows=8
+            rch_id:Union[int, List[int]],
+            year:int = None,
+            skip_rows:int=8
     )->pd.DataFrame:
         """
+        parameters
+        -----------
+        rch_id :
+            id/ids of the reach/reaches to read
+        year :
+        skip_rows :
         reads main channel output (output.rch) file and returns data for a
-        particular reach
+        single or multiple reaches
         """
         fname = os.path.join(self.path, "output.rch")
 

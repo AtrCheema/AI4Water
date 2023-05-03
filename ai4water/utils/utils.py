@@ -1013,8 +1013,9 @@ class TrainTestSplit(object):
         >>> x_train, x_val, y_train, y_val = TrainTestSplit(seed=313).split_by_slicing(
         ...     TrainX, TrainY)
 
-        # the y argument is optional. If it is not provided, the corresponding y
-        # arrays will be empty
+        The ``y`` argument is optional. If it is not provided, the corresponding y
+        arrays will be empty
+
         >>> TrainX, TestX, TrainY, TestY = TrainTestSplit(seed=313).split_by_slicing(
         ...    data)
         >>> assert len(TestX) > 0

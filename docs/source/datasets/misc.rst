@@ -13,6 +13,11 @@ Photodegradation of Melachite Green
 .. autofunction:: ai4water.datasets.mg_photodegradation
 
 
+Removal of Emerging contaminants using biochar
+==============================================
+.. autofunction:: ai4water.datasets.ec_removal_biochar
+
+
 Groundwater of Punjab region
 ===================================
 .. autofunction:: ai4water.datasets.gw_punjab

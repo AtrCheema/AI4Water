@@ -1,9 +1,12 @@
 
 from typing import Union, List
 
-
 from .utils import _make_output_layer
 
+try:
+    from ._torch import Learner
+except ModuleNotFoundError:
+    Learner = None
 
 def TabTransformer(
         num_numeric_features: int,

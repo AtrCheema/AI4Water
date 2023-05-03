@@ -42,7 +42,7 @@ from ._datasets import gw_punjab
 from ._datasets import RRAlpineCatchments
 from ._datasets import RRLuleaSweden
 from ._datasets import mg_photodegradation
-from ._datasets import qe_biochar_ec
+from ._datasets import ec_removal_biochar
 
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand

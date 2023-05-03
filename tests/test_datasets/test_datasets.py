@@ -13,7 +13,7 @@ from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee
 from ai4water.datasets import PrecipBerlin, RiverTempEroo
 from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
 from ai4water.datasets import GeoChemMatane, WeatherJena, SWECanada, gw_punjab
-from ai4water.datasets import qe_biochar_ec, mg_photodegradation
+from ai4water.datasets import ec_removal_biochar, mg_photodegradation
 
 
 def check_data(dataset, num_datasets=1,
@@ -181,21 +181,29 @@ class TestPangaea(unittest.TestCase):
         return
 
     def test_qe_biochar(self):
-        data, *_ = qe_biochar_ec()
+        data, _ = ec_removal_biochar()
         assert data.shape == (3757, 27)
-        data, ads_enc, pol_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="le")
+        data, encoders = ec_removal_biochar(encoding="le")
         assert data.shape == (3757, 27)
         assert data.sum().sum() >= 10346311.47
-        ads_enc.inverse_transform(data.iloc[:, 22].values.astype(int))
-        pol_enc.inverse_transform(data.iloc[:, 23].values.astype(int))
-        wwt_enc.inverse_transform(data.iloc[:, 24].values.astype(int))
-        adspt_enc.inverse_transform(data.iloc[:, 25].values.astype(int))
-        data, adsp_enc, polt_enc, wwt_enc, adspt_enc = qe_biochar_ec(encoding="ohe")
+        adsorbents = encoders['adsorbent'].inverse_transform(data.iloc[:, 22])
+        assert len(set(adsorbents)) == 15
+        pollutants = encoders['pollutant'].inverse_transform(data.iloc[:, 23])
+        assert len(set(pollutants)) == 14
+        ww_types = encoders['ww_type'].inverse_transform(data.iloc[:, 24])
+        assert len(set(ww_types)) == 4
+        adsorption_types = encoders['adsorption_type'].inverse_transform(data.iloc[:, 25])
+        assert len(set(adsorption_types)) == 2
+        data, encoders = ec_removal_biochar(encoding="ohe")
         assert data.shape == (3757, 58)
-        adsp_enc.inverse_transform(data.iloc[:, 22:37].values)
-        polt_enc.inverse_transform(data.iloc[:, 37:51].values)
-        wwt_enc.inverse_transform(data.iloc[:, 51:55].values)
-        adspt_enc.inverse_transform(data.iloc[:, -3:-1].values)
+        adsorbents = encoders['adsorbent'].inverse_transform(data.iloc[:, 22:37].values)
+        assert len(set(adsorbents)) == 15
+        pollutants =  encoders['pollutant'].inverse_transform(data.iloc[:, 37:51].values)
+        assert len(set(pollutants)) == 14
+        ww_types = encoders['ww_type'].inverse_transform(data.iloc[:, 51:55].values)
+        assert len(set(ww_types)) == 4
+        adsorption_types = encoders['adsorption_type'].inverse_transform(data.iloc[:, -3:-1].values)
+        assert len(set(adsorption_types)) == 2
         return
 
     def test_mg_photodegradation(self):
