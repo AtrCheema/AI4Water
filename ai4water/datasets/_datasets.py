@@ -1094,7 +1094,7 @@ def gw_punjab(
 )->pd.DataFrame:
     """
     groundwater level (meters below ground level) dataset from Punjab region
-    (Pakistan and north-west India) following the study of MacAllister_ et al., 2022.
+    (Pakistan and north-west India) following the study of `MacAllister et al., 2022 <https://doi.org/10.1038/s41561-022-00926-1>`_.
 
     parameters
     ----------
@@ -1125,7 +1125,6 @@ def gw_punjab(
     >>> df_pak = gw_punjab(country="PAK")
     >>> df_pak.sort_index().dropna().head(1)
 
-    .. MacAllister : https://doi.org/10.1038/s41561-022-00926-1
     """
     f = 'https://webservices.bgs.ac.uk/accessions/download/167240?fileName=India_Pakistan_WL_NGDC.xlsx'
 
@@ -1178,20 +1177,20 @@ def ec_removal_biochar(
     1) adsorption experimental conditions, 2) elemental composition of
     adsorbent (biochar) and parameters representing
     physical and synthesis conditions of biochar.
-    For more description of this data see `Jaffari et al., 2023 <https://doi.org/10.1016/j.cej.2023.143073>_`
+    For more description of this data see `Jaffari et al., 2023 <https://doi.org/10.1016/j.cej.2023.143073>`_
 
 
     Parameters
     ----------
     input_features :
         By default following features are used as input
-            - `Adsorbent``
-            - `Pyrolysis temperature``
-            - `Pyrolysis time``
-            - `C``
-            - `H``
-            - `O``
-            - `N``
+            - ``Adsorbent``
+            - ``Pyrolysis temperature``
+            - ``Pyrolysis time``
+            - ``C``
+            - ``H``
+            - ``O``
+            - ``N``
             - ``(O+N)/C``
             - ``Ash``
             - ``H/C``
@@ -1201,7 +1200,7 @@ def ec_removal_biochar(
             - ``Average pore size``
             - ``Pollutant``
             - ``Adsorption time``
-            - `concentration``
+            - ``concentration``
             - ``Solution pH``
             - ``RPM``
             - ``Volume``

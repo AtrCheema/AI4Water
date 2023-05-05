@@ -256,8 +256,9 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
     return n_rows, n_cols
 
 
-def save_or_show(path, save: bool = True, fname=None, where='',
-                 dpi=300, bbox_inches='tight', close=True,
+def save_or_show(path, save: bool = True, fname=None,
+                 where='',
+                 dpi=300, bbox_inches='tight', close=False,
                  show=False):
 
     if save:

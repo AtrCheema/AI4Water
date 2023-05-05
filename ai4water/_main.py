@@ -3388,7 +3388,7 @@ class BaseModel(NN):
             data = None,
             data_type:str = "all",
             feature_names:Union[list, str]=None,
-            num_grid_points:int = None,
+            num_grid_points:Union[int, Tuple[int, int]] = None,
             grid_types = "percentile",
             percentile_ranges = None,
             grid_ranges = None,

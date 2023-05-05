@@ -3,6 +3,8 @@ import os
 import sys
 import site
 
+import matplotlib.pyplot as plt
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
@@ -40,6 +42,28 @@ class TestProcessPrediction(unittest.TestCase):
                                 )
 
         pp(t, p,  inputs=x)
+        return
+
+    def test_rgr_plot_output(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                show=self.show,
+                                save=self.save,
+                                )
+
+        ax = pp.regression_plot(t, p)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_edf_plot_output(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                show=self.show,
+                                save=self.save,
+                                )
+
+        ax = pp.edf_plot(t, p)
+        assert isinstance(ax, plt.Axes)
         return
 
     def test_rgr_1_output_nan(self):

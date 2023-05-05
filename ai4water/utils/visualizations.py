@@ -47,11 +47,15 @@ class Plot(object):
             x = os.getcwd()
         self._path = x
 
-    def save_or_show(self,
-                     save: bool = None,
-                     fname=None, where='', dpi=None,
-                     bbox_inches='tight',
-                     close=True, show=False):
+    def save_or_show(
+            self,
+             save: bool = None,
+             fname=None,
+             where='', dpi=None,
+             bbox_inches='tight',
+             close=False,
+             show=False
+    ):
 
         if save is None:
             save = self.save
@@ -59,8 +63,15 @@ class Plot(object):
         if dpi is None:
             dpi = self.dpi
 
-        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close,
-                            show=show)
+        return save_or_show(
+            self.path,
+            save=save,
+            fname=fname,
+            where=where,
+            dpi=dpi,
+            bbox_inches=bbox_inches,
+            close=close,
+            show=show)
 
 
 def linear_model(

@@ -152,7 +152,7 @@ class ProcessPredictions(Plot):
         return None
 
     def save_or_show(self, show=None, **kwargs):
-        if show is None:
+        if show:
             show = self.show
         return super().save_or_show(save=self.save, show=show, **kwargs)
 
@@ -258,9 +258,12 @@ class ProcessPredictions(Plot):
             true,
             predicted,
             for_prediction:bool = True,
+            color=None,
+            marker='-',
             prefix='',
             where='',
-            **kwargs):
+            **kwargs
+    )->plt.Axes:
         """cumulative distribution function of absolute error between true and
         predicted.
 
@@ -272,6 +275,8 @@ class ProcessPredictions(Plot):
             array like
         for_prediction : bool
             whether to plot edf of prediction as well or not
+        color :
+        marker :
         prefix :
         where :
         """
@@ -281,28 +286,51 @@ class ProcessPredictions(Plot):
 
         error = np.abs(true - predicted)
 
+        if color is None:
+            color = ("#005066", "#B3331D")
+        elif not isinstance(color, tuple):
+            color = (color, color)
+        else:
+            assert isinstance(color, tuple), f"{type(color)}"
+        color1, color2 = color
+
+        if marker is None:
+            marker = ("-", "-")
+        elif not isinstance(marker, tuple):
+            marker = (marker, marker)
+        else:
+            assert isinstance(marker, tuple), f"{type(marker)}"
+
+        marker1, marker2 = marker
+
         _plot_kws = dict(
-            color="#005066", show=False
+            color=color1, show=False,
+            label="Error",
+            marker=marker1,
         )
 
         ax = edf_plot(
             error, **_plot_kws
         )
-
+        ax.legend(loc=(0.7, 0.1), frameon=False)
         if for_prediction:
             ax.grid(False)
-            ax.set_xlabel("Absolute Error", color="#005066")
+            ax.set_xlabel("Absolute Error", color=color1)
             #ax.set_xticklabels(ax.get_xticklabels(), color="#005066")
             ax.set_title('')
             ax2 = ax.twiny()
             ax = edf_plot(predicted, show=False,
-                     color = "#B3331D", ax=ax2)
+                          marker=marker2,
+                          label="Prediction",
+                     color = color2, ax=ax2)
             ax.grid(visible=True, ls='--', color='lightgrey')
             ax.set_title('')
-            ax.set_xlabel("Prediction", color= "#B3331D")
+            ax.set_xlabel("Prediction", color= color2)
             #ax.set_xticklabels(ax.get_xticklabels(), color="#B3331D")
-
-        return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
+            #ax.legend(loc="lower right")
+            ax2.legend(loc=(0.7, 0.18), frameon=False)
+        self.save_or_show(fname=f"{prefix}_error_dist", where=where)
+        return ax
 
     def murphy_plot(
             self, true,
@@ -341,7 +369,7 @@ class ProcessPredictions(Plot):
             where='',
             xlabel=None,
             **kwargs
-    ):
+    )->plt.Axes:
         """
         Makes residual plot
 
@@ -405,8 +433,9 @@ class ProcessPredictions(Plot):
              )
 
         axes[0].axhline(0.0, color="black")
-        return self.save_or_show(fname=f"{prefix}_residual",
+        self.save_or_show(fname=f"{prefix}_residual",
                                  where=where)
+        return axes
 
     def errors_plot(
             self, true,
@@ -430,18 +459,51 @@ class ProcessPredictions(Plot):
             self,
             true,
             predicted,
-            prefix = '',
+            prefix='',
             where='',
             annotate_with="r2",
+            marker_color='crimson',
+            scatter_kws: dict = None,
+            ridge_line_kws: dict = None,
+            hist: bool = False,
+            hist_kws: dict = None,
             **kwargs,
-    ):
+    )->plt.Axes:
+        """
+
+        parameters
+        ----------
+        true :
+            true array
+        predicted :
+            predicted array
+        marker_color :
+            color of marker for scatter
+        scatter_kws :
+            keyword arguments that will go to scatter
+        ridge_line_kws :
+            keyword arguments that will go to plot function for plotting ridge line
+        hist :
+            whether to plot histogram on marginal axes on not
+        hist_kws :
+            keyword arguments that will go to hist function.
+        annotate_with :
+            name of performance metric to annotate with
+        prefix :
+        where :
+        **kwargs
+        """
         annotation_val = getattr(RegressionMetrics(true, predicted), annotate_with)()
 
         metric_names = {'r2': "$R^2$"}
 
         annotation_key = metric_names.get(annotate_with, annotate_with)
 
+        if ridge_line_kws is None:
+            ridge_line_kws = dict()
+
         RIDGE_LINE_KWS = {'color': 'firebrick', 'lw': 1.0}
+        RIDGE_LINE_KWS.update(ridge_line_kws)
 
         if isinstance(predicted, (pd.DataFrame, pd.Series)):
             predicted = predicted.values
@@ -454,42 +516,48 @@ class ProcessPredictions(Plot):
         if (predicted == predicted[0]).all():
             marginals = False
 
-        scatter_kws = {'marker': "o",
-                       'edgecolors': 'black',
-                       'linewidth': 0.5,
-                       'alpha': 0.7}
-        
+        _scatter_kws = {'marker': "o",
+                        'edgecolors': 'black',
+                        'linewidth': 0.5,
+                        'alpha': 0.7}
+        if scatter_kws is None:
+            scatter_kws = dict()
+
+        _scatter_kws.update(scatter_kws)
+
         try:
-            axes = ep.regplot(true,
-                       predicted,
-                       marker_color='crimson',
-                       line_color='k',
-                       scatter_kws=scatter_kws,
-                       show=False,
-                       marginals=marginals,
-                       marginal_ax_pad=0.25,
-                       marginal_ax_size=0.7,
-                       ridge_line_kws=RIDGE_LINE_KWS,
-                       hist=False,
-                       )
+            axes = ep.regplot(
+                true,
+                predicted,
+                marker_color=marker_color,
+                line_color='k',
+                scatter_kws=_scatter_kws,
+                show=False,
+                marginals=marginals,
+                marginal_ax_pad=0.25,
+                marginal_ax_size=0.7,
+                ridge_line_kws=RIDGE_LINE_KWS,
+                hist=hist,
+                hist_kws=hist_kws,
+            )
         except np.linalg.LinAlgError:
             axes = ep.regplot(true,
-                       predicted,
-                       marker_color='crimson',
-                       line_color='k',
-                       scatter_kws=scatter_kws,
-                       show=False,
-                       marginals=False
-                       )
+                              predicted,
+                              marker_color=marker_color,
+                              line_color='k',
+                              scatter_kws=scatter_kws,
+                              show=False,
+                              marginals=False
+                              )
 
-        axes.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
-                     xy=(0.3, 0.95),
-                     xycoords='axes fraction',
-                     horizontalalignment='right', verticalalignment='top',
-                     fontsize=16)
+        axes.annotate(f'{annotation_key}: {round(annotation_val, 2)}',
+                      xy=(0.4, 0.95),
+                      xycoords='axes fraction',
+                      horizontalalignment='right', verticalalignment='top')
 
-        return self.save_or_show(fname=f"{prefix}_regression",
+        self.save_or_show(fname=f"{prefix}_regression",
                                  where=where)
+        return axes
 
     def prediction_plot(
             self,
