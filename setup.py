@@ -15,9 +15,11 @@ else:
 skopt_version = 'scikit-optimize'
 seq_met_ver = 'SeqMetrics>=1.3.3'
 easy_mpl_ver = 'easy_mpl[all]>=0.21.3'
+pandas_ver = 'pandas<2.0'
+sklearn_ver = 'scikit-learn<2.0'
 
 min_requirements = [
-    'scikit-learn',
+    sklearn_ver,
     easy_mpl_ver,
     seq_met_ver,
     ]
@@ -56,26 +58,26 @@ skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter 
 ]
 
 tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',
-               'matplotlib', 'scikit-learn', seq_met_ver, 'AttentionLSTM']
+               'matplotlib', sklearn_ver, seq_met_ver, 'AttentionLSTM']
 
 tf2_requires = ['h5py', easy_mpl_ver, 'tensorflow<=2.7',
-               'scikit-learn', seq_met_ver, 'AttentionLSTM']
+               sklearn_ver, seq_met_ver, 'AttentionLSTM']
 
 tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',
-                    'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
+                    sklearn_ver, 'hyperopt', skopt_version, 'optuna<=2.10.1',
                    seq_met_ver, 'AttentionLSTM']
 
 torch_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch',
-                   'scikit-learn', seq_met_ver]
+                   sklearn_ver, seq_met_ver]
 
-torch_hpo_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', 'hyperopt', skopt_version, 'optuna<=2.10.1',
+torch_hpo_requires = ['h5py', 'numpy', easy_mpl_ver,  'pytorch', pandas_ver,
+                  'matplotlib', sklearn_ver, 'hyperopt', skopt_version, 'optuna<=2.10.1',
                       seq_met_ver]
 
-ml_requires = [ 'scikit-learn', 'xgboost', 'catboost',
+ml_requires = [ sklearn_ver, 'xgboost', 'catboost',
                'lightgbm', easy_mpl_ver, seq_met_ver]
 
-ml_hpo_requires = ['scikit-learn', 'xgboost', 'catboost',
+ml_hpo_requires = [sklearn_ver, 'xgboost', 'catboost',
                'lightgbm', easy_mpl_ver, 'hyperopt', skopt_version, 'optuna<=2.10.1',
                    seq_met_ver]
 
@@ -90,7 +92,7 @@ exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', seq_met_ver, easy_mpl_ver]
 
-eda_requires = ['seaborn', 'scikit-learn', easy_mpl_ver, seq_met_ver]
+eda_requires = ['seaborn', sklearn_ver, easy_mpl_ver, seq_met_ver]
 
 all_requirements = min_requirements + extra_requires
 

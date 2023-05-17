@@ -425,6 +425,7 @@ class LossCurve(Plot):
     Examples
     ---------
     >>> from ai4water import Model
+    >>> from ai4water.models import MLP
     >>> from ai4water.utils import LossCurve
     >>> model = Model(mdoel=MLP())
     >>> h = model.fit(...)
@@ -467,6 +468,7 @@ class LossCurve(Plot):
         """
 
         plt.close('all')
+        current_rcParams = plt.rcParams.copy()
         plt.style.use('ggplot')
 
         legends = {
@@ -538,8 +540,8 @@ class LossCurve(Plot):
 
         self.save_or_show(fname=name, show=self.show)
 
-        # change the style to default as we changed it to ggplot earlier
-        plt.style.use('default')
+        # change the rcParams to original state as we changed it to ggplot earlier
+        plt.rcParams.update(current_rcParams)
         return ax
 
     @staticmethod

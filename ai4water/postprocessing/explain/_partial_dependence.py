@@ -148,6 +148,9 @@ class PartialDependencePlot(ExplainerMixin):
         fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95,
                             hspace=0.1, wspace=0.1)
 
+        show, save = self.show, self.save
+        self.show, self.save = False, False
+
         for i in range(n_dims):
             for j in range(n_dims):
                 # diagonal
@@ -179,8 +182,6 @@ class PartialDependencePlot(ExplainerMixin):
                         features=[self.features[j],self.features[i]],
                         ax=ax[i, j],
                         colorbar=False,
-                        save=False,
-                        show=False,
                     )
 
                 elif j > i:
@@ -196,6 +197,9 @@ class PartialDependencePlot(ExplainerMixin):
                     ax[i, j].xaxis.set_ticks([])
                     ax[i, j].xaxis.set_visible(False)
                     ax[i, j].xaxis.label.set_visible(False)
+
+        self.show = show
+        self.save = save
 
         if self.save:
             fname = os.path.join(self.path, f"pdp_interact_nd")
@@ -214,8 +218,6 @@ class PartialDependencePlot(ExplainerMixin):
             plot_type: str = "2d",
             cmap=None,
             colorbar: bool = True,
-            show:bool = True,
-            save:bool = True,
             **kwargs
     ) -> plt.Axes:
         """Shows interaction between two features
@@ -235,8 +237,6 @@ class PartialDependencePlot(ExplainerMixin):
                 color map to use
             colorbar : optional
                 whether to show the colorbar or not
-            show : bool
-            save : bool
             **kwargs :
                 any keyword argument for axes.plot_surface or axes.contourf
 
@@ -283,11 +283,11 @@ class PartialDependencePlot(ExplainerMixin):
                                    lookback=lookback,
                                    colorbar=colorbar, **kwargs)
 
-        if save:
+        if self.save:
             fname = os.path.join(self.path, f"pdp_interact{features[0]}_{features[1]}")
             plt.savefig(fname, bbox_inches="tight", dpi=300)
 
-        if show:
+        if self.show:
             plt.show()
 
         return ax

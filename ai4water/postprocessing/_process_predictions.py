@@ -103,7 +103,7 @@ class ProcessPredictions(Plot):
         ...    plots=['prediction', 'regression', 'residual'])
         >>> processor(true, predicted)
 
-        # for postprocessing of classification, we need to set the mode
+        for postprocessing of classification, we need to set the mode
 
         >>> true = np.random.randint(0, 2, (100, 1))
         >>> predicted = np.random.randint(0, 2, (100, 1))
@@ -152,7 +152,7 @@ class ProcessPredictions(Plot):
         return None
 
     def save_or_show(self, show=None, **kwargs):
-        if show:
+        if show is None:
             show = self.show
         return super().save_or_show(save=self.save, show=show, **kwargs)
 
