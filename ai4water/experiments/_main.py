@@ -1044,6 +1044,7 @@ Available cases are {self.models} and you wanted to include
             ignore_nans: bool = True,
             colors = None,
             cmaps = None,
+            label_bars: bool = False,
             figsize:tuple = None,
             **kwargs
     ) -> pd.DataFrame:
@@ -1086,6 +1087,8 @@ Available cases are {self.models} and you wanted to include
             cmaps :
                 color map for bar chart. To assign separate cmap for both bar charts, provide
                 a list of two.
+            label_bars : bool
+                whether to label the bars with corresponding value or not or not
             figsize : tuple
                 figure size as (width, height)
             **kwargs :
@@ -1109,6 +1112,11 @@ Available cases are {self.models} and you wanted to include
             >>> experiment.fit(data=df)
             >>> experiment.compare_errors('mse', data=df)
             >>> experiment.compare_errors('r2', data=df, cutoff_val=0.2, cutoff_type='greater')
+
+            # showing the bar labels
+
+            >>> experiment.compare_errors('r2', data=df, bar_labels=True,
+            >>>     bar_label_kws={"color": 'black', 'label_type':'center'})
         """
 
         _, _, _, _, x, y = self.verify_data(data=data, test_data=(x, y))
@@ -1133,6 +1141,9 @@ Available cases are {self.models} and you wanted to include
             for arg in ['ax', 'labels', 'values', 'show', 'sort', 'ax_kws', 'color', 'data']:
                 assert arg not in kwargs, f"{arg} not allowed in kwargs"
 
+        if label_bars:
+            kwargs['bar_labels'] = np.round(np.array(models['train']), 3)
+
         color1, color2 = None, None
         if colors is not None:
             if hasattr(colors, '__len__') and len(colors)==2:
@@ -1154,7 +1165,7 @@ Available cases are {self.models} and you wanted to include
                   color=color1,
                   cmap=cmap1,
                   values=models['train'],
-                  ax_kws={'title':"Train",
+                  ax_kws={'title':"Training",
                   'xlabel':ERROR_LABELS.get(matric_name, matric_name)
                           },
                   show=False,
@@ -1164,6 +1175,10 @@ Available cases are {self.models} and you wanted to include
         TITLLE = {
             'test': "Test",
         }
+
+        if label_bars:
+            kwargs['bar_labels'] = np.round(np.array(models.iloc[:, 1]), 3)
+
         bar_chart(ax=axis[1],
                   labels=labels,
                   values=models.iloc[:, 1],
@@ -1817,7 +1832,9 @@ Available cases are {self.models} and you wanted to include
         return axis
 
     def _compare_cls_curves(
-            self, x, y, func, name,
+            self, x, y,
+            func,
+            name,
             figsize:tuple=None,
             **kwargs
     ):
@@ -2026,11 +2043,17 @@ Available cases are {self.models} and you wanted to include
         df = df.sort_values(by=[sort_by], ascending=False)
 
         if cutoff_type is not None:
+            assert cutoff_type in ["greater", "greater_equal",
+                                   "less", "less_equal"]
             assert cutoff_val is not None
             if cutoff_type == "greater":
                 df = df.loc[df[sort_by] > cutoff_val]
-            else:
+            elif cutoff_type == 'greater_equal':
+                df = df.loc[df[sort_by] >= cutoff_val]
+            elif cutoff_type == 'less':
                 df = df.loc[df[sort_by] < cutoff_val]
+            else:
+                df = df.loc[df[sort_by] <= cutoff_val]
 
         return df
 

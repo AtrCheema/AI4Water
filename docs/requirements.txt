@@ -1,5 +1,5 @@
 
-sphinx
+sphinx<7
 sphinx-prompt
 sphinx_copybutton
 sphinx_toggleprompt
