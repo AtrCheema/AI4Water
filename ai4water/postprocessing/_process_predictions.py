@@ -151,10 +151,17 @@ class ProcessPredictions(Plot):
             return len(self._classes(array))
         return None
 
-    def save_or_show(self, show=None, **kwargs):
+    def save_or_show(self, show=None, close=True, **kwargs):
         if show is None:
             show = self.show
-        return super().save_or_show(save=self.save, show=show, **kwargs)
+
+        # if the plot is not shown, which means it is done consciously,
+        # therefore, we should not close it.
+        if not show:
+            close = False
+
+        return super().save_or_show(save=self.save, show=show,
+                                    close=close, **kwargs)
 
     def __call__(
             self,
@@ -340,7 +347,7 @@ class ProcessPredictions(Plot):
             where='',
             **kwargs):
 
-        murphy_diagram(true,
+        out = murphy_diagram(true,
                        predicted,
                        reference_model="LinearRegression",
                        plot_type="diff",
@@ -348,14 +355,16 @@ class ProcessPredictions(Plot):
                        show=False,
                        **kwargs)
 
-        return self.save_or_show(fname=f"{prefix}_murphy", where=where)
+        self.save_or_show(fname=f"{prefix}_murphy", where=where)
+
+        return out
 
     def fdc_plot(self, true, predicted, prefix='', where='', **kwargs):
 
-        fdc_plot(predicted, true, show=False, **kwargs)
-
-        return self.save_or_show(fname=f"{prefix}_fdc",
-                                 where=where)
+        out = fdc_plot(predicted, true, show=False, **kwargs)
+        self.save_or_show(fname=f"{prefix}_fdc",
+                          where=where)
+        return out
 
     def residual_plot(
             self,
@@ -607,11 +616,11 @@ class ProcessPredictions(Plot):
             fmt = mdates.AutoDateFormatter(loc)
             axis.xaxis.set_major_formatter(fmt)
 
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-        plt.xlabel("Time", fontsize=18)
+            axis.set_xlabel("Time")
 
-        return self.save_or_show(fname=f"{prefix}_prediction", where=where)
+        self.save_or_show(fname=f"{prefix}_prediction", where=where)
+
+        return axis
 
     def plot_all_qs(self, true_outputs, predicted, save=False):
         plt.close('all')
@@ -705,17 +714,49 @@ class ProcessPredictions(Plot):
                                                                                                           np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
 
-        plot_roc_curve(estimator, x, y.reshape(-1, ))
+        out = plot_roc_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(fname=f"{prefix}_roc")
-        return
+        return out
 
-    def confusion_matrix(self, true, predicted, prefix=None, cmap="Blues", **kwargs):
+    def confusion_matrix(
+            self,
+            true,
+            predicted,
+            prefix=None,
+            cmap="Blues",
+            **kwargs):
         """plots confusion matrix.
 
+        parameters
+        ------------
+        true :
+            array of true labels
+        predicted :
+            array of predicted labels
         cmap :
+            colormap
+        prefix :
         **kwargs :
-            any keyword arguments for imshow
+            any keyword arguments for easy_mpl.imshow
+
+        Returns
+        -------
+        matplotlib.image.AxesImage
+            a :obj:`matplotlib.image.AxesImage`
+
+        Examples
+        ---------
+        >>> import numpy as np
+        >>> from ai4water.postprocessing import ProcessPredictions
+        >>> t = np.random.randint(0, 2, 100)
+        >>> p = np.random.randint(0, 2, 100)
+        >>> ProcessPredictions('classification', save=False).confusion_matrix(t,p)
+
         """
+
+        if getattr(self, 'is_multiclass_', None) is None:
+            AttribtueSetter(self, true)
+
         cm = ClassificationMetrics(
             true,
             predicted,
@@ -735,10 +776,13 @@ class ProcessPredictions(Plot):
 
         kws.update(kwargs)
 
-        ep.imshow(cm, **kws)
+        if 'ax' not in kws:
+            # because figures from other methods may be open
+            plt.close('all')
 
+        outs = ep.imshow(cm,  **kws)
         self.save_or_show(fname=f"{prefix}_confusion_matrix", where=prefix)
-        return
+        return outs
 
     def precision_recall_curve(self, estimator, x, y, prefix=None):
 
@@ -746,9 +790,9 @@ class ProcessPredictions(Plot):
             if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x,
                                                                                                           np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
-        plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
+        out = plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(fname=f"{prefix}_plot_precision_recall_curve")
-        return
+        return out
 
     def process_rgr_results(
             self,

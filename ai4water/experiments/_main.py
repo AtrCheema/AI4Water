@@ -1832,7 +1832,9 @@ Available cases are {self.models} and you wanted to include
         return axis
 
     def _compare_cls_curves(
-            self, x, y,
+            self,
+            x,
+            y,
             func,
             name,
             figsize:tuple=None,

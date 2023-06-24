@@ -3,6 +3,7 @@ import os
 import sys
 import site
 
+import matplotlib
 import matplotlib.pyplot as plt
 
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
@@ -161,6 +162,15 @@ class TestProcessPrediction(unittest.TestCase):
         pp(t_m_cls.reshape(-1,), p_m_cls.reshape(-1,),  inputs=x)
         return
 
+    def test_binary_confusion(self):
+        true = np.random.randint(0, 2, 100)
+        pred = np.random.randint(0, 2, 100)
+        proc = ProcessPredictions('classification', save=False,
+                           show=False)
+        img = proc.confusion_matrix(true, pred)
+        assert isinstance(img, matplotlib.image.AxesImage)
+        plt.close('all')
+        return
 
 if __name__ == "__main__":
     unittest.main()
