@@ -371,7 +371,8 @@ class Experiments(object):
         train_x, train_y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
 
         model = self._build_fit(
-            train_x, train_y,
+            train_x,
+            train_y,
             title=f"{self.exp_name}{SEP}{model_name}",
             cross_validate=cross_validate,
             **config)
@@ -500,17 +501,20 @@ class Experiments(object):
             run_type : str, optional (default="dry_run")
                 One of ``dry_run`` or ``optimize``. If ``dry_run``, then all
                 the `models` will be trained only once. if ``optimize``, then
-                hyperparameters of all the models will be optimized.
+                hyperparameters of all the models will be optimized. It should be noted
+                that for for ``dry_run``, the validation data is also made part of training.
+                For ``optimize`` the validation data is used for hyperparameter optimization.
             opt_method : str, optional (default="bayes")
                 which optimization method to use. options are ``bayes``,
                 ``random``, ``grid``. Only valid if ``run_type`` is ``optimize``
             num_iterations : int, optional
                 number of iterations for optimization. Only valid
                 if ``run_type`` is ``optimize``.
-            include : list/str optional (default="DTs")
+            include : list/str optional (default=None)
                 name of models to included. If None, all the models found
-                will be trained and or optimized. Default is "DTs", which
-                means all decision tree based models will be used.
+                will be trained and or optimized. Other possible options are ``DTs``, which
+                means all decision tree based models will be used or ``LMs`` which
+                means only linear regression and their derivatives will be used.
             exclude :
                 name of ``models`` to be excluded
             cross_validate : bool, optional (default=False)
@@ -2404,6 +2408,7 @@ Available cases are {self.models} and you wanted to include
                                plots=self.plots_,
                                show=bool(model.verbosity),
                                )(true, predicted)
+            plt.close('all')
         return true, predicted
 
     def verify_data(
@@ -2485,7 +2490,7 @@ Available cases are {self.models} and you wanted to include
 
         elif test_data is None and validation_data is None:
             # case 1, only x,y are given
-            assert num_examples(x) == num_examples(y)
+            assert num_examples(x) == num_examples(y), f"X samples '{num_examples(x)}' is not equal to y samples '{num_examples(y)}'"
 
             splitter= TrainTestSplit(data_config['val_fraction'], seed=data_config['seed'] or 313)
 
@@ -2499,7 +2504,7 @@ Available cases are {self.models} and you wanted to include
         elif test_data is None:
             # case 2: x,y and validation_data should be given  (means no test data)
 
-            assert num_examples(x) == num_examples(y)
+            assert num_examples(x) == num_examples(y), f"X samples '{num_examples(x)}' is not equal to y samples '{num_examples(y)}'"
 
             train_x, train_y = x, y
             val_x, val_y = validation_data
@@ -2507,7 +2512,7 @@ Available cases are {self.models} and you wanted to include
 
         else:
             # case 3
-            assert num_examples(x) == num_examples(y)
+            assert num_examples(x) == num_examples(y), f"X samples '{num_examples(x)}' is not equal to y samples '{num_examples(y)}'"
 
             train_x, train_y = x, y
             val_x, val_y = validation_data

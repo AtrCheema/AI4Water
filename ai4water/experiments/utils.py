@@ -1,3 +1,4 @@
+
 import sys
 
 from ai4water.hyperopt import Integer, Real, Categorical
@@ -10,6 +11,8 @@ def regression_space(
 )->dict:
 
     dt_rgr = _dt_regressor(num_samples=num_samples)
+    extree_rgr = _ExtraTreeRegressor(num_samples=num_samples)
+    extrees_rgr = _ExtraTreesRegressor(num_samples=num_samples)
 
     spaces = {
         "AdaBoostRegressor":{
@@ -304,23 +307,12 @@ def regression_space(
             "x0":
                 [0.5, 1e-3, 100, True, 1000]},
         "ExtraTreeRegressor": {
-            "param_space": [
-                Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                Real(low=0.1, high=0.5, name='min_samples_split', num_samples=num_samples),
-                Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
-                Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')],
-            "x0":
-                [5, 0.2, 0.2, 'auto']},
+            "param_space": extree_rgr.space,
+            "x0": extree_rgr.x0},
         "ExtraTreesRegressor": {
-                "param_space": [
-                    Integer(low=5, high=500, name='n_estimators', num_samples=num_samples),
-                    Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                    Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
-                    Integer(low=1, high=10, num_samples=num_samples, name='min_samples_leaf'),
-                    Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
-                    Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')],
+                "param_space": extrees_rgr.space,
                 "x0":
-                    [100, 5, 2, 1, 0.0, 'auto']},
+                    extrees_rgr.x0},
         "GaussianProcessRegressor": {
             "param_space": [
                 Real(low=1e-10, high=1e-7, name='alpha', num_samples=num_samples),
@@ -881,6 +873,40 @@ class _dt_regressor(object):
 
         self.x0 = ['best', 2, 0.0, 'auto']
 
+        if sklearn.__version__ > "1.1.0":  # auto is deprecated
+            self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
+            self.x0[-1] = "sqrt"
+
+
+class _ExtraTreeRegressor(object):
+    """ExtraTreeRegressor"""
+    def __init__(self, num_samples):
+        import sklearn
+        self.space = [
+                Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
+                Real(low=0.1, high=0.5, name='min_samples_split', num_samples=num_samples),
+                Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
+                Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')]
+        self.x0 = [5, 0.2, 0.2, 'auto']
+
+        if sklearn.__version__ > "1.1.0":  # auto is deprecated
+            self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
+            self.x0[-1] = "sqrt"
+
+
+class _ExtraTreesRegressor(object):
+    """ExtraTreesRegressor"""
+
+    def __init__(self, num_samples):
+        import sklearn
+        self.space = [
+                    Integer(low=5, high=500, name='n_estimators', num_samples=num_samples),
+                    Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
+                    Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
+                    Integer(low=1, high=10, num_samples=num_samples, name='min_samples_leaf'),
+                    Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
+                    Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')]
+        self.x0 = [100, 5, 2, 1, 0.0, 'auto']
         if sklearn.__version__ > "1.1.0":  # auto is deprecated
             self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
             self.x0[-1] = "sqrt"

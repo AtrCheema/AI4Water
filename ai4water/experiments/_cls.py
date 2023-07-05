@@ -98,6 +98,9 @@ class MLClassificationExperiments(Experiments):
         }
         return kws.get(metric_name, {})
 
+    def _named_x0(self)->dict:
+        return {}
+
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
 

@@ -9,6 +9,8 @@ from ai4water.backend import xgboost, lightgbm, catboost, sklearn
 
 VERSION_INFO = get_version_info(sklearn=sklearn)
 
+# TODO, why do we need x0 and space in init?
+# TODO, why do we need 'path' attribute in each method?
 
 class MLRegressionExperiments(Experiments):
     """
@@ -117,6 +119,11 @@ class MLRegressionExperiments(Experiments):
     @property
     def mode(self):
         return "regression"
+
+    def _named_x0(self)->dict:
+        # because we want to run all models in this class with their default parameters
+        # i.e. RandomForestRegressor()
+        return {}
 
     def model_AdaBoostRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html

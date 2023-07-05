@@ -1106,7 +1106,7 @@ class BaseModel(NN):
         for arg in ["composite", "optimizer", "lr", "epochs", "learning_rate"]:
             self.config.pop(arg, None)
 
-        if len(outputs) == outputs.size:
+        if isinstance(outputs, np.ndarray) and len(outputs) == outputs.size:
             outputs = outputs.reshape(-1, )
 
         self._maybe_change_residual_threshold(outputs)

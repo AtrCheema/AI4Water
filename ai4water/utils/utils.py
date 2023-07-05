@@ -45,7 +45,8 @@ ERROR_LABELS = {
     'mape': 'MAPE',
     'r2_score': "$R^{2}$ Score",
     'mae': 'MAE',
-    'mase': 'MASE'
+    'mase': 'MASE',
+    'f1_score': 'F1 Score'
 }
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None,
