@@ -4,6 +4,7 @@ import sys
 import ssl
 import glob
 import shutil
+import warnings
 import zipfile
 import tempfile
 from typing import Union, List
@@ -181,6 +182,11 @@ def filename_from_url(url):
     fname = os.path.basename(urlparse.urlparse(url).path)
     if len(fname.strip(" \n\t.")) == 0:
         return None
+
+    if fname.startswith(":"):
+        old_fname = fname
+        fname = old_fname[1:]
+        warnings.warn(f"fname changed from {old_fname} to {fname}")
     return fname
 
 
@@ -270,11 +276,13 @@ def unzip_all_in_dir(dir_name, ext=".gz"):
     return
 
 
-def maybe_download(ds_dir,
-                   url:Union[str, List[str], dict],
-                   overwrite:bool=False,
-                   name=None,
-                   include:list=None,
+def maybe_download(
+        ds_dir,
+        url:Union[str, List[str], dict],
+        overwrite:bool=False,
+        name=None,
+        include:list=None,
+        files_to_check:list = None,
                    **kwargs):
     """
     Parameters
@@ -284,6 +292,12 @@ def maybe_download(ds_dir,
     overwrite :
     name :
     include :
+    files_to_check : list
+        if given, then even if the ds_dir exists, it will be checked that
+        whetehr all files are present or not if not, then the files which
+        are not present will be downloaded. This argument can be used to
+        make sure that only undownloaded files are downloaded again instead
+        of downloading all the files again
     **kwargs :
         any keyword arguments for download_and_unzip function
     """
@@ -292,6 +306,10 @@ def maybe_download(ds_dir,
             print(f"removing previous data directory {ds_dir} and downloading new")
             shutil.rmtree(ds_dir)
             download_and_unzip(ds_dir, url=url, include=include, **kwargs)
+        elif files_to_check:
+            download_and_unzip(ds_dir, url=url,
+                               files_to_check=files_to_check,
+                               **kwargs)
         else:
             print(f"""
     Not downloading the data since the directory 
@@ -303,10 +321,12 @@ def maybe_download(ds_dir,
     return
 
 
-def download_and_unzip(path,
-                       url:Union[str, List[str], dict],
-                       include=None,
-                       **kwargs):
+def download_and_unzip(
+        path,
+        url:Union[str, List[str], dict],
+        include:List[str]=None,
+        files_to_check:List[str] = None,
+        **kwargs):
     """
 
     parameters
@@ -317,6 +337,9 @@ def download_and_unzip(path,
     include :
         files to download. Files which are not in include will not be
         downloaded.
+    files_to_check :
+        This argument can be used to make sure that only undownloaded files
+        are downloaded again instead of downloading all the files again
     **kwargs :
         any keyword arguments for download_from_zenodo function
     """
@@ -326,22 +349,30 @@ def download_and_unzip(path,
         os.makedirs(path)
     if isinstance(url, str):
         if 'zenodo' in url:
-            download_from_zenodo(path, doi=url, include=include, **kwargs)
+            download_from_zenodo(path, doi=url, include=include,
+                                 files_to_check=files_to_check,
+                                 **kwargs)
         else:
             download(url, path)
         _unzip(path)
     elif isinstance(url, list):
         for url in url:
             if 'zenodo' in url:
-                download_from_zenodo(path, url, include=include, **kwargs)
+                download_from_zenodo(path, url, include=include,
+                                     files_to_check=files_to_check,
+                                     **kwargs)
             else:
                 download(url, path)
         _unzip(path)
     elif isinstance(url, dict):
         for fname, url in url.items():
             if 'zenodo' in url:
-                download_from_zenodo(path, doi=url, include=include, **kwargs)
+                download_from_zenodo(path, doi=url, include=include,
+                                     files_to_check=files_to_check,
+                                     **kwargs)
             else:
+                if include is not None or files_to_check is not None:
+                    raise ValueError("include and files_to_check are available only for zenodo")
                 download(url, os.path.join(path, fname))
         _unzip(path)
 

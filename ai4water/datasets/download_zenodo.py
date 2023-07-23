@@ -69,6 +69,7 @@ def download_from_zenodo(
         cont=False,
         tolerate_error=False,
         include:list = None,
+        files_to_check:list = None,
         **kwargs
 ):
     """
@@ -79,6 +80,9 @@ def download_from_zenodo(
     :param tolerate_error: False, Continue with next file if error happens.
     :param include : files to download. Files which are not in include will not be
         downloaded.
+    :param files_to_check :
+        This argument can be used to make sure that only undownloaded files
+        are downloaded again instead of downloading all the files again
     :param kwargs:
         sandbox: bool, Use Zenodo Sandbox URL.
         timeout: int, Connection time-out. Default: 15 [sec].
@@ -92,6 +96,9 @@ def download_from_zenodo(
     sandbox = kwargs.get('sandbox', False)
     pause = kwargs.get('pause', 0.5)
     retry = kwargs.get('retry', 0)
+
+    if include is not None and files_to_check is not None:
+        raise ValueError("either include or files_to_check is to be given, not both")
 
     with cd(outdir):
 
@@ -130,8 +137,21 @@ def download_from_zenodo(
                 assert all([file in filenames for file in include]), f"invlid {include}"
                 # only consider those files which are in include
                 files = [file for file in files if file['key'] in include]
-            total_size = sum(f['size'] for f in files)
 
+            elif files_to_check:
+                assert isinstance(files_to_check, list)
+                filenames = [f['key'] for f in files]
+                assert all([file in filenames for file in files_to_check]), f"invlid {files_to_check}"
+                # only consider those files which are not in outdir
+                files = [file for file in files if file['key'] not in os.listdir(outdir)]
+
+            total_size = sum(f['size'] for f in files)
+            size_in_gb = round(total_size * 1e-9, 5)
+            if size_in_gb < 1:
+                size_in_mb = round(total_size * 1e-6, 5)
+                print(f"Total data to be downloaded is {size_in_mb} MB")
+            else:
+                print(f"Total data to be downloaded is {size_in_gb} GB")
             if md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
                     for f in files:

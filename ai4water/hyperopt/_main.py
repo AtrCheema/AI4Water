@@ -279,9 +279,9 @@ class HyperOpt(object):
             opt_path :
                 path to save the results
             backend : str, optional
-                Defines which backend library to use for the `algorithm`. For
-                example the user can specify whether to use `optuna` or `hyper_opt`
-                or `sklearn` for `grid` algorithm.
+                Defines which backend library to use for the ``algorithm``. For
+                example the user can specify whether to use ``optuna`` or `hyper_opt`
+                or ``sklearn`` for ``grid`` algorithm.
             verbosity : bool, optional
                 determines amount of information being printed
             **kwargs :

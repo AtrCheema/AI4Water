@@ -11,6 +11,7 @@ site.addsitedir(ai4_dir)
 import pandas as pd
 import xarray as xr
 
+from ai4water.datasets import CAMELS_DK
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
 from ai4water.datasets import WaterBenchIowa
@@ -256,6 +257,7 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     test_selected_dynamic_features(dataset)
     return
 
+
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
@@ -267,7 +269,7 @@ class TestCamels(unittest.TestCase):
 
     def test_aus(self):
         ds_aus = CAMELS_AUS(path=r'F:\data\CAMELS\CAMELS_AUS')
-        test_dataset(ds_aus, 222, 21184, 110, 26)
+        test_dataset(ds_aus, 222, 21184, 161, 26)
         return
 
     def test_hype(self):
@@ -317,6 +319,11 @@ class TestCamels(unittest.TestCase):
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
+    def test_dk(self):
+        ds_us = CAMELS_DK(path="F:\\data\\Denmark")
+        test_dataset(ds_us, 308, 14609, 211, 39)
+        return
+
     def test_hysets(self):
         test_hysets()
         return
@@ -352,6 +359,35 @@ class TestCamels(unittest.TestCase):
 
         data = dataset.fetch_static_features('592', features=['slope', 'area'])
         assert data.shape == (1,2)
+        return
+
+    def test_camels_dk_docs(self):
+
+        dataset = CAMELS_DK()
+
+        assert len(dataset.stations()) == 308
+        assert dataset.fetch_static_features(dataset.stations()).shape == (308, 211)
+        assert dataset.fetch_static_features('80001').shape == (1, 211)
+        assert dataset.fetch_static_features(features=['gauge_lat', 'area']).shape == (308, 2)
+        assert dataset.fetch_static_features('80001', features=['gauge_lat', 'area']).shape == (1, 2)
+
+        df = dataset.fetch(stations=0.1, as_dataframe=True)
+        assert df.index.names == ['time', 'dynamic_features']
+        df = dataset.fetch(stations=1, as_dataframe=True)
+        assert df.unstack().shape == (14609, 39)
+        assert dataset.fetch(stations='80001', as_dataframe=True).unstack().shape == (14609, 39)
+
+        df = dataset.fetch(1, as_dataframe=True,
+                           dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
+                                             'potential_evaporation_sum', 'total_precipitation_sum',
+                                             'streamflow']).unstack()
+        assert df.shape == (14609, 5)
+        df = dataset.fetch(10, as_dataframe=True)
+        assert df.shape == (569751, 10)
+
+        data = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
+        assert data['static'].shape == (1, 211)
+        assert data['dynamic'].shape == (569751, 1)
         return
 
 
