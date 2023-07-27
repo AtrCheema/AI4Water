@@ -1047,5 +1047,36 @@ class TestTrainTestSplit(unittest.TestCase):
         assert len(TrainY) == 0
         return
 
+    def test_split_by_groups(self):
+        x1 = np.random.randint(0, 10, 1000)
+        x2 = np.random.random(1000)
+
+        X = np.vstack([x1, x2]).transpose()
+
+        train_x, test_x, train_y, test_y = TrainTestSplit(seed=313).random_split_by_groups(X,
+                                                                                           groups=x1)
+        train_groups = np.unique(train_x[:, 0]).astype(int)
+        test_groups = np.unique(test_x[:, 0]).astype(int)
+        for val in train_groups:
+            assert val not in test_groups
+
+        y = np.random.random(1000)
+        train_x, test_x, train_y, test_y = TrainTestSplit(seed=313).random_split_by_groups(X,
+                                                                                           y,
+                                                                                           groups=x1)
+        train_groups = np.unique(train_x[:, 0]).astype(int)
+        test_groups = np.unique(test_x[:, 0]).astype(int)
+        for val in np.unique(train_groups):
+            assert val not in test_groups
+
+        X_df = pd.DataFrame(X, columns=['a', 'b'])
+        train_df, test_df, _, _ = TrainTestSplit(seed=313).random_split_by_groups(X_df,
+                                                                                  groups=x1)
+        train_groups = np.unique(train_df.iloc[:, 0]).astype(int)
+        test_groups = np.unique(test_df.iloc[:, 0]).astype(int)
+        for val in np.unique(train_groups):
+            assert val not in test_groups
+        return
+
 if __name__ == "__main__":
     unittest.main()

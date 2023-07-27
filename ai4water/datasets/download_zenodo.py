@@ -89,6 +89,10 @@ def download_from_zenodo(
         pause: float, Seconds to wait before retry attempt, e.g. 0.5
         retry: int, Number of times to Retry on error.
     """
+
+    if requests is None:
+        raise ImportError(f"You must isntall ``requests`` module first.")
+
     _wget = kwargs.get('wget', None)
     md5 = kwargs.get('md5', False)
     keep = kwargs.get('keep', False)

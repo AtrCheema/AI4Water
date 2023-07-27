@@ -941,7 +941,6 @@ class TrainTestSplit(object):
     train_test_split of sklearn can not be used for list of arrays so here
     we go
 
-
     Examples
     ---------
     >>> import numpy as np
@@ -1045,13 +1044,14 @@ class TrainTestSplit(object):
 
         return train_x, test_x, train_y, test_y
 
-    def split_by_random(
+    def random_split(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
-    )->Tuple[Any, Any, Any, Any]:
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]] = None,
+    ) -> Tuple[Any, Any, Any, Any]:
         """
-        splits the x and y by random splitting.
+        random splitting of x and/or y.
+
         Arguments:
             x:
                 arrays to split
@@ -1076,6 +1076,105 @@ class TrainTestSplit(object):
         split_at = int(len(indices) * (1. - self.test_fraction))
         train_indices, test_indices = (self.slice_arrays(indices, 0, split_at),
                                        self.slice_arrays(indices, split_at))
+
+        train_x = self.slice_with_indices(x, train_indices)
+        train_y = self.slice_with_indices(y, train_indices)
+
+        test_x = self.slice_with_indices(x, test_indices)
+        test_y = self.slice_with_indices(y, test_indices)
+
+        return train_x, test_x, train_y, test_y
+
+    def split_by_random(
+            self,
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
+    )->Tuple[Any, Any, Any, Any]:
+        """
+        splits the x and y by random splitting.
+        Arguments:
+            x:
+                arrays to split
+
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            y:
+                array like
+
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+
+        """
+        return self.random_split(x=x, y=y)
+
+    def random_split_by_groups(
+            self,
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]]=None,
+            groups:np.ndarray=None
+    ):
+        """
+        If a feature in our data contains groups, we would wish to have separate groups
+        into training and test splits.
+        This function splits the X and/or y based upon groups which are represented by
+        ``groups`` array
+
+        Parameters
+        ------------
+        x :
+        y :
+        groups :
+            an array whose length is equal to the length of ``x`` or arrays in ``x``
+
+        Examples
+        ---------
+        >>> from ai4water.utils.utils import TrainTestSplit
+        >>> import numpy as np
+        >>> x1 = np.random.randint(0, 10, 1000)
+        >>> x2 = np.random.random(1000)
+
+        >>> X = np.vstack([x1, x2]).transpose()
+
+        >>> train_x, test_x, train_y, test_y = TrainTestSplit(seed=313).random_split_by_groups(X,
+        >>>                                                                   groups=x1)
+        >>> train_groups = np.unique(train_x[:, 0]).astype(int)
+        >>> test_groups = np.unique(test_x[:, 0]).astype(int)
+        # We can check that train and test groups are not overlapping
+        >>> for val in train_groups:
+        >>>     assert val not in test_groups
+
+        We can also split y if it is given as second argument.
+
+        >>> y = np.random.random(1000)
+        >>> train_x, test_x, train_y, test_y = TrainTestSplit(seed=313).random_split_by_groups(X,
+        >>>                                                                   y,
+        >>>                                                               groups=x1)
+        >>> train_groups = np.unique(train_x[:, 0]).astype(int)
+        >>> test_groups = np.unique(test_x[:, 0]).astype(int)
+        # train and test groups are not overlapping
+        >>> for val in np.unique(train_groups):
+        >>>     assert val not in test_groups
+
+        Instead of numpy arrays, we can also give pandas dataframes
+
+        >>> X_df = pd.DataFrame(X, columns=['a', 'b'])
+        >>> train_df, test_df, _, _ = TrainTestSplit(seed=313).random_split_by_groups(X_df,
+        >>>                                                                     groups=x1)
+        >>> train_groups = np.unique(train_df.iloc[:, 0]).astype(int)
+        >>> test_groups = np.unique(test_df.iloc[:, 0]).astype(int)
+        >>> for val in np.unique(train_groups):
+        >>>     assert val not in test_groups
+        """
+        if groups is None:
+            raise ValueError
+
+        from sklearn.model_selection import GroupShuffleSplit
+        gss = GroupShuffleSplit(n_splits=1,
+                                train_size=self.test_fraction,
+                                random_state=self.random_state)
+        train_indices, test_indices = next(
+            gss.split(x[0] if isinstance(x, list) else x,
+                      groups=groups))
 
         train_x = self.slice_with_indices(x, train_indices)
         train_y = self.slice_with_indices(y, train_indices)
@@ -1172,6 +1271,23 @@ class TrainTestSplit(object):
         from sklearn.model_selection import TimeSeriesSplit
         kf = TimeSeriesSplit(**kwargs)
         spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
+
+    def GroupKFold(
+            self,
+            x,
+            y,
+            n_splits:int,
+            groups=None
+    ):
+        if isinstance(x, (pd.DataFrame, pd.Series)):
+            x = x.values
+
+        from sklearn.model_selection import GroupKFold
+
+        kf = GroupKFold(n_splits=n_splits)
+
+        spliter = kf.split(x[0] if isinstance(x, list) else x, groups=groups)
         return self.yield_splits(x, y, spliter)
 
     def ShuffleSplit(

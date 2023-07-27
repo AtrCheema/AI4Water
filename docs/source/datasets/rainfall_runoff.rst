@@ -57,6 +57,17 @@ CAMELS_CL
 
    .. automethod:: __init__
 
+
+CAMELS_DK
+==========
+.. autoclass:: ai4water.datasets.camels.CAMELS_DK
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 WaterBenchIowa
 ===============
 .. autoclass:: ai4water.datasets.camels.WaterBenchIowa
