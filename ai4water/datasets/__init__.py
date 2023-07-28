@@ -2,18 +2,20 @@ from typing import Union
 
 from ai4water.backend import pd, os
 
-from .camels import Camels
-from .camels import CAMELS_AUS
-from .camels import CAMELS_CL
-from .camels import CAMELS_BR
-from .camels import CAMELS_GB
-from .camels import CAMELS_US
-from .camels import LamaH
-from .camels import HYSETS
-from .camels import HYPE
-from .camels import WaterBenchIowa
-from .camels import CAMELS_DK
-from .camels import GSHA
+from .rr import Camels
+from .rr import CAMELS_AUS
+from .rr import CAMELS_CL
+from .rr import CAMELS_BR
+from .rr import CAMELS_GB
+from .rr import CAMELS_US
+from .rr import LamaH
+from .rr import HYSETS
+from .rr import HYPE
+from .rr import WaterBenchIowa
+from .rr import CAMELS_DK
+from .rr import GSHA
+from .rr import CCAM
+from .rr import RRLuleaSweden
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador
@@ -42,7 +44,6 @@ from ._datasets import EtpPcpSamoylov
 from ._datasets import SWECanada
 from ._datasets import gw_punjab
 from ._datasets import RRAlpineCatchments
-from ._datasets import RRLuleaSweden
 from ._datasets import mg_photodegradation
 from ._datasets import ec_removal_biochar
 
@@ -54,14 +55,15 @@ from .mtropics import ecoli_houay_pano
 from .mtropics import ecoli_mekong_2016
 from .mtropics import ecoli_mekong
 
-from ._quadica import Quadica
-from ._grqa import GRQA
-from ._swatch import Swatch
-from ._rc4uscoast import RC4USCoast
+
 from ._grimedb import GRiMeDB
 from ._npctr import NPCTRCatchments
 from ._hyperspectral import SoilPhosphorus
 
+from .water_quality import Quadica
+from .water_quality import GRQA
+from .water_quality import Swatch
+from .water_quality import RC4USCoast
 from .water_quality import DoceRiver
 from .water_quality import SeluneRiver
 from .water_quality import busan_beach
@@ -71,6 +73,10 @@ from .water_quality import SyltRoads
 
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
+
+    DeprecationWarning("load_nasdaq is deprecated and will be removed in future versions."
+                       "See ai4water.datasets to get an appropriate dataset")
+
     fname = os.path.join(os.path.dirname(__file__), "nasdaq100_padding.csv")
 
     if not os.path.exists(fname):

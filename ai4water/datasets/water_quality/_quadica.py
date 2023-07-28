@@ -5,8 +5,8 @@ from typing import Union, List, Tuple
 
 from ai4water.backend import pd, os, np
 
-from ._datasets import Datasets
-from .utils import check_attributes, sanity_check, check_st_en
+from .._datasets import Datasets
+from ..utils import check_attributes, sanity_check, check_st_en
 
 
 class Quadica(Datasets):

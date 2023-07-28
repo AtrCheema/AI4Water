@@ -320,7 +320,7 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_dk(self):
-        ds_us = CAMELS_DK(path="F:\\data\\Denmark")
+        ds_us = CAMELS_DK(path="F:\\data\\CAMELS\\CAMELS_DK")
         test_dataset(ds_us, 308, 14609, 211, 39)
         return
 
@@ -363,7 +363,7 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_dk_docs(self):
 
-        dataset = CAMELS_DK()
+        dataset = CAMELS_DK(path="F:\\data\\CAMELS\\CAMELS_DK")
 
         assert len(dataset.stations()) == 308
         assert dataset.fetch_static_features(dataset.stations()).shape == (308, 211)

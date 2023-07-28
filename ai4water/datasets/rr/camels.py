@@ -1,11 +1,13 @@
+
 import json
 import glob
 from typing import Union, List
 
-from ._datasets import Datasets
-from .utils import check_attributes, download, sanity_check, _unzip
 from ai4water.utils.utils import dateandtime_now
 from ai4water.backend import os, random, np, pd, xr
+
+from .._datasets import Datasets
+from ..utils import check_attributes, download, sanity_check, _unzip
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
     from ai4water.preprocessing.spatial_utils import plot_shapefile
@@ -60,7 +62,7 @@ class Camels(Datasets):
     """
 
     DATASETS = {
-        'CAMELS-BR': {'url': "https://zenodo.org/record/3964745#.YA6rUxZS-Uk",
+        'CAMELS_BR': {'url': "https://zenodo.org/record/3964745#.YA6rUxZS-Uk",
                       },
         'CAMELS-GB': {'url': gb_message},
     }
@@ -473,13 +475,13 @@ class Camels(Datasets):
 class LamaH(Camels):
     """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
-    from  Zenodo_ following the work of Klingler_ et al., 2021 .
-
-    .. _Zenodo:
-           https://zenodo.org/record/4609826#.YFNp59zt02w
-
-    .. _Klingler:
-        https://essd.copernicus.org/preprints/essd-2021-72/
+    (mainly Austria). The dataset is downloaded from
+    from  `zenodo <https://zenodo.org/record/4609826#.YFNp59zt02w>`_
+    following the work of
+    `Klingler et al., 2021 <https://essd.copernicus.org/preprints/essd-2021-72/>`_ .
+    For ``total_upstrm`` data, there are 859 stations with 61 static features
+    and 17 dynamic features. The temporal extent of data is from 1981-01-01
+    to 2019-12-31.
     """
     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
     _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
@@ -500,13 +502,21 @@ class LamaH(Camels):
                 possible values are ``daily`` or ``hourly``
             data_type :
                 possible values are ``total_upstrm``, ``diff_upstrm_all``
-                or `diff_upstrm_lowimp`
+                or ``diff_upstrm_lowimp``
 
         Examples
         --------
-            >>> from ai4water.datasets import LamaH
-            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
-            >>> df = dataset.fetch(3, as_dataframe=True)
+        >>> from ai4water.datasets import LamaH
+        >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
+        # The daily dataset is from 859 with 61 static and 22 dynamic features
+        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
+        (859, 61, 22)
+        >>> df = dataset.fetch(3, as_dataframe=True)
+        >>> df.shape
+        (313368, 3)
+        >>> dataset = LamaH(time_step='hourly', data_type='total_upstrm')
+        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
+        (859, 61, 17)
         """
 
         assert time_step in self.time_steps, f"invalid time_step {time_step} given"
@@ -1059,13 +1069,17 @@ class HYSETS(Camels):
 
 class CAMELS_US(Camels):
     """
-    Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
-    from https://ral.ucar.edu/solutions/products/camels following Newman et al., 2015 [1]_
+    This is a dataset of 671 US catchments with 59 static features
+    and 8 dyanmic features for each catchment. The dyanmic features are
+    timeseries from 1980-01-01 to 2014-12-31. This class
+    downloads and processes CAMELS dataset of 671 catchments named as CAMELS
+    from `ucar.edu <https://ral.ucar.edu/solutions/products/camels>`_
+    following `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_
 
     Examples
     --------
     >>> from ai4water.datasets import CAMELS_US
-    >>> dataset = CAMELS_US(path=r'F:\data\CAMELS\CAMELS_US')
+    >>> dataset = CAMELS_US()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
@@ -1091,8 +1105,12 @@ class CAMELS_US(Camels):
     >>> df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (102272, 10)  # remember this is multi-indexed DataFrame
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='11478500', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    ((1, 59), (102272, 1))
 
-    .. [1]_ https://doi.org/10.5194/hess-19-209-2015
     """
     DATASETS = ['CAMELS_US']
     url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
@@ -1281,12 +1299,16 @@ class CAMELS_US(Camels):
 
 class CAMELS_BR(Camels):
     """
-    Downloads and processes CAMELS dataset of Brazil
+    This is a dataset of 593 Brazilian catchments with 67 static features
+    and 12 dyanmic features for each catchment. The dyanmic features are
+    timeseries from 1980-01-01 to 2018-12-31. This class
+    downloads and processes CAMELS dataset of Brazil as provided by
+    `VP Changas et al., 2020 <https://doi.org/10.5194/essd-12-2075-2020>`_
 
     Examples
     --------
     >>> from ai4water.datasets import CAMELS_BR
-    >>> dataset = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS_BR')
+    >>> dataset = CAMELS_BR()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
@@ -1312,6 +1334,11 @@ class CAMELS_BR(Camels):
     >>> df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (170940, 10)  # remember this is multi-indexed DataFrame
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    ((1, 67), (170940, 1))
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
@@ -1332,7 +1359,7 @@ class CAMELS_BR(Camels):
 
     def __init__(self, path=None):
 
-        super().__init__(path=path, name="CAMELS-BR")
+        super().__init__(path=path, name="CAMELS_BR")
         self.ds_dir = path
         self._download()
 
@@ -1494,7 +1521,7 @@ class CAMELS_BR(Camels):
                 attributes for a particular station of the specified category.
         Example
         -------
-        >>> dataset = Camels('CAMELS-BR')
+        >>> dataset = Camels()
         >>> df = dataset.fetch_static_features('11500000', 'climate')
         # read all static features of all stations
         >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
@@ -1532,11 +1559,11 @@ class CAMELS_BR(Camels):
 
 class CAMELS_GB(Camels):
     """
-    This dataset must be manually downloaded by the user.
-    The path of the downloaded folder must be provided while initiating
-    this class. This is a dataset of 671 catchments with 290 static features
+    This is a dataset of 671 catchments with 290 static features
     and 10 dyanmic features for each catchment. The dyanmic features are
-    timeseries from 1957-01-01 to 2018-12-31.
+    timeseries from 1957-01-01 to 2018-12-31. This dataset must be manually
+    downloaded by the user. The path of the downloaded folder must be provided
+    while initiating this class.
 
     >>> from ai4water.datasets import CAMELS_GB
     >>> dataset = CAMELS_GB("path/to/CAMELS_GB")
@@ -1727,11 +1754,11 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    Reads CAMELS-AUS dataset of
-    `Fowler et al., 2020 <https://doi.org/10.5194/essd-13-3847-2021>`_
-    dataset. This is a dataset of 222 catchments with 110 static features
+    This is a dataset of 222 Australian catchments with 161 static features
     and 26 dyanmic features for each catchment. The dyanmic features are
-    timeseries from 1957-01-01 to 2018-12-31.
+    timeseries from 1957-01-01 to 2018-12-31. This class Reads CAMELS-AUS dataset of
+    `Fowler et al., 2020 <https://doi.org/10.5194/essd-13-3847-2021>`_
+    dataset.
 
     Examples
     --------
@@ -1745,6 +1772,13 @@ class CAMELS_AUS(Camels):
     >>> stns = dataset.stations()
     >>> len(stns)
        222
+    ... # get data of 10 % of stations as dataframe
+    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> df.shape
+       (550784, 22)
+    ... # The returned dataframe is a multi-indexed data
+    >>> df.index.names == ['time', 'dynamic_features']
+        True
     ... # get data by station id
     >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
     >>> df.shape
@@ -1762,6 +1796,11 @@ class CAMELS_AUS(Camels):
     >>> df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (21184, 260)
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    >>> ((1, 161), (550784, 1))
     """
 
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
@@ -1979,10 +2018,11 @@ class CAMELS_AUS(Camels):
 
 class CAMELS_CL(Camels):
     """
-    Downloads and processes CAMELS dataset of Chile following the work of
-    Alvarez-Garreton_ et al., 2018 . This is a dataset of 516 catchments with
+    This is a dataset of 516 catchments with
     104 static features and 12 dyanmic features for each catchment.
     The dyanmic features are timeseries from 1913-02-15 to 2018-03-09.
+    This class downloads and processes CAMELS dataset of Chile following the work of
+    Alvarez-Garreton_ et al., 2018 .
 
     Examples
     ---------
@@ -1996,6 +2036,13 @@ class CAMELS_CL(Camels):
     >>> stns = dataset.stations()
     >>> len(stns)
     516
+    # we can get data of 10% catchments as below
+    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (460488, 51)
+    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
+    >>> df.index.names == ['time', 'dynamic_features']
+     True
     # get data by station id
     >>> df = dataset.fetch(stations='8350001', as_dataframe=True).unstack()
     >>> df.shape
@@ -2013,6 +2060,11 @@ class CAMELS_CL(Camels):
     >>> df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (460488, 10)
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='8350001', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    >>> ((1, 104), (460488, 1))
 
     .. _Alvarez-Garreton: https://doi.org/10.5194/hess-22-5817-2018
     """
@@ -2353,161 +2405,6 @@ class HYPE(Camels):
         return '20191231'
 
 
-class WaterBenchIowa(Camels):
-    """
-    Rainfall run-off dataset for Iowa (US) following the work of
-    `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
-
-    Examples
-    --------
-    >>> from ai4water.datasets import WaterBenchIowa
-    >>> ds = WaterBenchIowa()
-    ... # fetch static and dynamic features of 5 stations
-    >>> data = ds.fetch(5, as_dataframe=True)
-    >>> data.shape  # it is a multi-indexed DataFrame
-    (184032, 5)
-    ... # fetch both static and dynamic features of 5 stations
-    >>> data = ds.fetch(5, static_features="all", as_dataframe=True)
-    >>> data.keys()
-    dict_keys(['dynamic', 'static'])
-    >>> data['static'].shape
-    (5, 7)
-    >>> data['dynamic']  # returns a xarray DataSet
-    ... # using another method
-    >>> data = ds.fetch_dynamic_features('644', as_dataframe=True)
-    >>> data.unstack().shape
-    (61344, 3)
-    """
-    url = "https://zenodo.org/record/7087806#.Y6rW-BVByUk"
-
-    def __init__(self, path=None):
-        super(WaterBenchIowa, self).__init__(path=path)
-
-        self._download()
-
-        self._maybe_to_netcdf('WaterBenchIowa.nc')
-
-    def stations(self)->List[str]:
-        return [fname.split('_')[0] for fname in os.listdir(self.ts_path) if fname.endswith('.csv')]
-
-    @property
-    def ts_path(self)->str:
-        return os.path.join(self.ds_dir, 'data_time_series', 'data_time_series')
-
-    @property
-    def dynamic_features(self) -> List[str]:
-        return ['precipitation', 'et', 'discharge']
-
-    @property
-    def static_features(self)->List[str]:
-        return ['travel_time', 'area', 'slope', 'loam', 'silt',
-                'sandy_clay_loam', 'silty_clay_loam']
-
-    def fetch_station_attributes(
-            self,
-            station: str,
-            dynamic_features: Union[str, list, None] = 'all',
-            static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
-            st: Union[str, None] = None,
-            en: Union[str, None] = None,
-            **kwargs
-    ) -> pd.DataFrame:
-
-        """
-
-        Examples
-        --------
-            >>> from ai4water.datasets import WaterBenchIowa
-            >>> dataset = WaterBenchIowa()
-            >>> data = dataset.fetch_station_attributes('666')
-        """
-        check_attributes(dynamic_features, self.dynamic_features)
-        fname = os.path.join(self.ts_path, f"{station}_data.csv")
-        df = pd.read_csv(fname)
-        df.index = pd.to_datetime(df.pop('datetime'))
-
-        return df
-
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, List[str]],
-            features:Union[str, List[str]]=None
-    )->pd.DataFrame:
-        """
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Examples
-        ---------
-        >>> from ai4water.datasets import WaterBenchIowa
-        >>> dataset = WaterBenchIowa()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            125
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (125, 7)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('592')
-        >>> static_data.shape
-           (1, 7)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
-        >>> static_data.shape
-           (125, 2)
-        >>> data = dataset.fetch_static_features('592', features=['slope', 'area'])
-        >>> data.shape
-           (1, 2)
-
-        """
-        if not isinstance(stn_id, list):
-            stn_id = [stn_id]
-
-        features = check_attributes(features, self.static_features)
-
-        dfs = []
-        for stn in stn_id:
-            fname = os.path.join(self.ts_path, f"{stn}_data.csv")
-            df = pd.read_csv(fname, nrows=1)
-            dfs.append(df[features])
-
-        return pd.concat(dfs)
-
-    def _read_dynamic_from_csv(
-            self,
-            stations,
-            dynamic_features,
-            st=None,
-            en=None)->dict:
-
-        dyn = dict()
-        for stn in stations:
-            fname = os.path.join(self.ts_path, f"{stn}_data.csv")
-            df = pd.read_csv(fname)
-            df.index = pd.to_datetime(df.pop('datetime'))
-            dyn[stn] = df[self.dynamic_features]
-        return dyn
-
-    @property
-    def start(self):
-        return "20111001 12:00"
-
-    @property
-    def end(self):
-        return "20180930 11:00"
-
-
 class CAMELS_DK(Camels):
     """
     Reads Caravan extension Denmark - Danish dataset for large-sample hydrology.
@@ -2757,44 +2654,3 @@ class CAMELS_DK(Camels):
         indices = df.pop('gauge_id')
         df.index = [idx[9:] for idx in indices]
         return df
-
-
-class GSHA(Camels):
-    """
-    Global streamflow characteristics, hydrometeorology and catchment
-    attributes following Peirong et al., 2023 <https://doi.org/10.5194/essd-2023-256>_`
-
-
-    """
-    url = "https://zenodo.org/record/8090704"
-
-    def __init__(self,
-                 path=None,
-                 overwrite=False,
-                 to_netcdf:bool = True,
-                 **kwargs):
-        """
-        Parameters
-        ----------
-        to_netcdf : bool
-            whether to convert all the data into one netcdf file or not.
-            This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
-        """
-        super(GSHA, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
-
-        files = ['Global_files.zip',
-                 'GSHAreadme.docx',
-                 'LAI.zip',
-                 'Landcover.zip',
-                 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT.zip',
-                 'Meteorology_ PartII_ANA_BOM_CCRR_HYDAT.zip',
-                 'Meteorology_PartIII_China_CHP_RID_USGS.zip',
-                 'Reservoir.zip',
-                 'Storage.zip',
-                 'StreamflowIndices.zip',
-                 'WatershedPolygons.zip',
-                 'WatershedsAll.csv'
-                 ]
-        self._download(overwrite=overwrite, files_to_check=files)
