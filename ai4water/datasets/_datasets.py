@@ -288,18 +288,18 @@ class Datasets(object):
         return os.path.join(os.path.dirname(__file__), 'data')
 
     @property
-    def ds_dir(self):
-        return self._ds_dir
+    def path(self):
+        return self._path
 
-    @ds_dir.setter
-    def ds_dir(self, path=None):
+    @path.setter
+    def path(self, path=None):
         if path is None:
             _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
         else:
             _dir = path
         if not os.path.exists(_dir):
             os.makedirs(_dir)
-        self._ds_dir = _dir
+        self._path = _dir
         return
 
     def _download(self, overwrite=False, **kwargs):
@@ -311,25 +311,25 @@ class Datasets(object):
         **kwargs :
             any keyword arguments for maybe_download function
         """
-        maybe_download(self.ds_dir, overwrite=overwrite,
+        maybe_download(self.path, overwrite=overwrite,
                        url=self.url, name=self.name, **kwargs)
         return
 
     def _download_and_unzip(self):
-        download_and_unzip(self.ds_dir, self.url)
+        download_and_unzip(self.path, self.url)
         return
 
     def download_from_pangaea(self, overwrite=False):
 
-        if os.path.exists(self.ds_dir):
+        if os.path.exists(self.path):
             if overwrite:
                 print("removing previously downloaded data and downloading again")
             else:
-                print(f"The path {self.ds_dir} already exists.")
-                self.data_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.txt')]
-                self.metadata_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.json')]
+                print(f"The path {self.path} already exists.")
+                self.data_files = [f for f in os.listdir(self.path) if f.endswith('.txt')]
+                self.metadata_files = [f for f in os.listdir(self.path) if f.endswith('.json')]
                 if len(self.data_files) == 0:
-                    print(f"The path {self.ds_dir} is empty so downloading the files again")
+                    print(f"The path {self.path} is empty so downloading the files again")
                     self._download_from_pangaea()
         else:
             self._download_from_pangaea()
@@ -343,11 +343,11 @@ class Datasets(object):
         if len(kids) > 1:
             for kid in kids:
                 kid_ds = PanDataSet(kid)
-                fname = kid_ds.download(self.ds_dir)
+                fname = kid_ds.download(self.path)
                 self.metadata_files.append(fname + '._metadata.json')
                 self.data_files.append(fname + '.txt')
         else:
-            fname = ds.download(self.ds_dir)
+            fname = ds.download(self.path)
             self.metadata_files.append(fname + '._metadata.json')
             self.data_files.append(fname + '.txt')
         return
@@ -365,7 +365,7 @@ class Weisssee(Datasets):
 
     def __init__(self, path=None, overwrite=False, **kwargs):
         super(Weisssee, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self.download_from_pangaea(overwrite=overwrite)
 
     def fetch(self, **kwargs):
@@ -379,7 +379,7 @@ class Weisssee(Datasets):
 
         data = {}
         for f in self.data_files:
-            fpath = os.path.join(self.ds_dir, f)
+            fpath = os.path.join(self.path, f)
             df = pd.read_csv(fpath, **kwargs)
 
             if 'index_col' in kwargs:
@@ -560,8 +560,8 @@ class WeatherJena(Datasets):
         self.obs_loc = obs_loc
 
         super().__init__(path=path)
-        self.ds_dir = path
-        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+        self.path = path
+        sub_dir = os.path.join(self.path, self.obs_loc)
 
         if not os.path.exists(sub_dir):
             os.makedirs(sub_dir)
@@ -628,7 +628,7 @@ class WeatherJena(Datasets):
             (525622, 21)
         """
 
-        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+        sub_dir = os.path.join(self.path, self.obs_loc)
 
         if xr is None:
             df = self._read_as_df()
@@ -650,7 +650,7 @@ class WeatherJena(Datasets):
 
     def _read_as_df(self)->pd.DataFrame:
 
-        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+        sub_dir = os.path.join(self.path, self.obs_loc)
         all_files = glob.glob(f"{sub_dir}/*.csv")
 
         df = pd.DataFrame()
@@ -704,12 +704,12 @@ class SWECanada(Datasets):
 
     def __init__(self, path=None, **kwargs):
         super().__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
 
         self._download()
 
     def stations(self) -> list:
-        nc = netCDF4.Dataset(os.path.join(self.ds_dir, 'CanSWE-CanEEN_1928-2020_v1.nc'))
+        nc = netCDF4.Dataset(os.path.join(self.path, 'CanSWE-CanEEN_1928-2020_v1.nc'))
         s = nc['station_id'][:]
         return s.tolist()
 
@@ -808,7 +808,7 @@ class SWECanada(Datasets):
 
         # st, en = self._check_length(st, en)
 
-        nc = netCDF4.Dataset(os.path.join(self.ds_dir, 'CanSWE-CanEEN_1928-2020_v1.nc'))
+        nc = netCDF4.Dataset(os.path.join(self.path, 'CanSWE-CanEEN_1928-2020_v1.nc'))
 
         stn_df = pd.DataFrame(columns=features_to_fetch)
 

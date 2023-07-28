@@ -21,10 +21,10 @@ class CCAM(Camels):
             require netcdf5 package as well as xarry.
         """
         super(CCAM, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self._download(overwrite=overwrite)
 
-        # self.dyn_fname = os.path.join(self.ds_dir, 'ccam_dyn.nc')
+        # self.dyn_fname = os.path.join(self.path, 'ccam_dyn.nc')
         #
         # if to_netcdf:
         #     self._maybe_to_netcdf('ccam_dyn')

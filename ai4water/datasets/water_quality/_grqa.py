@@ -31,7 +31,7 @@ class GRQA(Datasets):
             whether to download source data or not
         """
         super().__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         files = ['GRQA_data_v1.3.zip', 'GRQA_meta.zip']
         if download_source:
             files += ['GRQA_source_data.zip']
@@ -40,7 +40,7 @@ class GRQA(Datasets):
 
     @property
     def files(self):
-        return os.listdir(os.path.join(self.ds_dir, "GRQA_data_v1.3", "GRQA_data_v1.3"))
+        return os.listdir(os.path.join(self.path, "GRQA_data_v1.3", "GRQA_data_v1.3"))
 
     @property
     def parameters(self):
@@ -115,13 +115,13 @@ class GRQA(Datasets):
         if hasattr(self, f"_load_{parameter}"):
             return getattr(self, f"_load_{parameter}")()
 
-        fname = os.path.join(self.ds_dir, "GRQA_data_v1.3", "GRQA_data_v1.3", f"{parameter}_GRQA.csv")
+        fname = os.path.join(self.path, "GRQA_data_v1.3", "GRQA_data_v1.3", f"{parameter}_GRQA.csv")
         return pd.read_csv(fname, sep=";")
 
     def _load_DO(self):
         # read_csv is causing mysterious errors
 
-        f = os.path.join(self.ds_dir, "GRQA_data_v1.3",
+        f = os.path.join(self.path, "GRQA_data_v1.3",
                          "GRQA_data_v1.3", f"DO_GRQA.csv")
         lines = []
         with open(f, 'r', encoding='utf-8') as fp:

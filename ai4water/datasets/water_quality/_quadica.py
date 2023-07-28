@@ -30,7 +30,7 @@ class Quadica(Datasets):
 
     def __init__(self, path=None, **kwargs):
         super().__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self._download()
 
     @property
@@ -86,7 +86,7 @@ class Quadica(Datasets):
             >>> df = dataset.wrtds_monthly()
 
         """
-        fname = os.path.join(self.ds_dir, "quadica", "wrtds_monthly.csv")
+        fname = os.path.join(self.path, "quadica", "wrtds_monthly.csv")
         wrtds = pd.read_csv(fname)
         wrtds.index = pd.to_datetime(wrtds['Year'].astype(str) + ' ' + wrtds['Month'].astype(str))
 
@@ -131,7 +131,7 @@ class Quadica(Datasets):
             >>> df = dataset.wrtds_annual()
 
         """
-        fname = os.path.join(self.ds_dir, "quadica", "wrtds_annual.csv")
+        fname = os.path.join(self.path, "quadica", "wrtds_annual.csv")
         wrtds = pd.read_csv(fname)
         wrtds.index = pd.to_datetime(wrtds['Year'].astype(str))
 
@@ -158,7 +158,7 @@ class Quadica(Datasets):
         pd.DataFrame
             a dataframe of shape (1386, 60)
         """
-        fname = os.path.join(self.ds_dir, "quadica", "metadata.csv")
+        fname = os.path.join(self.path, "quadica", "metadata.csv")
         return pd.read_csv(fname,encoding='cp1252')
 
     def pet(
@@ -177,7 +177,7 @@ class Quadica(Datasets):
             >>> dataset = Quadica()
             >>> df = dataset.pet() # -> (828, 1386)
         """
-        fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
+        fname = os.path.join(self.path, "quadica", "pet_monthly.csv")
         pet = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
 
         if stations is not None:
@@ -217,7 +217,7 @@ class Quadica(Datasets):
             >>> df = dataset.avg_temp() # -> (828, 1388)
         """
 
-        fname = os.path.join(self.ds_dir, "quadica", "tavg_monthly.csv")
+        fname = os.path.join(self.path, "quadica", "tavg_monthly.csv")
         temp = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
 
         if stations is not None:
@@ -255,7 +255,7 @@ class Quadica(Datasets):
             >>> df = dataset.precipitation() # -> (828, 1388)
         """
 
-        fname = os.path.join(self.ds_dir, "quadica", "pre_monthly.csv")
+        fname = os.path.join(self.path, "quadica", "pre_monthly.csv")
         pcp = pd.read_csv(fname, parse_dates=[['Year', 'Month']], index_col='Year_Month')
 
         if stations is not None:
@@ -288,7 +288,7 @@ class Quadica(Datasets):
             water chemistry parameter. 16629 comes from 1386*12 where 1386 is stations
             and 12 is months.
         """
-        fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
+        fname = os.path.join(self.path, "quadica", "c_months.csv")
         df = pd.read_csv(fname)
 
         if features is not None:
@@ -310,7 +310,7 @@ class Quadica(Datasets):
         pd.DataFrame
             a dataframe of shape (24393, 18)
         """
-        fname = os.path.join(self.ds_dir, "quadica", "c_annual.csv")
+        fname = os.path.join(self.path, "quadica", "c_annual.csv")
         return pd.read_csv(fname)
 
     def fetch_annual(self):
@@ -346,7 +346,7 @@ class Quadica(Datasets):
         >>> dataset.catchment_attributes(stations=[1,2,3])
 
         """
-        fname = os.path.join(self.ds_dir, "catchment_attributes.csv")
+        fname = os.path.join(self.path, "catchment_attributes.csv")
         df = pd.read_csv(fname, encoding='unicode_escape')
 
         if features:

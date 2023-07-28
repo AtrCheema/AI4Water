@@ -33,7 +33,7 @@ class Camels(Datasets):
 
     Attributes
     -----------
-    - ds_dir str/path: diretory of the dataset
+    - path str/path: diretory of the dataset
     - dynamic_features list: tells which dynamic attributes are available in
       this dataset
     - static_features list: a list of static attributes.
@@ -69,7 +69,7 @@ class Camels(Datasets):
 
     def __init__(self, path=None, **kwargs):
         super(Camels, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
 
     def stations(self):
         raise NotImplementedError
@@ -142,12 +142,12 @@ class Camels(Datasets):
         return os.path.join(self.base_ds_dir, "CAMELS")
 
     @property
-    def ds_dir(self):
+    def path(self):
         """Directory where a particular dataset will be saved. """
-        return self._ds_dir
+        return self._path
 
-    @ds_dir.setter
-    def ds_dir(self, x):
+    @path.setter
+    def path(self, x):
         if x is None:
             x = os.path.join(self.camels_dir, self.__class__.__name__)
 
@@ -156,7 +156,7 @@ class Camels(Datasets):
         else:
             assert os.path.exists(x), f"No data exist at {x}"
         # sanity_check(self.name, x)
-        self._ds_dir = x
+        self._path = x
 
     def fetch(self,
               stations: Union[str, list, int, float, None] = None,
@@ -246,7 +246,7 @@ class Camels(Datasets):
         )
 
     def _maybe_to_netcdf(self, fname: str):
-        self.dyn_fname = os.path.join(self.ds_dir, f'{fname}.nc')
+        self.dyn_fname = os.path.join(self.path, f'{fname}.nc')
         if not os.path.exists(self.dyn_fname):
             # saving all the data in netCDF file using xarray
             print(f'converting data to netcdf format for faster io operations')
@@ -527,7 +527,7 @@ class LamaH(Camels):
 
         super().__init__(**kwargs)
 
-        fpath = os.path.join(self.ds_dir, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
+        fpath = os.path.join(self.path, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
 
         _data_types = self._data_types if self.time_step == 'daily' else ['total_upstrm']
 
@@ -542,7 +542,7 @@ class LamaH(Camels):
             self.time_step = time_step
             self.data_type = data_type
 
-        self.dyn_fname = os.path.join(self.ds_dir,
+        self.dyn_fname = os.path.join(self.path,
                                       f'lamah_{data_type}_{time_step}_dyn.nc')
 
     @property
@@ -563,9 +563,9 @@ class LamaH(Camels):
         directory = 'CAMELS_AT'
         if self.time_step == 'hourly':
             directory = 'CAMELS_AT1'  # todo, use it only for hourly, daily is causing errors
-        # self.ds_dir/CAMELS_AT/data_type_dir
-        f = [f for f in os.listdir(os.path.join(self.ds_dir, directory)) if self.data_type in f][0]
-        return os.path.join(self.ds_dir, f'{directory}{SEP}{f}')
+        # self.path/CAMELS_AT/data_type_dir
+        f = [f for f in os.listdir(os.path.join(self.path, directory)) if self.data_type in f][0]
+        return os.path.join(self.path, f'{directory}{SEP}{f}')
 
     def stations(self) -> list:
         # assuming file_names of the format ID_{stn_id}.csv
@@ -800,9 +800,9 @@ class HYSETS(Camels):
 
         super().__init__(**kwargs)
 
-        self.ds_dir = path
+        self.path = path
 
-        fpath = os.path.join(self.ds_dir, 'hysets_dyn.nc')
+        fpath = os.path.join(self.path, 'hysets_dyn.nc')
         if not os.path.exists(fpath):
             self._maybe_to_netcdf('hysets_dyn')
 
@@ -812,7 +812,7 @@ class HYSETS(Camels):
         twoD_vars = []
 
         for src in self.Q_SRC:
-            xds = xr.open_dataset(os.path.join(self.ds_dir, f'HYSETS_2020_{src}.nc'))
+            xds = xr.open_dataset(os.path.join(self.path, f'HYSETS_2020_{src}.nc'))
 
             for var in xds.variables:
                 print(f'getting {var} from source {src} ')
@@ -828,19 +828,19 @@ class HYSETS(Camels):
 
         oneD_xds = xr.merge(oneD_vars)
         twoD_xds = xr.merge(twoD_vars)
-        oneD_xds.to_netcdf(os.path.join(self.ds_dir, "hysets_static.nc"))
-        twoD_xds.to_netcdf(os.path.join(self.ds_dir, "hysets_dyn.nc"))
+        oneD_xds.to_netcdf(os.path.join(self.path, "hysets_static.nc"))
+        twoD_xds.to_netcdf(os.path.join(self.path, "hysets_dyn.nc"))
 
         return
 
     @property
-    def ds_dir(self):
-        return self._ds_dir
+    def path(self):
+        return self._path
 
-    @ds_dir.setter
-    def ds_dir(self, x):
+    @path.setter
+    def path(self, x):
         sanity_check('HYSETS', x)
-        self._ds_dir = x
+        self._path = x
 
     @property
     def static_features(self)->list:
@@ -978,7 +978,7 @@ class HYSETS(Camels):
         # todo, this operation is slower because of `to_dataframe`
         # also doing this removes all the metadata
         x = {}
-        f = os.path.join(self.ds_dir, "hysets_dyn.nc")
+        f = os.path.join(self.path, "hysets_dyn.nc")
         xds = xr.open_dataset(f)
         for stn in stations:
             xds1 = xds[[f'{k}_{v}' for k, v in sources.items()]].sel(watershed=stn, time=slice(st, en))
@@ -1061,7 +1061,7 @@ class HYSETS(Camels):
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
     def read_static_data(self):
-        fname = os.path.join(self.ds_dir, 'HYSETS_watershed_properties.txt')
+        fname = os.path.join(self.path, 'HYSETS_watershed_properties.txt')
         static_df = pd.read_csv(fname, index_col='Watershed_ID', sep=';')
         static_df.index = static_df.index.astype(str)
         return static_df
@@ -1088,6 +1088,13 @@ class CAMELS_US(Camels):
     >>> stns = dataset.stations()
     >>> len(stns)
     671
+    # we can get data of 10% catchments as below
+    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (460488, 51)
+    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
+    >>> data.index.names == ['time', 'dynamic_features']
+     True
     # get data by station id
     >>> df = dataset.fetch(stations='11478500', as_dataframe=True).unstack()
     >>> df.shape
@@ -1134,17 +1141,17 @@ class CAMELS_US(Camels):
 
         super().__init__(path=path, name="CAMELS_US")
 
-        self.ds_dir = path
+        self.path = path
 
-        if os.path.exists(self.ds_dir):
-            print(f"dataset is already downloaded at {self.ds_dir}")
+        if os.path.exists(self.path):
+            print(f"dataset is already downloaded at {self.path}")
         else:
             download(self.url, os.path.join(self.camels_dir, f'CAMELS_US{SEP}CAMELS_US.zip'))
             download(self.catchment_attr_url, os.path.join(self.camels_dir, f"CAMELS_US{SEP}catchment_attrs.zip"))
-            _unzip(self.ds_dir)
+            _unzip(self.path)
 
-        self.attr_dir = os.path.join(self.ds_dir, f'catchment_attrs{SEP}camels_attributes_v2.0')
-        self.dataset_dir = os.path.join(self.ds_dir, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
+        self.attr_dir = os.path.join(self.path, f'catchment_attrs{SEP}camels_attributes_v2.0')
+        self.dataset_dir = os.path.join(self.path, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
 
         self._maybe_to_netcdf('camels_us_dyn')
 
@@ -1158,9 +1165,9 @@ class CAMELS_US(Camels):
 
     @property
     def static_features(self):
-        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
+        static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
+            files = glob.glob(f"{os.path.join(self.path, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
             cols = []
             for f in files:
                 _df = pd.read_csv(f, sep=';', index_col='gauge_id', nrows=1)
@@ -1273,9 +1280,9 @@ class CAMELS_US(Camels):
         """
         attributes = check_attributes(features, self.static_features)
 
-        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
+        static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
+            files = glob.glob(f"{os.path.join(self.path, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
             static_df = pd.DataFrame()
             for f in files:
                 # index should be read as string
@@ -1317,6 +1324,13 @@ class CAMELS_BR(Camels):
     >>> stns = dataset.stations()
     >>> len(stns)
     593
+    # we can get data of 10% catchments as below
+    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (170940, 59)
+    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
+    >>> data.index.names == ['time', 'dynamic_features']
+     True
     # get data by station id
     >>> df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
     >>> df.shape
@@ -1360,7 +1374,7 @@ class CAMELS_BR(Camels):
     def __init__(self, path=None):
 
         super().__init__(path=path, name="CAMELS_BR")
-        self.ds_dir = path
+        self.path = path
         self._download()
 
         self._maybe_to_netcdf('camels_dyn_br')
@@ -1368,15 +1382,15 @@ class CAMELS_BR(Camels):
     @property
     def _all_dirs(self):
         """All the folders in the dataset_directory"""
-        return [f for f in os.listdir(self.ds_dir) if os.path.isdir(os.path.join(self.ds_dir, f))]
+        return [f for f in os.listdir(self.path) if os.path.isdir(os.path.join(self.path, f))]
 
     @property
     def static_dir(self):
         path = None
         for _dir in self._all_dirs:
             if "attributes" in _dir:
-                # supposing that 'attributes' axist in only one file/folder in self.ds_dir
-                path = os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}')
+                # supposing that 'attributes' axist in only one file/folder in self.path
+                path = os.path.join(self.path, f'{_dir}{SEP}{_dir}')
         return path
 
     @property
@@ -1400,10 +1414,10 @@ class CAMELS_BR(Camels):
 
     @property
     def static_features(self):
-        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
+        static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(
-                f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
+                f"{os.path.join(self.path, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
             cols = []
             for f in files:
                 _df = pd.read_csv(f, sep=' ', index_col='gauge_id', nrows=1)
@@ -1427,7 +1441,7 @@ class CAMELS_BR(Camels):
         all_files = []
         for _attr, _dir in self.folders.items():
             if attribute in _attr:
-                all_files = os.listdir(os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}'))
+                all_files = os.listdir(os.path.join(self.path, f'{_dir}{SEP}{_dir}'))
 
         stations = []
         for f in all_files:
@@ -1486,7 +1500,7 @@ class CAMELS_BR(Camels):
             for attr, _dir in self.folders.items():
 
                 if attr in attributes:
-                    path = os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}')
+                    path = os.path.join(self.path, f'{_dir}{SEP}{_dir}')
                     # supposing that the filename starts with stn_id and has .txt extension.
                     fname = [f for f in os.listdir(path) if f.startswith(str(stn_id)) and f.endswith('.txt')]
                     fname = fname[0]
@@ -1540,10 +1554,10 @@ class CAMELS_BR(Camels):
 
         attributes = check_attributes(features, self.static_features)
 
-        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
+        static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(
-                f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
+                f"{os.path.join(self.path, '01_CAMELS_BR_attributes', '01_CAMELS_BR_attributes')}/*.txt")
             static_df = pd.DataFrame()
             for f in files:
                 _df = pd.read_csv(f, sep=' ', index_col='gauge_id')
@@ -1613,19 +1627,19 @@ class CAMELS_GB(Camels):
         self._maybe_to_netcdf('camels_gb_dyn')
 
     @property
-    def ds_dir(self):
+    def path(self):
         """Directory where a particular dataset will be saved. """
-        return self._ds_dir
+        return self._path
 
-    @ds_dir.setter
-    def ds_dir(self, x):
+    @path.setter
+    def path(self, x):
         sanity_check('CAMELS-GB', x)
-        self._ds_dir = x
+        self._path = x
 
     @property
     def static_attribute_categories(self) -> list:
         attributes = []
-        path = os.path.join(self.ds_dir, 'data')
+        path = os.path.join(self.path, 'data')
         for f in os.listdir(path):
             if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
                 attributes.append(f.split('_')[2])
@@ -1642,7 +1656,7 @@ class CAMELS_GB(Camels):
 
     @property
     def static_features(self):
-        files = glob.glob(f"{os.path.join(self.ds_dir, 'data')}/*.csv")
+        files = glob.glob(f"{os.path.join(self.path, 'data')}/*.csv")
         cols = []
         for f in files:
             if 'static_features.csv' not in f:
@@ -1652,7 +1666,7 @@ class CAMELS_GB(Camels):
 
     def stations(self, to_exclude=None):
         # CAMELS_GB_hydromet_timeseries_StationID_number
-        path = os.path.join(self.ds_dir, f'data{SEP}timeseries')
+        path = os.path.join(self.path, f'data{SEP}timeseries')
         gauge_ids = []
         for f in os.listdir(path):
             gauge_ids.append(f.split('_')[4])
@@ -1669,7 +1683,7 @@ class CAMELS_GB(Camels):
         dyn = {}
         for stn_id in stations:
             # making one separate dataframe for one station
-            path = os.path.join(self.ds_dir, f"data{SEP}timeseries")
+            path = os.path.join(self.path, f"data{SEP}timeseries")
             fname = None
             for f in os.listdir(path):
                 if stn_id in f:
@@ -1727,11 +1741,11 @@ class CAMELS_GB(Camels):
 
         attributes = check_attributes(features, self.static_features)
         static_fname = 'static_features.csv'
-        static_fpath = os.path.join(self.ds_dir, 'data', static_fname)
+        static_fpath = os.path.join(self.path, 'data', static_fname)
         if os.path.exists(static_fpath):
             static_df = pd.read_csv(static_fpath, index_col='gauge_id')
         else:
-            files = glob.glob(f"{os.path.join(self.ds_dir, 'data')}/*.csv")
+            files = glob.glob(f"{os.path.join(self.path, 'data')}/*.csv")
             static_df = pd.DataFrame()
             for f in files:
                 _df = pd.read_csv(f, index_col='gauge_id')
@@ -1864,18 +1878,18 @@ class CAMELS_AUS(Camels):
             assert isinstance(path, str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
             if not os.path.exists(path) or len(os.listdir(path)) < 2:
                 raise FileNotFoundError(f"The path {path} does not exist")
-        self.ds_dir = path
+        self.path = path
 
         super().__init__(path=path)
-        if not os.path.exists(self.ds_dir):
-            os.makedirs(self.ds_dir)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
         for _file, url in self.urls.items():
-            fpath = os.path.join(self.ds_dir, _file)
+            fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath):
                 download(url + _file, fpath)
 
-        _unzip(self.ds_dir)
+        _unzip(self.path)
 
         if to_netcdf:
             self._maybe_to_netcdf('camels_aus_dyn')
@@ -1893,7 +1907,7 @@ class CAMELS_AUS(Camels):
         return "Australia"
 
     def stations(self, as_list=True) -> list:
-        fname = os.path.join(self.ds_dir, f"01_id_name_metadata{SEP}01_id_name_metadata{SEP}id_name_metadata.csv")
+        fname = os.path.join(self.path, f"01_id_name_metadata{SEP}01_id_name_metadata{SEP}id_name_metadata.csv")
         df = pd.read_csv(fname)
         if as_list:
             return df['station_id'].to_list()
@@ -1903,7 +1917,7 @@ class CAMELS_AUS(Camels):
     @property
     def static_attribute_categories(self):
         attributes = []
-        path = os.path.join(self.ds_dir, f'04_attributes{SEP}04_attributes')
+        path = os.path.join(self.path, f'04_attributes{SEP}04_attributes')
         for f in os.listdir(path):
             if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
                 f = str(f.split('.csv')[0])
@@ -1912,7 +1926,7 @@ class CAMELS_AUS(Camels):
 
     @property
     def static_features(self) -> list:
-        static_fpath = os.path.join(self.ds_dir, 'CAMELS_AUS_Attributes-Indices_MasterTable.csv')
+        static_fpath = os.path.join(self.path, 'CAMELS_AUS_Attributes-Indices_MasterTable.csv')
 
         df = pd.read_csv(static_fpath, index_col='station_id', nrows=1)
         cols = list(df.columns)
@@ -1928,7 +1942,7 @@ class CAMELS_AUS(Camels):
 
         attributes = check_attributes(attributes, self.static_features)
         static_fname = 'CAMELS_AUS_Attributes-Indices_MasterTable.csv'
-        static_fpath = os.path.join(self.ds_dir, static_fname)
+        static_fpath = os.path.join(self.path, static_fname)
         static_df = pd.read_csv(static_fpath, index_col='station_id')
 
         static_df.index = static_df.index.astype(str)
@@ -1943,7 +1957,7 @@ class CAMELS_AUS(Camels):
         dyn_attrs = {}
         dyn = {}
         for _attr in dynamic_features:
-            _path = os.path.join(self.ds_dir, f'{self.folders[_attr]}.csv')
+            _path = os.path.join(self.path, f'{self.folders[_attr]}.csv')
             _df = pd.read_csv(_path, na_values=['-99.99'])
             _df.index = pd.to_datetime(_df[['year', 'month', 'day']])
             [_df.pop(col) for col in ['year', 'month', 'day']]
@@ -2005,9 +2019,9 @@ class CAMELS_AUS(Camels):
 
     def plot(self, what, stations=None, **kwargs):
         assert what in ['outlets', 'boundaries']
-        f1 = os.path.join(self.ds_dir,
+        f1 = os.path.join(self.path,
                           f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}CAMELS_AUS_BasinOutlets_adopted.shp')
-        f2 = os.path.join(self.ds_dir,
+        f2 = os.path.join(self.path,
                           f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}bonus data{SEP}Australia_boundaries.shp')
 
         if plot_shapefile is not None:
@@ -2104,24 +2118,24 @@ class CAMELS_CL(Camels):
         """
 
         super().__init__(path=path)
-        self.ds_dir = path
+        self.path = path
 
-        if not os.path.exists(self.ds_dir):
-            os.makedirs(self.ds_dir)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
         for _file, url in self.urls.items():
-            fpath = os.path.join(self.ds_dir, _file)
+            fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath):
                 download(url + _file, fpath)
-        _unzip(self.ds_dir)
+        _unzip(self.path)
 
-        self.dyn_fname = os.path.join(self.ds_dir, 'camels_cl_dyn.nc')
+        self.dyn_fname = os.path.join(self.path, 'camels_cl_dyn.nc')
         self._maybe_to_netcdf('camels_cl_dyn')
 
     @property
     def _all_dirs(self):
         """All the folders in the dataset_directory"""
-        return [f for f in os.listdir(self.ds_dir) if os.path.isdir(os.path.join(self.ds_dir, f))]
+        return [f for f in os.listdir(self.path) if os.path.isdir(os.path.join(self.path, f))]
 
     @property
     def start(self):
@@ -2133,7 +2147,7 @@ class CAMELS_CL(Camels):
 
     @property
     def static_features(self) -> list:
-        path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
+        path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
 
@@ -2141,13 +2155,13 @@ class CAMELS_CL(Camels):
         """
         Tells all station ids for which a data of a specific attribute is available.
         """
-        stn_fname = os.path.join(self.ds_dir, 'stations.json')
+        stn_fname = os.path.join(self.path, 'stations.json')
         if not os.path.exists(stn_fname):
             _stations = {}
             for dyn_attr in self.dynamic_features:
                 for _dir in self._all_dirs:
                     if dyn_attr in _dir:
-                        fname = os.path.join(self.ds_dir, f"{_dir}{SEP}{_dir}.txt")
+                        fname = os.path.join(self.path, f"{_dir}{SEP}{_dir}.txt")
                         df = pd.read_csv(fname, sep='\t', nrows=2, index_col='gauge_id')
                         _stations[dyn_attr] = list(df.columns)
 
@@ -2172,7 +2186,7 @@ class CAMELS_CL(Camels):
         dyn_attrs = {}
         for attr in dynamic_features:
             fname = [f for f in self._all_dirs if '_' + attr in f][0]
-            fname = os.path.join(self.ds_dir, f'{fname}{SEP}{fname}.txt')
+            fname = os.path.join(self.path, f'{fname}{SEP}{fname}.txt')
             _df = pd.read_csv(fname, sep='\t', index_col=['gauge_id'], na_values=" ")
             _df.index = pd.to_datetime(_df.index)
             dyn_attrs[attr] = _df[st:en]
@@ -2189,7 +2203,7 @@ class CAMELS_CL(Camels):
 
     def _read_static(self, stations: list, attributes: list) -> pd.DataFrame:
         # overwritten for speed
-        path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
+        path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
 
         stns_df = []
@@ -2326,12 +2340,12 @@ class HYPE(Camels):
         """
         assert time_step in ['daily', 'month', 'year']
         self.time_step = time_step
-        self.ds_dir = path
+        self.path = path
         super().__init__(path=path, **kwargs)
 
         self._download()
 
-        fpath = os.path.join(self.ds_dir, 'hype_year_dyn.nc')
+        fpath = os.path.join(self.path, 'hype_year_dyn.nc')
         if not os.path.exists(fpath):
             self.time_step = 'daily'
             self._maybe_to_netcdf('hype_daily_dyn')
@@ -2341,7 +2355,7 @@ class HYPE(Camels):
             self._maybe_to_netcdf('hype_year_dyn')
             self.time_step = time_step
 
-        self.dyn_fname = os.path.join(self.ds_dir, f'hype_{time_step}_dyn.nc')
+        self.dyn_fname = os.path.join(self.path, f'hype_{time_step}_dyn.nc')
 
     def stations(self) -> list:
         _stations = np.arange(1, 565).astype(str)
@@ -2369,7 +2383,7 @@ class HYPE(Camels):
         df_attrs = {}
         for dyn_attr in _dynamic_attributes:
             fname = f"{dyn_attr}.csv"
-            fpath = os.path.join(self.ds_dir, fname)
+            fpath = os.path.join(self.path, fname)
             index_col_name = 'DATE'
             if fname in ['SM_month_mm.csv', 'SM_year_mm.csv']:
                 index_col_name = 'Date'
@@ -2471,23 +2485,23 @@ class CAMELS_DK(Camels):
             require netcdf5 package as well as xarry.
         """
         super(CAMELS_DK, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self._download(overwrite=overwrite)
 
-        self.dyn_fname = os.path.join(self.ds_dir, 'camelsdk_dyn.nc')
+        self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
 
         if to_netcdf:
             self._maybe_to_netcdf('camelsdk_dyn')
 
     @property
     def csv_path(self):
-        return os.path.join(self.ds_dir, "Caravan_extension_DK",
+        return os.path.join(self.path, "Caravan_extension_DK",
                         "Caravan_extension_DK", "Caravan_extension_DK",
                         "timeseries", "csv", "camelsdk")
 
     @property
     def nc_path(self):
-        return os.path.join(self.ds_dir, "Caravan_extension_DK",
+        return os.path.join(self.path, "Caravan_extension_DK",
                         "Caravan_extension_DK", "Caravan_extension_DK",
                         "timeseries", "netcdf", "camelsdk")
 
@@ -2495,7 +2509,7 @@ class CAMELS_DK(Camels):
     def other_attr_fpath(self):
         """returns path to attributes_other_camelsdk.csv file
         """
-        return os.path.join(self.ds_dir, "Caravan_extension_DK",
+        return os.path.join(self.path, "Caravan_extension_DK",
                         "Caravan_extension_DK", "Caravan_extension_DK",
                         "attributes", "camelsdk", "attributes_other_camelsdk.csv")
 
@@ -2503,7 +2517,7 @@ class CAMELS_DK(Camels):
     def caravan_attr_fpath(self):
         """returns path to attributes_caravan_camelsdk.csv file
         """
-        return os.path.join(self.ds_dir, "Caravan_extension_DK",
+        return os.path.join(self.path, "Caravan_extension_DK",
                         "Caravan_extension_DK", "Caravan_extension_DK",
                         "attributes", "camelsdk",
                             "attributes_caravan_camelsdk.csv")
@@ -2611,7 +2625,7 @@ class CAMELS_DK(Camels):
 
     @property
     def hyd_atlas_fpath(self):
-        return os.path.join(self.ds_dir,
+        return os.path.join(self.path,
                             "Caravan_extension_DK",
                             "Caravan_extension_DK",
                             "Caravan_extension_DK",

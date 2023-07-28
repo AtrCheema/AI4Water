@@ -40,20 +40,20 @@ class RC4USCoast(Datasets):
             be downloaded into the disk.
         """
         super(RC4USCoast, self).__init__(path=path, *args, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self._download()
 
     @property
     def chem_fname(self)->str:
-        return os.path.join(self.ds_dir, "RC4USCoast", "series_chem.nc")
+        return os.path.join(self.path, "RC4USCoast", "series_chem.nc")
 
     @property
     def q_fname(self) -> str:
-        return os.path.join(self.ds_dir, "RC4USCoast", "series_disc.nc")
+        return os.path.join(self.path, "RC4USCoast", "series_disc.nc")
 
     @property
     def info_fname(self) -> str:
-        return os.path.join(self.ds_dir, "RC4USCoast", "info.xlsx")
+        return os.path.join(self.path, "RC4USCoast", "info.xlsx")
 
     @property
     def stations(self)->np.ndarray:

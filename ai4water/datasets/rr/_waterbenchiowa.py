@@ -54,7 +54,7 @@ class WaterBenchIowa(Camels):
 
     @property
     def ts_path(self)->str:
-        return os.path.join(self.ds_dir, 'data_time_series', 'data_time_series')
+        return os.path.join(self.path, 'data_time_series', 'data_time_series')
 
     @property
     def dynamic_features(self) -> List[str]:

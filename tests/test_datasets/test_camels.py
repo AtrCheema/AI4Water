@@ -91,7 +91,7 @@ def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
     assert isinstance(static_features, list)
     assert all([isinstance(i, str) for i in static_features])
 
-    assert os.path.exists(dataset.ds_dir)
+    assert os.path.exists(dataset.path)
 
     dynamic_features = dataset.dynamic_features
     assert len(dynamic_features) == dyn_attr_len, f'length of dynamic attributes: {len(dynamic_features)}'
@@ -310,7 +310,7 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_br(self):
-        ds_br = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS-BR')
+        ds_br = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS_BR')
         test_dataset(ds_br, 593, 14245, 67, 12)
         return
 

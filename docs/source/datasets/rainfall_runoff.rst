@@ -3,7 +3,7 @@ Rainfall Runoff
 
 Camels
 ======
-.. autoclass:: ai4water.datasets.camels.Camels
+.. autoclass:: ai4water.datasets.rr.Camels
    :members:
    :undoc-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ Camels
 
 CAMELS_AUS
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_AUS
+.. autoclass:: ai4water.datasets.rr.CAMELS_AUS
    :members:
    :undoc-members:
    :show-inheritance:
@@ -22,7 +22,7 @@ CAMELS_AUS
 
 CAMELS_GB
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_GB
+.. autoclass:: ai4water.datasets.rr.CAMELS_GB
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +31,7 @@ CAMELS_GB
 
 CAMELS_BR
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_BR
+.. autoclass:: ai4water.datasets.rr.CAMELS_BR
    :members:
    :undoc-members:
    :show-inheritance:
@@ -40,7 +40,7 @@ CAMELS_BR
 
 CAMELS_US
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_US
+.. autoclass:: ai4water.datasets.rr.CAMELS_US
    :members:
    :undoc-members:
    :show-inheritance:
@@ -50,7 +50,7 @@ CAMELS_US
 
 CAMELS_CL
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_CL
+.. autoclass:: ai4water.datasets.rr.CAMELS_CL
    :members:
    :undoc-members:
    :show-inheritance:
@@ -60,7 +60,7 @@ CAMELS_CL
 
 CAMELS_DK
 ==========
-.. autoclass:: ai4water.datasets.camels.CAMELS_DK
+.. autoclass:: ai4water.datasets.rr.CAMELS_DK
    :members:
    :undoc-members:
    :show-inheritance:
@@ -70,7 +70,7 @@ CAMELS_DK
 
 WaterBenchIowa
 ===============
-.. autoclass:: ai4water.datasets.camels.WaterBenchIowa
+.. autoclass:: ai4water.datasets.rr.WaterBenchIowa
    :members:
    :undoc-members:
    :show-inheritance:
@@ -80,7 +80,7 @@ WaterBenchIowa
 
 LamaH
 ======
-.. autoclass:: ai4water.datasets.camels.LamaH
+.. autoclass:: ai4water.datasets.rr.LamaH
    :members:
    :undoc-members:
    :show-inheritance:
@@ -89,7 +89,7 @@ LamaH
 
 HYSETS
 ======
-.. autoclass:: ai4water.datasets.camels.HYSETS
+.. autoclass:: ai4water.datasets.rr.HYSETS
    :members:
    :undoc-members:
    :show-inheritance:
@@ -98,7 +98,7 @@ HYSETS
 
 HYPE
 ====
-.. autoclass:: ai4water.datasets.camels.HYPE
+.. autoclass:: ai4water.datasets.rr.HYPE
    :members:
    :undoc-members:
    :show-inheritance:

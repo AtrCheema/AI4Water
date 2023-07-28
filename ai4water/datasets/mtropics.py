@@ -104,13 +104,13 @@ class MtropicsLaos(Datasets):
 
         super().__init__(path=path, **kwargs)
         self.save_as_nc = save_as_nc
-        self.ds_dir = path
+        self.path = path
         self.convert_to_csv = convert_to_csv
         self._download()
 
         # we need to pre-process the land use shapefiles
-        in_dir = os.path.join(self.ds_dir, 'lu')
-        out_dir = os.path.join(self.ds_dir, 'lu1')
+        in_dir = os.path.join(self.path, 'lu')
+        out_dir = os.path.join(self.path, 'lu1')
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
@@ -129,7 +129,7 @@ class MtropicsLaos(Datasets):
     )->pd.DataFrame:
         """soil surface features data"""
         fname = os.path.join(
-            self.ds_dir, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
+            self.path, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
         df = pd.read_excel(fname, sheet_name="Soil surface features")
 
         df.index = pd.to_datetime(df.pop('Date'))
@@ -160,7 +160,7 @@ class MtropicsLaos(Datasets):
             >>> suro = laos.fetch_suro()
         """
         fname = os.path.join(
-            self.ds_dir, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
+            self.path, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
         df = pd.read_excel(fname, sheet_name="Surface runoff soil detachment")
 
         return df.dropna()
@@ -170,7 +170,7 @@ class MtropicsLaos(Datasets):
 
         .. _landuse:
             https://doi.org/10.1038/s41598-017-04385-2"""
-        lu_dir = os.path.join(self.ds_dir, f"{'lu1' if processed else 'lu'}")
+        lu_dir = os.path.join(self.path, f"{'lu1' if processed else 'lu'}")
         files = glob.glob(f'{lu_dir}/*.shp')
         return files
 
@@ -231,7 +231,7 @@ class MtropicsLaos(Datasets):
 
         features = check_attributes(_features, list(self.physio_chem_features.values()))
 
-        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
+        fname = os.path.join(self.path, 'ecoli_data.csv')
         df = pd.read_csv(fname, sep='\t')
         df.index = pd.to_datetime(df['Date_Time'])
 
@@ -286,7 +286,7 @@ class MtropicsLaos(Datasets):
             https://doi.org/10.1002/hyp.14126
 
         """
-        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
+        fname = os.path.join(self.path, 'ecoli_data.csv')
         df = pd.read_csv(fname, sep='\t')
         df.index = pd.to_datetime(df['Date_Time'])
 
@@ -357,7 +357,7 @@ class MtropicsLaos(Datasets):
             https://doi.org/10.1038/s41598-017-04385-2
         """
         # todo, does nan means 0 rainfall?
-        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
+        fname = os.path.join(self.path, 'rain_guage', 'rain_guage.nc')
         if not os.path.exists(fname) or not self.save_as_nc:
             df = self._load_rain_gauge_from_xl_files()
 
@@ -372,8 +372,8 @@ class MtropicsLaos(Datasets):
         return df[st:en]
 
     def _load_rain_gauge_from_xl_files(self):
-        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
-        files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
+        fname = os.path.join(self.path, 'rain_guage', 'rain_guage.nc')
+        files = glob.glob(f"{os.path.join(self.path, 'rain_guage')}/*.xlsx")
         dfs = []
         for f in files:
             df = pd.read_excel(
@@ -427,7 +427,7 @@ class MtropicsLaos(Datasets):
         """
 
         nc_fname = os.path.join(
-            self.ds_dir, 'weather_station', 'weather_stations.nc')
+            self.path, 'weather_station', 'weather_stations.nc')
         if not os.path.exists(nc_fname) or not self.save_as_nc:
             df = self._load_weather_stn_from_xl_files()
         else:  # feather file already exists so load from it
@@ -448,12 +448,12 @@ class MtropicsLaos(Datasets):
 
     def _load_weather_stn_from_xl_files(self):
         nc_fname = os.path.join(
-            self.ds_dir, 'weather_station', 'weather_stations.nc')
+            self.path, 'weather_station', 'weather_stations.nc')
         files = glob.glob(
-            f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
+            f"{os.path.join(self.path, 'weather_station')}/*.xlsx")
 
         vbsfile = os.path.join(
-            self.ds_dir, "weather_station", 'ExcelToCsv.vbs')
+            self.path, "weather_station", 'ExcelToCsv.vbs')
         create_vbs_script(vbsfile)
 
         dataframes = []
@@ -462,7 +462,7 @@ class MtropicsLaos(Datasets):
             if not xlsx_file.startswith("~"):
 
                 if os.name == "nt":
-                    data_dir = os.path.join(self.ds_dir, "weather_station")
+                    data_dir = os.path.join(self.path, "weather_station")
                     df = to_csv_and_read(
                         xlsx_file,
                          data_dir,
@@ -520,7 +520,7 @@ class MtropicsLaos(Datasets):
         """
         # todo allow change in frequency
 
-        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
+        fname = os.path.join(self.path, 'pcp', 'pcp.nc')
         # feather file does not exist
         if not os.path.exists(fname) or not self.save_as_nc:
             df = self._load_pcp_from_excel_files()
@@ -552,8 +552,8 @@ class MtropicsLaos(Datasets):
         return df
 
     def _load_pcp_from_excel_files(self):
-        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
-        files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
+        fname = os.path.join(self.path, 'pcp', 'pcp.nc')
+        files = glob.glob(f"{os.path.join(self.path, 'pcp')}/*.xlsx")
         df = pd.DataFrame()
         for f in files:
             _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
@@ -584,8 +584,8 @@ class MtropicsLaos(Datasets):
             a tuple of pandas dataframes of water level and suspended particulate
             matter.
         """
-        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
-        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
+        wl_fname = os.path.join(self.path, 'hydro', 'wl.nc')
+        spm_fname = os.path.join(self.path, 'hydro', 'spm.nc')
         if not os.path.exists(wl_fname) or not self.save_as_nc:
             wl, spm = self._load_hydro_from_xl_files()
         else:
@@ -608,12 +608,12 @@ class MtropicsLaos(Datasets):
         I wish I had never consdered reading those files
         """
 
-        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
-        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
+        wl_fname = os.path.join(self.path, 'hydro', 'wl.nc')
+        spm_fname = os.path.join(self.path, 'hydro', 'spm.nc')
 
         print("reading data from xlsx files and saving them in netcdf format.")
         print("This will happen only once but will save io time.")
-        files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
+        files = glob.glob(f"{os.path.join(self.path, 'hydro')}/*.xlsx")
         wls = []
         spms = []
         for f in files:
@@ -894,7 +894,7 @@ class MtropicsLaos(Datasets):
         pd.DataFrame of shape (252, 19)
 
         """
-        fname = os.path.join(self.ds_dir, "ecoli_source.csv")
+        fname = os.path.join(self.path, "ecoli_source.csv")
         df = pd.read_csv(fname, sep="\t")
         df.index = pd.date_range("20010101", "20211231", freq="M")
         df.pop('Time')
@@ -1121,9 +1121,9 @@ def ecoli_mekong_2016(
     """
     url = {"ecoli_mekong_2016.csv": "https://dataverse.ird.fr/api/access/datafile/8852"}
 
-    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_2016')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_2016')
 
-    return _fetch_ecoli(ds_dir, overwrite, url, None, features, st, en,
+    return _fetch_ecoli(path, overwrite, url, None, features, st, en,
                         "ecoli_houay_pano_tab_file")
 
 
@@ -1177,9 +1177,9 @@ def ecoli_houay_pano(
     """
     url = {"ecoli_houay_pano_file.csv": "https://dataverse.ird.fr/api/access/datafile/9230"}
 
-    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_houay_pano')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_houay_pano')
 
-    return _fetch_ecoli(ds_dir, overwrite, url, None, features, st, en,
+    return _fetch_ecoli(path, overwrite, url, None, features, st, en,
                         "ecoli_houay_pano_tab_file")
 
 
@@ -1221,18 +1221,18 @@ def ecoli_mekong_laos(
     """
     url = {"ecoli_mekong_loas_file.csv": "https://dataverse.ird.fr/api/access/datafile/9229"}
 
-    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_loas')
+    path = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_loas')
 
-    return _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en,
+    return _fetch_ecoli(path, overwrite, url, station_name, features, st, en,
                         "ecoli_mekong_laos_tab_file")
 
 
-def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
+def _fetch_ecoli(path, overwrite, url, station_name, features, st, en, _name):
 
-    maybe_download(ds_dir, overwrite=overwrite, url=url, name=_name)
-    all_files = os.listdir(ds_dir)
+    maybe_download(path, overwrite=overwrite, url=url, name=_name)
+    all_files = os.listdir(path)
     assert len(all_files)==1
-    fname = os.path.join(ds_dir, all_files[0])
+    fname = os.path.join(path, all_files[0])
     df = pd.read_csv(fname, sep='\t')
 
     df.index = pd.to_datetime(df['Date_Time'])

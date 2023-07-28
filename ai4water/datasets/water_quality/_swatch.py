@@ -27,7 +27,7 @@ class Swatch(Datasets):
             if True, the csv will be removed after downloading and processing.
         """
         super().__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
 
         self._download(tolerate_error=True)
         self._maybe_to_binary()
@@ -44,24 +44,24 @@ class Swatch(Datasets):
     @property
     def sites(self)->list:
         """list of site names"""
-        all_sites = np.load(os.path.join(self.ds_dir, 'loc_id.npy'), allow_pickle=True)
+        all_sites = np.load(os.path.join(self.path, 'loc_id.npy'), allow_pickle=True)
         # numpy's unique is much slower
         return list(np.sort(pd.unique(all_sites)))
 
     @property
     def site_names(self)->list:
         """list of site names"""
-        all_sites = np.load(os.path.join(self.ds_dir, 'location.npy'), allow_pickle=True)
+        all_sites = np.load(os.path.join(self.path, 'location.npy'), allow_pickle=True)
         # numpy's unique is much slower
         return list(np.sort(pd.unique(all_sites)))
 
     @property
     def csv_name(self)->str:
-        return os.path.join(self.ds_dir, "SWatCh_v2.csv")
+        return os.path.join(self.path, "SWatCh_v2.csv")
 
     @property
     def npy_files(self)->list:
-        return [fname for f in os.walk(self.ds_dir) for fname in f[2] if fname.endswith('.npy')]
+        return [fname for f in os.walk(self.path) for fname in f[2] if fname.endswith('.npy')]
 
     def _maybe_to_binary(self):
         """reads the csv file and saves each columns in binary format using numpy.
@@ -86,17 +86,17 @@ class Swatch(Datasets):
         df.rename(columns=self.names, inplace=True)
 
         for col in df.columns:
-            np.save(os.path.join(self.ds_dir, col), df[col].values)
+            np.save(os.path.join(self.path, col), df[col].values)
 
-        np.save(os.path.join(self.ds_dir, "index"), df.index)
+        np.save(os.path.join(self.path, "index"), df.index)
         return
 
     def _load_as_df(self, parameters)->pd.DataFrame:
         paras = []
         for para in parameters:
-            paras.append(np.load(os.path.join(self.ds_dir, f"{para}.npy"), allow_pickle=True))
+            paras.append(np.load(os.path.join(self.path, f"{para}.npy"), allow_pickle=True))
 
-        index = np.load(os.path.join(self.ds_dir, "index.npy"), allow_pickle=True)
+        index = np.load(os.path.join(self.path, "index.npy"), allow_pickle=True)
 
         return pd.DataFrame(np.column_stack(paras),
                             columns=parameters,

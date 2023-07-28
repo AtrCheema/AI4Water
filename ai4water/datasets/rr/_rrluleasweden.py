@@ -15,7 +15,7 @@ class RRLuleaSweden(Datasets):
     url = "https://zenodo.org/record/3931582"
     def __init__(self, path=None, **kwargs):
         super().__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
         self._download()
 
     def fetch(
@@ -67,7 +67,7 @@ class RRLuleaSweden(Datasets):
             >>> flow.shape
             (37618, 3)
         """
-        fname = os.path.join(self.ds_dir, "flow_2016_2019.csv")
+        fname = os.path.join(self.path, "flow_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
         df.index = pd.to_datetime(df.pop("time"))
         return check_st_en(df, st, en)
@@ -102,7 +102,7 @@ class RRLuleaSweden(Datasets):
 
         """
 
-        fname = os.path.join(self.ds_dir, "prec_2016_2019.csv")
+        fname = os.path.join(self.path, "prec_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
         df.index = pd.to_datetime(df.pop("time"))
         return check_st_en(df, st, en)

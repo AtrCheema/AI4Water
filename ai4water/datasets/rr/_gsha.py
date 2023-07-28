@@ -25,7 +25,7 @@ class GSHA(Camels):
             require netcdf5 package as well as xarry.
         """
         super(GSHA, self).__init__(path=path, **kwargs)
-        self.ds_dir = path
+        self.path = path
 
         files = ['Global_files.zip',
                  'GSHAreadme.docx',
