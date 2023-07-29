@@ -11,6 +11,7 @@ site.addsitedir(ai4_dir)
 import pandas as pd
 import xarray as xr
 
+from ai4water.datasets import CCAM
 from ai4water.datasets import CAMELS_DK
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
@@ -153,15 +154,19 @@ def test_fetch_static_feature(dataset, stn_id):
     return
 
 
-def test_st_en_with_static_and_dynamic(dataset, station,
-                                       as_dataframe=False,
-                                       yearly_steps=366):
+def test_st_en_with_static_and_dynamic(
+        dataset, station,
+        as_dataframe=False,
+        yearly_steps=366,
+        st='19880101',
+        en='19881231',
+):
     print(f"testing {dataset.name} with st and en with both static and dynamic")
 
     if len(dataset.static_features)>0:
         data = dataset.fetch([station], static_features='all',
-                             st='19880101',
-                             en='19881231', as_dataframe=as_dataframe)
+                             st=st,
+                             en=en, as_dataframe=as_dataframe)
         if as_dataframe:
             check_dataframe(dataset, data['dynamic'], 1, yearly_steps)
         else:
@@ -169,7 +174,8 @@ def test_st_en_with_static_and_dynamic(dataset, station,
 
         assert data['static'].shape == (1, len(dataset.static_features))
 
-        data = dataset.fetch_dynamic_features(station, st='19880101', en='19881231', as_dataframe=as_dataframe)
+        data = dataset.fetch_dynamic_features(station, st=st, en=en,
+                                              as_dataframe=as_dataframe)
         if as_dataframe:
             check_dataframe(dataset, data, 1, yearly_steps)
         else:
@@ -250,8 +256,12 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     # make sure that static data from one station can be retrieved
     test_fetch_static_feature(dataset, random.choice(dataset.stations()))
 
-    test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), yearly_steps=yearly_steps)
-    test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), True, yearly_steps=yearly_steps)
+    test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()),
+                                       yearly_steps=yearly_steps,
+                                       st="20040101", en="20041231" )
+    test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), True,
+                                       yearly_steps=yearly_steps,
+                                       st="20040101", en="20041231")
 
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset)
@@ -322,6 +332,30 @@ class TestCamels(unittest.TestCase):
     def test_dk(self):
         ds_us = CAMELS_DK(path="F:\\data\\CAMELS\\CAMELS_DK")
         test_dataset(ds_us, 308, 14609, 211, 39)
+        return
+
+    def test_ccam(self):
+        ccam = CCAM(path="F:\\data\\CAMELS\\CCAM")
+        test_dataset(ccam, 102, 8035, 124, 16)
+        return
+
+    def test_ccam_meteo(self):
+        dataset = CCAM(path="F:\\data\\CAMELS\\CCAM")
+
+        stations = os.listdir(dataset.meteo_path)
+
+        for idx, stn in enumerate(stations):
+
+            if stn not in ['35616.txt']:
+
+                stn_id = stn.split('.')[0]
+
+                df = dataset._read_meteo_from_csv(stn_id)
+
+                assert df.shape == (11413, 9)
+
+                if idx % 100 == 0:
+                    print(idx)
         return
 
     def test_hysets(self):

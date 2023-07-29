@@ -1,0 +1,257 @@
+
+from typing import Union, List
+
+from ai4water.backend import os, pd
+from .camels import Camels
+from ..utils import check_attributes
+
+
+class CAMELS_DK(Camels):
+    """
+    Reads Caravan extension Denmark - Danish dataset for large-sample hydrology.
+    The dataset is downloaded from https://zenodo.org/record/7962379 . This dataset
+    consists of static and dynamic features from 308 danish catchments. There are 38
+    dynamic (time series) features from 1981-01-02 to 2020-12-31 with daily timestep
+    and 211 static features for each of 308 catchments.
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import CAMELS_DK
+    >>> dataset = CAMELS_DK()
+    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (569751, 30)
+    >>> df.index.names == ['time', 'dynamic_features']
+    True
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (14609, 39)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    308
+    # get data by station id
+    >>> df = dataset.fetch(stations='80001', as_dataframe=True).unstack()
+    >>> df.shape
+    (14609, 39)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
+    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'streamflow']).unstack()
+    >>> df.shape
+    (14609, 5)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (569751, 10)  # remember this is multi-indexed DataFrame
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    ((1, 211), (569751, 1))
+    """
+
+    url = "https://zenodo.org/record/7962379"
+
+    def __init__(self,
+                 path=None,
+                 overwrite=False,
+                 to_netcdf:bool = True,
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        to_netcdf : bool
+            whether to convert all the data into one netcdf file or not.
+            This will fasten repeated calls to fetch etc but will
+            require netcdf5 package as well as xarry.
+        """
+        super(CAMELS_DK, self).__init__(path=path, **kwargs)
+        self.path = path
+        self._download(overwrite=overwrite)
+
+        self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
+
+        if to_netcdf:
+            self._maybe_to_netcdf('camelsdk_dyn')
+
+    @property
+    def csv_path(self):
+        return os.path.join(self.path, "Caravan_extension_DK",
+                        "Caravan_extension_DK", "Caravan_extension_DK",
+                        "timeseries", "csv", "camelsdk")
+
+    @property
+    def nc_path(self):
+        return os.path.join(self.path, "Caravan_extension_DK",
+                        "Caravan_extension_DK", "Caravan_extension_DK",
+                        "timeseries", "netcdf", "camelsdk")
+
+    @property
+    def other_attr_fpath(self):
+        """returns path to attributes_other_camelsdk.csv file
+        """
+        return os.path.join(self.path, "Caravan_extension_DK",
+                        "Caravan_extension_DK", "Caravan_extension_DK",
+                        "attributes", "camelsdk", "attributes_other_camelsdk.csv")
+
+    @property
+    def caravan_attr_fpath(self):
+        """returns path to attributes_caravan_camelsdk.csv file
+        """
+        return os.path.join(self.path, "Caravan_extension_DK",
+                        "Caravan_extension_DK", "Caravan_extension_DK",
+                        "attributes", "camelsdk",
+                            "attributes_caravan_camelsdk.csv")
+    def stations(self)->List[str]:
+        return [fname.split(".csv")[0][9:] for fname in os.listdir(self.csv_path)]
+
+    def _read_csv(self, stn:str)->pd.DataFrame:
+        fpath = os.path.join(self.csv_path, f"camelsdk_{stn}.csv")
+        df = pd.read_csv(os.path.join(fpath))
+        df.index = pd.to_datetime(df.pop('date'))
+        return df
+
+    @property
+    def dynamic_features(self)->List[str]:
+        """returns names of dynamic features"""
+        return self._read_csv('100006').columns.to_list()
+
+    @property
+    def static_features(self)->List[str]:
+        """returns static features for Denmark catchments"""
+        caravan = pd.read_csv(self.caravan_attr_fpath)
+        _ = caravan.pop('gauge_id')
+        other = pd.read_csv(self.other_attr_fpath)
+        _ = other.pop('gauge_id')
+        atlas = pd.read_csv(self.hyd_atlas_fpath)
+        _ = atlas.pop('gauge_id')
+
+        return pd.concat([caravan, other, atlas], axis=1).columns.to_list()
+
+    @property
+    def start(self):  # start of data
+        return pd.Timestamp('1981-01-02 00:00:00')
+
+    @property
+    def end(self):  # end of data
+        return pd.Timestamp('2020-12-31 00:00:00')
+
+    def _read_dynamic_from_csv(
+            self,
+            stations,
+            dynamic_features,
+            st=None,
+            en=None)->dict:
+
+        attributes = check_attributes(dynamic_features, self.dynamic_features)
+
+        dyn = {stn: self._read_csv(stn)[attributes] for stn in stations}
+
+        return dyn
+
+    def fetch_static_features(
+            self,
+            stn_id: Union[str, List[str]] = None,
+            features:Union[str, List[str]]=None
+    ) -> pd.DataFrame:
+        """
+        Returns static features of one or more stations.
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station/stations of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe of shape (stations, features)
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_DK
+        >>> dataset = CAMELS_DK()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            308
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (308, 211)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('80001')
+        >>> static_data.shape
+           (1, 211)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['gauge_lat', 'area'])
+        >>> static_data.shape
+           (308, 2)
+        >>> data = dataset.fetch_static_features('80001', features=['gauge_lat', 'area'])
+        >>> data.shape
+           (1, 2)
+
+        """
+        stations = check_attributes(stn_id, self.stations())
+        features = check_attributes(features, self.static_features)
+        df = pd.concat([self.hyd_atlas_attributes(),
+                   self.other_static_attributes(),
+                   self.caravan_static_attributes()], axis=1)
+        return df.loc[stations, features]
+
+    @property
+    def hyd_atlas_fpath(self):
+        return os.path.join(self.path,
+                            "Caravan_extension_DK",
+                            "Caravan_extension_DK",
+                            "Caravan_extension_DK",
+                            "attributes", "camelsdk",
+                            "attributes_hydroatlas_camelsdk.csv")
+
+    def hyd_atlas_attributes(self, stations=None)->pd.DataFrame:
+        """
+        Returns
+        --------
+            a pandas DataFrame of shape (308, 196)
+        """
+        stations = check_attributes(stations, self.stations())
+        df = pd.read_csv(self.hyd_atlas_fpath)
+
+        indices = df.pop('gauge_id')
+        df.index = [idx[9:] for idx in indices]
+        return df
+
+    def other_static_attributes(self, stations=None) -> pd.DataFrame:
+        """
+        Returns
+        --------
+            a pandas DataFrame of shape (308, 5)
+        """
+        stations = check_attributes(stations, self.stations())
+        df = pd.read_csv(self.other_attr_fpath)
+        indices = df.pop('gauge_id')
+        df.index = [idx[9:] for idx in indices]
+        return df
+
+    def caravan_static_attributes(self, stations=None) -> pd.DataFrame:
+        """
+        Returns
+        --------
+            a pandas DataFrame of shape (308, 10)
+        """
+        stations = check_attributes(stations, self.stations())
+        df = pd.read_csv(self.caravan_attr_fpath)
+        indices = df.pop('gauge_id')
+        df.index = [idx[9:] for idx in indices]
+        return df

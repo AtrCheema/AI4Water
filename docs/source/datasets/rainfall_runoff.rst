@@ -114,3 +114,13 @@ RRLuleaSweden
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+CCAM
+=============
+.. autoclass:: ai4water.datasets.rr.CCAM
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
