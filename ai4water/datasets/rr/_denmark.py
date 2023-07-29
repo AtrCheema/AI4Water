@@ -20,8 +20,8 @@ class CAMELS_DK(Camels):
     >>> dataset = CAMELS_DK()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
-    (569751, 30)
-    >>> df.index.names == ['time', 'dynamic_features']
+    (569751, 30)  # 30 represents number of stations
+    >>> data.index.names == ['time', 'dynamic_features']
     True
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it

@@ -11,6 +11,7 @@ site.addsitedir(ai4_dir)
 import pandas as pd
 import xarray as xr
 
+from ai4water.datasets import CABra
 from ai4water.datasets import CCAM
 from ai4water.datasets import CAMELS_DK
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
@@ -322,6 +323,12 @@ class TestCamels(unittest.TestCase):
     def test_br(self):
         ds_br = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS_BR')
         test_dataset(ds_br, 593, 14245, 67, 12)
+        return
+
+    def test_cabra(self):
+        for source in ['era5', 'ref', 'ens']:
+            dataset = CABra(path=r'F:\data\CAMELS\CABra', met_src=source)
+            test_dataset(dataset, 735, 10956, 97, 12)
         return
 
     def test_us(self):

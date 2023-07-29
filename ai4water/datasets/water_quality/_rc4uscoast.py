@@ -13,8 +13,9 @@ from ..utils import check_st_en
 
 class RC4USCoast(Datasets):
     """
-    Monthly river water chemistry (N, P, SIO2, DO, ... etc), discharge and temperature of 140
-    monitoring sites of US coasts from 1950 to 2020 following the work of
+    Monthly river water chemistry (N, P, SIO2, DO, ... etc), discharge and
+    temperature of 140 monitoring sites of US coasts from 1950 to 2020
+    following the work of
     `Gomez et al., 2022 <https://doi.org/10.5194/essd-2022-341>`_.
 
     Examples

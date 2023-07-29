@@ -124,3 +124,13 @@ CCAM
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+CABra
+=============
+.. autoclass:: ai4water.datasets.rr.CABra
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

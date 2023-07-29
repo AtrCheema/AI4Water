@@ -24,6 +24,46 @@ class CCAM(Camels):
     sets is from 1999 to 2020. However, the streamflow time series in first set has very
     large number of missing values. The data of Yellow river consists fo 16 dynamic
     features (time series) and 124 static features (catchment attributes).
+
+    Examples
+    ---------
+    >>> from ai4water.datasets import CCAM
+    >>> dataset = CCAM()
+    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (128560, 10)
+    >>> df.index.names == ['time', 'dynamic_features']
+    True
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (8035, 16)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    102
+    # get data by station id
+    >>> df = dataset.fetch(stations='0010', as_dataframe=True).unstack()
+    >>> df.shape
+    (8035, 16)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pre', 'tem_mean', 'evp', 'rhu', 'q']).unstack()
+    >>> df.shape
+    (8035, 5)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (128560, 10)  # remember this is multi-indexed DataFrame
+    # when we get both static and dynamic data, the returned data is a dictionary
+    # with ``static`` and ``dyanic`` keys.
+    >>> data = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
+    >>> data['static'].shape, data['dynamic'].shape
+    ((1, 124), (128560, 1))
+
     """
     url = "https://zenodo.org/record/5729444"
 

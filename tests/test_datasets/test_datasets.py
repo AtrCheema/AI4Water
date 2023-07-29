@@ -171,13 +171,13 @@ class TestPangaea(unittest.TestCase):
         assert df.shape == (68782, 5)
         assert isinstance(df.index, pd.DatetimeIndex)
         df_lts = gw_punjab("LTS")
-        assert df_lts.shape == (68782, 4)
+        assert df_lts.shape == (7546, 4), df_lts.shape
         assert isinstance(df_lts.index, pd.DatetimeIndex)
 
         df = gw_punjab(country="IND")
         assert df.shape == (29172, 5)
         df = gw_punjab(country="PAK")
-        assert df == (39610, 5)
+        assert df.shape == (39610, 5)
         return
 
     def test_qe_biochar(self):

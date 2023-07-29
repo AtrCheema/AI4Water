@@ -37,7 +37,7 @@ class TestRC4USCoast(unittest.TestCase):
         assert isinstance(q, xr.Dataset)
 
         data = ds.fetch_q("all", as_dataframe=True, st="20000101", en="20181230")
-        assert data.shape == (852, 140)
+        assert data.shape == (228, 140), data.shape
         return
 
     def test_fetch_chem(self):
