@@ -492,12 +492,19 @@ class LamaH(Camels):
     def __init__(self, *,
                  time_step: str,
                  data_type: str,
+                 path=None,
                  **kwargs
                  ):
 
         """
         Parameters
         ----------
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
             time_step :
                 possible values are ``daily`` or ``hourly``
             data_type :
@@ -525,7 +532,7 @@ class LamaH(Camels):
         self.time_step = time_step
         self.data_type = data_type
 
-        super().__init__(**kwargs)
+        super().__init__(path=path, **kwargs)
 
         fpath = os.path.join(self.path, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
 
@@ -744,8 +751,30 @@ class CAMELS_US(Camels):
     dynamic_features = ['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
                         'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)', 'Flow']
 
-    def __init__(self, data_source='basin_mean_daymet', path=None):
+    def __init__(
+            self,
+            data_source:str='basin_mean_daymet',
+            path=None):
 
+        """
+        parameters
+        ----------
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        data_source : str
+            allowed values are
+                - basin_mean_daymet
+                - basin_mean_maurer
+                - basin_mean_nldas
+                - basin_mean_v1p15_daymet
+                - basin_mean_v1p15_nldas
+                - elev_bands
+                - hru
+        """
         assert data_source in self.folders, f'allwed data sources are {self.folders.keys()}'
         self.data_source = data_source
 
@@ -965,6 +994,16 @@ class CAMELS_GB(Camels):
                         "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
     def __init__(self, path=None):
+        """
+        parameters
+        ------------
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        """
         super().__init__(name="CAMELS-GB", path=path)
 
         self._maybe_to_netcdf('camels_gb_dyn')

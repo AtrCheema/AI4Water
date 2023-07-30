@@ -65,14 +65,23 @@ class HYPE(Camels):
         'PET_mm'
     ]
 
-    def __init__(self, time_step: str = 'daily', path = None, **kwargs):
+    def __init__(self,
+                 time_step: str = 'daily',
+                 path = None,
+                 **kwargs):
         """
         Parameters
         ----------
-            time_step : str
-                one of ``daily``, ``month`` or ``year``
-            **kwargs
-                key word arguments
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        time_step : str
+            one of ``daily``, ``month`` or ``year``
+        **kwargs
+            key word arguments
         """
         assert time_step in ['daily', 'month', 'year']
         self.time_step = time_step

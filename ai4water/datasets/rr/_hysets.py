@@ -102,14 +102,26 @@ class HYSETS(Camels):
                  **kwargs
                  ):
         """
-        Arguments:
-            path : path where all the data files are saved.
-            swe_source : source of swe data.
-            discharge_source : source of discharge data
-            tasmin_source : source of tasmin data
-            tasmax_source : source of tasmax data
-            pr_source : source of pr data
-            kwargs : arguments for `Camels` base class
+        parameters
+        --------------
+            path : str
+                If the data is alredy downloaded then provide the complete
+                path to it. If None, then the data will be downloaded.
+                The data is downloaded once and therefore susbsequent
+                calls to this class will not download the data unless
+                ``overwrite`` is set to True.
+            swe_source : str
+                source of swe data.
+            discharge_source :
+                source of discharge data
+            tasmin_source :
+                source of tasmin data
+            tasmax_source :
+                source of tasmax data
+            pr_source :
+                source of pr data
+            kwargs :
+                arguments for `Camels` base class
 
         """
 

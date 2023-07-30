@@ -150,6 +150,7 @@ setup(
               'ai4water/postprocessing/visualize',
               'ai4water/datasets',
               'ai4water/datasets/water_quality',
+              'ai4water/datasets/rr',
               'ai4water/et',
               'ai4water/experiments',
               'ai4water/eda',

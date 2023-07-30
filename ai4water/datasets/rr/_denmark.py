@@ -66,6 +66,15 @@ class CAMELS_DK(Camels):
         """
         Parameters
         ----------
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        overwrite : bool
+            If the data is already down then you can set it to True,
+            to make a fresh download.
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
