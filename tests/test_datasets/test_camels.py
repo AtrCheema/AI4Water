@@ -4,12 +4,13 @@ import sys
 import site   # so that AI4Water directory is in path
 import random
 import unittest
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-
 import pandas as pd
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from ai4water.datasets import CABra
 from ai4water.datasets import CCAM
@@ -140,7 +141,7 @@ def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataf
     return
 
 
-def test_fetch_static_feature(dataset, stn_id):
+def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features):
     print(f"testing `fetch_static_features` method for {dataset.name}")
     if len(dataset.static_features)>0:
         df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
@@ -152,6 +153,17 @@ def test_fetch_static_feature(dataset, stn_id):
         assert isinstance(df, pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df[stn_id].shape}'
 
+        df = dataset.fetch_static_features("all", features='all')
+
+        assert_dataframe(df, dataset)
+
+        assert df.shape == (num_stations, num_static_features), df.shape
+    return
+
+
+def assert_dataframe(df, dataset):
+    assert isinstance(df, pd.DataFrame), f"""
+    fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}"""
     return
 
 
@@ -213,7 +225,8 @@ def test_hysets():
     test_fetch_dynamic_multiple_stations(hy, 3,  25202)
     test_fetch_dynamic_multiple_stations(hy, 3, 25202, True)
 
-    test_fetch_static_feature(hy, random.choice(hy.stations()))
+    test_fetch_static_feature(hy, random.choice(hy.stations()),
+                              14425, 28)
 
     test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), yearly_steps=366)
     test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), True, yearly_steps=366)
@@ -223,11 +236,42 @@ def test_hysets():
     return
 
 
+def test_plot_stations(dataset):
+    stations = dataset.stations()
+    dataset.plot_stations(show=False)
+    plt.close()
+    dataset.plot_stations(stations[0:3])
+    plt.close()
+    dataset.plot_stations(marker='o', ms=0.3)
+    plt.close()
+    ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
+    ax.set_title("Stations")
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+    return
+
+
+def test_coords(dataset):
+    stations = dataset.stations()
+    df = dataset.stn_coords()  # returns coordinates of all stations
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == len(stations)
+    assert 'lat' in df and 'long' in df
+    df = dataset.stn_coords(stations[0])  # returns coordinates of station
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 1, len(df)
+    assert 'lat' in df and 'long' in df
+    df = dataset.stn_coords(stations[0:2])  # returns coordinates of two stations
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert 'lat' in df and 'long' in df
+    return
+
 
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
                  test_df=True, yearly_steps=366):
 
-    # # check that dynamic attribues from all data can be retrieved.
+    # check that dynamic attribues from all data can be retrieved.
     test_dynamic_data(dataset, None, num_stations, dyn_data_len)
     if test_df:
         test_dynamic_data(dataset, None, num_stations, dyn_data_len, as_dataframe=True)
@@ -255,7 +299,8 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len, True)
 
     # make sure that static data from one station can be retrieved
-    test_fetch_static_feature(dataset, random.choice(dataset.stations()))
+    test_fetch_static_feature(dataset, random.choice(dataset.stations()),
+                              num_stations, num_static_attrs)
 
     test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()),
                                        yearly_steps=yearly_steps,
@@ -266,6 +311,9 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset)
+
+    test_coords(dataset)
+    test_plot_stations(dataset)
     return
 
 

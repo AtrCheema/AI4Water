@@ -3,8 +3,10 @@ import json
 import glob
 from typing import Union, List
 
+from easy_mpl import plot
+
 from ai4water.utils.utils import dateandtime_now
-from ai4water.backend import os, random, np, pd, xr
+from ai4water.backend import os, random, np, pd, xr, plt
 
 from .._datasets import Datasets
 from ..utils import check_attributes, download, sanity_check, _unzip
@@ -28,7 +30,7 @@ class Camels(Datasets):
     """
     Get CAMELS dataset.
     This class first downloads the CAMELS dataset if it is not already downloaded.
-    Then the selected attribute for a selected id are fetched and provided to the
+    Then the selected features for a selected id are fetched and provided to the
     user using the method `fetch`.
 
     Attributes
@@ -471,6 +473,79 @@ class Camels(Datasets):
 
         return station_df
 
+    def plot_stations(
+            self,
+            stations:List[str] = None,
+            marker='.',
+            ax:plt.Axes = None,
+            show:bool = False,
+            **kwargs
+    )->plt.Axes:
+        """
+        plots coordinates of stations
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, all stations will be plotted
+        marker :
+            marker to use.
+        ax : plt.Axes
+            matplotlib axes to draw the plot. If not given, then
+            new axes will be created.
+        show : bool
+        **kwargs
+
+        Returns
+        -------
+        plt.Axes
+
+        Examples
+        --------
+        >>> dataset = CAMELS_AUS()
+        >>> dataset.plot_stations()
+        >>> dataset.plot_stations(['1', '2', '3'])
+        >>> dataset.plot_stations(marker='o', ms=0.3)
+        >>> ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
+        >>> ax.set_title("Stations")
+        >>> plt.show()
+
+        """
+        xy = self.stn_coords(stations)
+
+        ax = plot(xy.loc[:, 'long'].values,
+                  xy.loc[:, 'lat'].values,
+                  marker, ax=ax, show=False, **kwargs)
+
+        if show:
+            plt.show()
+
+        return ax
+
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_AUS()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['G0050115', '912101A'])  # returns coordinates of two stations
+        """
+
+        raise NotImplementedError
+
 
 class LamaH(Camels):
     """
@@ -581,6 +656,23 @@ class LamaH(Camels):
         s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
         return s
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        fname = os.path.join(self.path,
+                             'CAMELS_AT1',
+                             'D_gauges',
+                             '1_attributes', 'Gauge_attributes.csv')
+        df = pd.read_csv(fname, sep=';', index_col='ID')
+
+        df.index = df.index.astype(str)
+        df = df[['lon', 'lat']]
+        df.columns = ['long', 'lat']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
+
     def _read_dynamic_from_csv(self,
                                stations,
                                dynamic_features: Union[str, list] = 'all',
@@ -606,7 +698,7 @@ class LamaH(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]] = "all",
             features:Union[str, List[str]]=None
     ) -> pd.DataFrame:
         """
@@ -639,6 +731,9 @@ class LamaH(Camels):
         static_features = check_attributes(features, self.static_features)
 
         df = df[static_features]
+
+        if stn_id == "all":
+            stn_id = self.stations()
 
         if isinstance(stn_id, list):
             stations = [str(i) for i in stn_id]
@@ -817,6 +912,54 @@ class CAMELS_US(Camels):
 
         return cols
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_US()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('1030500')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['1030500', '14400000'])  # returns coordinates of two stations
+
+        """
+        stations = check_attributes(stations, self.stations())
+        fpath = os.path.join(self.path,
+                             'catchment_attrs',
+                             'camels_attributes_v2.0',
+                             'camels_topo.txt')
+
+        df = pd.read_csv(fpath, sep=";",
+                         dtype={
+                             'gauge_id': str,
+                             'gauge_lat': float,
+                             'gauge_lon': float,
+                             'elev_mean': float,
+                             'slope_mean': float
+                         })
+        df.index = df['gauge_id']
+        df = df[['gauge_lat', 'gauge_lon']]
+        df.columns = ['lat', 'long']
+        return df.loc[stations, :]
+
     def stations(self) -> list:
         stns = []
         for _dir in os.listdir(os.path.join(self.dataset_dir, 'usgs_streamflow')):
@@ -881,7 +1024,7 @@ class CAMELS_US(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]]="all",
             features:Union[str, List[str]]=None
     ):
         """
@@ -936,6 +1079,10 @@ class CAMELS_US(Camels):
             static_df.index = idx['gauge_id']
 
         static_df.index = static_df.index.astype(str)
+
+        if stn_id == "all":
+            stn_id = self.stations()
+
         df = static_df.loc[stn_id][attributes]
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df).transpose()
@@ -1055,6 +1202,40 @@ class CAMELS_GB(Camels):
 
         return gauge_ids
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_GB()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('101005')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['101005', '54002'])  # returns coordinates of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        static_fpath = os.path.join(self.path,
+                                    'data',
+                                    'CAMELS_GB_topographic_attributes.csv')
+
+        df = pd.read_csv(static_fpath)
+
+        df.index = df['gauge_id'].astype(str)
+        df = df.loc[stations, ['gauge_lat', 'gauge_lon']]
+        df.columns = ['lat', 'long']
+        return df.loc[stations, :]
+
     def _read_dynamic_from_csv(self,
                                stations,
                                attributes: Union[str, list] = 'all',
@@ -1082,7 +1263,7 @@ class CAMELS_GB(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]] = "all",
             features:Union[str, List[str]]="all"
     ) -> pd.DataFrame:
         """
@@ -1133,6 +1314,9 @@ class CAMELS_GB(Camels):
                 _df = pd.read_csv(f, index_col='gauge_id')
                 static_df = pd.concat([static_df, _df], axis=1)
             static_df.to_csv(static_fpath)
+
+        if stn_id == "all":
+            stn_id = self.stations()
 
         if isinstance(stn_id, str):
             station = [stn_id]
@@ -1319,6 +1503,45 @@ class CAMELS_AUS(Camels):
     def dynamic_features(self) -> list:
         return list(self.folders.keys())
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_AUS()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['G0050115', '912101A'])  # returns coordinates of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        static_fpath = os.path.join(self.path,
+                                    'CAMELS_AUS_Attributes-Indices_MasterTable.csv')
+
+        df = pd.read_csv(static_fpath,
+                         index_col='station_id')
+        df = df.loc[stations, ['lat_outlet', 'long_outlet']]
+        df.columns = ['lat', 'long']
+        return df.loc[stations, :]
+
     def _read_static(self, stations, attributes,
                      st=None, en=None):
 
@@ -1362,7 +1585,7 @@ class CAMELS_AUS(Camels):
             features:Union[str, List[str]]="all",
             **kwargs
     ) -> pd.DataFrame:
-        """Fetches static attribuets of one or more stations as dataframe.
+        """Fetches static features of one or more stations as dataframe.
 
         Parameters
         ----------
@@ -1396,6 +1619,9 @@ class CAMELS_AUS(Camels):
            (222, 2)
 
         """
+
+        if stn_id == "all":
+            stn_id = self.stations()
 
         return self._read_static(stn_id, features)
 
@@ -1533,6 +1759,44 @@ class CAMELS_CL(Camels):
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_CL()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('12872001')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['12872001', '12876004'])  # returns coordinates of two stations
+        """
+        fpath = os.path.join(self.path,
+                             '1_CAMELScl_attributes',
+                             '1_CAMELScl_attributes.txt')
+        df = pd.read_csv(fpath, sep='\t', index_col='gauge_id')
+        df = df.loc[['gauge_lat', 'gauge_lon'], :].transpose()
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+        df.index  = [index.strip() for index in df.index]
+        return df.loc[stations, :]
+
     def stations(self) -> list:
         """
         Tells all station ids for which a data of a specific attribute is available.
@@ -1564,7 +1828,7 @@ class CAMELS_CL(Camels):
 
         dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
 
-        # reading all dynnamic attributes
+        # reading all dynnamic features
         dyn_attrs = {}
         for attr in dynamic_features:
             fname = [f for f in self._all_dirs if '_' + attr in f][0]
@@ -1583,7 +1847,7 @@ class CAMELS_CL(Camels):
 
         return dyn
 
-    def _read_static(self, stations: list, attributes: list) -> pd.DataFrame:
+    def _read_static(self, stations: list, features: list) -> pd.DataFrame:
         # overwritten for speed
         path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
@@ -1596,14 +1860,14 @@ class CAMELS_CL(Camels):
             elif ' ' + stn in _df:
                 df[stn] = _df[' ' + stn]
 
-            stns_df.append(df.transpose()[attributes])
+            stns_df.append(df.transpose()[features])
 
         stns_df = pd.concat(stns_df)
         return stns_df
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]]= "all",
             features:Union[str, List[str]]=None
     ):
         """
@@ -1645,6 +1909,9 @@ class CAMELS_CL(Camels):
 
         """
         attributes = check_attributes(features, self.static_features)
+
+        if stn_id == "all":
+            stn_id = self.stations()
 
         if isinstance(stn_id, str):
             stn_id = [stn_id]

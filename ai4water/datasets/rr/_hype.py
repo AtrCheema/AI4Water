@@ -1,5 +1,6 @@
 
-from typing import Union
+import json
+from typing import Union, List
 
 from ai4water.backend import os, pd, np
 from .camels import Camels
@@ -9,7 +10,7 @@ from ..utils import check_attributes
 class HYPE(Camels):
     """
     Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_ .
-    This is a rainfall-runoff dataset of Sweden of 564 stations from 1985 to
+    This is a rainfall-runoff dataset of Costa Rica of 564 stations from 1985 to
     2019 at daily, monthly and yearly time steps.
 
     Examples
@@ -154,6 +155,56 @@ class HYPE(Camels):
     def fetch_static_features(self, stn_id, features=None):
         """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
+
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Examples
+        --------
+        >>> dataset = HYPE()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('2')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['2', '605'])  # returns coordinates of two stations
+        """
+
+        stations = check_attributes(stations, self.stations())
+        fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
+
+        with open(fpath, 'r') as fp:
+            data = json.load(fp)
+
+        lats = []
+        longs = []
+        indices = []
+        for idx, feature in enumerate(data['features']):
+            coord = feature['geometry']['coordinates']
+            lat = feature['properties']['Latitude']
+            if len(coord) == 1:
+                xy = np.array(coord)[0]
+            else:
+                xy = np.array(coord[0])
+
+            long = xy[:, 0].min()
+            longs.append(long)
+            lats.append(lat)
+            indices.append(str(feature['properties']['subid']))
+
+        df = pd.DataFrame(
+            np.vstack([np.array(lats), np.array(longs)]).transpose(),
+            columns=['lat', 'long'], index=indices)
+
+        return df.loc[stations, :]
 
     @property
     def start(self):

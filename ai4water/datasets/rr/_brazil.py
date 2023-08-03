@@ -151,6 +151,45 @@ class CAMELS_BR(Camels):
     def end(self):
         return "20181231"
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_BR()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('65100000')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['65100000', '64075000'])  # returns coordinates of two stations
+        """
+        fpath = os.path.join(self.path, '01_CAMELS_BR_attributes',
+                             '01_CAMELS_BR_attributes',
+                             'camels_br_location.txt')
+        df = pd.read_csv(fpath, sep=' ')
+        df.index = df['gauge_id'].astype(str)
+        df = df[['gauge_lat', 'gauge_lon']]
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
+
     def all_stations(self, attribute) -> list:
         """Tells all station ids for which a data of a specific attribute is available."""
         all_files = []
@@ -237,14 +276,17 @@ class CAMELS_BR(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]] = "all",
             features:Union[str, List[str]]=None
     ) -> pd.DataFrame:
         """
+
+        fetches static feature/features of one or mroe stations
+
         Parameters
         ----------
             stn_id : int/list
-                station id whose attribute to fetch
+                station id whose attribute to fetch.
             features : str/list
                 name of attribute to fetch. Default is None, which will return all the
                 attributes for a particular station of the specified category.
@@ -258,6 +300,10 @@ class CAMELS_BR(Camels):
         (597, 67)
 
         """
+
+        if stn_id == "all":
+            stn_id = self.stations()
+
         if isinstance(stn_id, int):
             station = [str(stn_id)]
         elif isinstance(stn_id, list):
@@ -417,12 +463,48 @@ class CABra(Camels):
         return self.add_attrs().index.astype(str).to_list()
 
     @property
-    def start(self):
+    def start(self)->pd.Timestamp:
         return pd.Timestamp("1980-10-02")
 
     @property
-    def end(self):
+    def end(self)->pd.Timestamp:
         return pd.Timestamp("2010-09-30")
+
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CABra()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
+
+        """
+        df = self.general_attrs()
+        df.index = df.index.astype(str)
+        df = df[['latitude', 'longitude']]
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+        return df.loc[stations, :]
 
     def add_attrs(self)->pd.DataFrame:
         """
@@ -430,7 +512,7 @@ class CABra(Camels):
         """
         fpath = os.path.join(self.attr_path, "CABra_additional_attributes.txt")
 
-        dtypes = {"CABra_ID": int,
+        dtypes = {"CABra_ID": int,  # todo shouldn't it be str?
                   "ANA_ID": int,
                   "longitude_centroid": np.float32,
                   "latitude_centroid": np.float32,
@@ -450,7 +532,7 @@ class CABra(Camels):
         fpath = os.path.join(self.attr_path,
                              "CABra_climate_attributes.txt")
 
-        dtypes = {"CABra_ID": int,
+        dtypes = {"CABra_ID": int,  # todo shouldn't it be str?
                   "ANA_ID": int,
                   "clim_p": np.float32,
                   "clim_tmin": np.float32,
@@ -481,7 +563,7 @@ class CABra(Camels):
                              "CABra_general_attributes.txt")
 
 
-        dtypes = {"CABra_ID": int,
+        dtypes = {"CABra_ID": int,  # todo shouldn't it be str?
                   "ANA_ID": int,
                   "longitude": np.float32,
                   "latitude": np.float32,

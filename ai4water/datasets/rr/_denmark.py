@@ -148,8 +148,53 @@ class CAMELS_DK(Camels):
         return pd.Timestamp('1981-01-02 00:00:00')
 
     @property
-    def end(self):  # end of data
+    def end(self)->pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31 00:00:00')
+
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CAMELS_DK()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('100010')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['100010', '210062'])  # returns coordinates of two stations
+
+        """
+        df = pd.read_csv(self.other_attr_fpath,
+                         dtype={"gauge_id": str,
+                                'gauge_lat': float,
+                                'gauge_lon': float,
+                                'area': float,
+                                'gauge_name': str,
+                                'country': str
+                                })
+        df.index = [name.split('camelsdk_')[1] for name in df['gauge_id']]
+        df = df[['gauge_lat', 'gauge_lon']]
+        df.columns = ['lat', 'long']
+
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
 
     def _read_dynamic_from_csv(
             self,

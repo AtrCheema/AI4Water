@@ -118,6 +118,41 @@ class CCAM(Camels):
     def yr_data_path(self):
         return os.path.join(self.path, "7_HydroMLYR", "7_HydroMLYR", '1_data')
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = CCAM()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
+
+        """
+        df = self.fetch_static_features(features=['lat', 'lon'])
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
+
     def stations(self):
         """Returns station ids for catchments on Yellow River"""
         return os.listdir(self.yr_data_path)

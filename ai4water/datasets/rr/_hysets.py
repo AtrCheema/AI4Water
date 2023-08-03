@@ -212,6 +212,42 @@ class HYSETS(Camels):
     def end(self)->str:
         return "20181231"
 
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+        returns coordinates of stations as DataFrame
+        with ``long`` and ``lat`` as columns.
+
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates
+            of all stations will be returned.
+
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
+        Examples
+        --------
+        >>> dataset = HYSETS()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
+
+        """
+        df = self.fetch_static_features(
+            features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
+
     def fetch_stations_attributes(
             self,
             stations: list,
@@ -336,7 +372,7 @@ class HYSETS(Camels):
 
     def _fetch_static_features(
             self,
-            station,
+            station="all",
             static_features: Union[str, list] = 'all',
             st=None,
             en=None,
@@ -346,6 +382,9 @@ class HYSETS(Camels):
         df = self.read_static_data()
 
         static_features = check_attributes(static_features, self.static_features)
+
+        if station == "all":
+            station = self.stations()
 
         if isinstance(station, str):
             station = [station]
@@ -360,13 +399,14 @@ class HYSETS(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stn_id: Union[str, List[str]]="all",
             features:Union[str, List[str]]="all",
             st=None,
             en=None,
             as_ts=False
     ) -> pd.DataFrame:
-        """returns static atttributes of one or multiple stations
+        """
+        returns static atttributes of one or multiple stations
 
         Parameters
         ----------
@@ -375,6 +415,9 @@ class HYSETS(Camels):
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
+            st :
+            en :
+            as_ts :
 
         Examples
         ---------
