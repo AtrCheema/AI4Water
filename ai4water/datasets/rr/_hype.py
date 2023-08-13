@@ -156,6 +156,57 @@ class HYPE(Camels):
         """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import HYPE
+        >>> dataset = HYPE()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('2')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['2', '605'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
+
+        with open(fpath, 'r') as fp:
+            data = json.load(fp)
+
+        areas = []
+        indices = []
+        indices = []
+        for idx, feature in enumerate(data['features']):
+            area_m2 = feature['properties']['Area m2']
+
+            areas.append(area_m2/1e6)
+            indices.append(str(feature['properties']['subid']))
+
+        s = pd.Series(
+            np.array(areas),
+            name="area",
+            index=indices)
+
+        return s.loc[stations]
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None

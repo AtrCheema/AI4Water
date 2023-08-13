@@ -151,6 +151,53 @@ class CAMELS_BR(Camels):
     def end(self):
         return "20181231"
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None,
+            source:str = "gsim",
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+        source : str
+            source of area calculation. It should be either ``gsim`` or ``ana``
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_BR
+        >>> dataset = CAMELS_BR()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('65100000')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['65100000', '64075000'])  # returns area of two stations
+        """
+
+        SRC_MAP = {
+            'gsim': 'area_gsim',
+            'ana': 'area_ana'
+        }
+        stations = check_attributes(stations, self.stations())
+
+        fpath = os.path.join(self.path, '01_CAMELS_BR_attributes',
+                             '01_CAMELS_BR_attributes',
+                             'camels_br_location.txt')
+        df = pd.read_csv(fpath, sep=' ')
+        df.index = df['gauge_id'].astype(str)
+        s = df[SRC_MAP[source]]
+
+        s.name = 'area'
+        return s.loc[stations]
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
@@ -469,6 +516,43 @@ class CABra(Camels):
     @property
     def end(self)->pd.Timestamp:
         return pd.Timestamp("2010-09-30")
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CABra
+        >>> dataset = CABra()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('92')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns area of two stations
+        """
+
+        stations = check_attributes(stations, self.stations())
+
+        df = self.topology_attrs()
+
+        s = df['catch_area']
+        s.index = s.index.astype(str)
+        s.name = 'area'
+        return s.loc[stations]
 
     def stn_coords(
             self,

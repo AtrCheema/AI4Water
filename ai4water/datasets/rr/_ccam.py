@@ -118,6 +118,42 @@ class CCAM(Camels):
     def yr_data_path(self):
         return os.path.join(self.path, "7_HydroMLYR", "7_HydroMLYR", '1_data')
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CCAM
+        >>> dataset = CCAM()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('92')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns area of two stations
+        """
+
+        stations = check_attributes(stations, self.stations())
+
+        df = self.fetch_static_features(features=['area'])
+        df.columns = ['area']
+
+        return df.loc[stations, 'area']
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
@@ -141,6 +177,7 @@ class CCAM(Camels):
 
         Examples
         --------
+        >>> from ai4water.datasets import CCAM
         >>> dataset = CCAM()
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A

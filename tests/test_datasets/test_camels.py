@@ -206,7 +206,7 @@ def test_selected_dynamic_features(dataset):
 
 
 def test_hysets():
-    hy = HYSETS(path=r'F:\data\HYSETS')
+    hy = HYSETS(path=r'G:\data\gscad\HYSETS')
 
     # because it takes very long time, we dont test with all the data
     test_dynamic_data(hy, 0.003, int(14425 * 0.003), 25202)
@@ -232,6 +232,12 @@ def test_hysets():
     test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), True, yearly_steps=366)
 
     test_selected_dynamic_features(hy)
+
+    test_coords(hy)
+
+    test_plot_stations(hy)
+
+    test_area(hy)
 
     return
 
@@ -267,6 +273,22 @@ def test_coords(dataset):
     assert 'lat' in df and 'long' in df
     return
 
+
+def test_area(dataset):
+    stations = dataset.stations()
+    s = dataset.area()  # returns area of all stations
+    assert isinstance(s, pd.Series)
+    assert len(s) == len(stations)
+    assert s.name == "area", s.name
+    s = dataset.area(stations[0])  # returns area of station
+    assert isinstance(s, pd.Series)
+    assert len(s) == 1, len(s)
+    assert s.name == "area"
+    s = dataset.area(stations[0:2])  # returns area of two stations
+    assert isinstance(s, pd.Series)
+    assert len(s) == 2
+    assert s.name == "area"
+    return
 
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
                  test_df=True, yearly_steps=366):
@@ -313,31 +335,35 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     test_selected_dynamic_features(dataset)
 
     test_coords(dataset)
+
     test_plot_stations(dataset)
+
+    test_area(dataset)
+
     return
 
 
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        path = r"F:\data\CAMELS\CAMELS-GB"
+        path = r"G:\data\gscad\CAMELS\CAMELS_GB"
         if os.path.exists(path):
             ds_gb = CAMELS_GB(path=path)
             test_dataset(ds_gb, 671, 16436, 290, 10)
         return
 
     def test_aus(self):
-        ds_aus = CAMELS_AUS(path=r'F:\data\CAMELS\CAMELS_AUS')
+        ds_aus = CAMELS_AUS(path=r'G:\data\gscad\CAMELS\CAMELS_AUS')
         test_dataset(ds_aus, 222, 21184, 161, 26)
         return
 
     def test_hype(self):
-        ds_hype = HYPE(path=r'F:\data\CAMELS\HYPE')
+        ds_hype = HYPE(path=r'G:\data\gscad\CAMELS\HYPE')
         test_dataset(ds_hype, 564, 12783, 0, 9)
         return
 
     def test_cl(self):
-        ds_cl = CAMELS_CL(r'F:\data\CAMELS\CAMELS_CL')
+        ds_cl = CAMELS_CL(r'G:\data\gscad\CAMELS\CAMELS_CL')
         test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
                      num_static_attrs=104, num_dyn_attrs=12)
         return
@@ -358,7 +384,8 @@ class TestCamels(unittest.TestCase):
 
                     print(f'checking for {dt} at {ts} time step')
 
-                    ds_eu = LamaH(time_step=ts, data_type=dt, path=r'F:\data\CAMELS\LamaH')
+                    ds_eu = LamaH(time_step=ts, data_type=dt,
+                                  path=r'G:\data\gscad\CAMELS\LamaH')
 
                     if ts =='hourly':
                         test_df=False
@@ -369,33 +396,33 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_br(self):
-        ds_br = CAMELS_BR(path=r'F:\data\CAMELS\CAMELS_BR')
+        ds_br = CAMELS_BR(path=r'G:\data\gscad\CAMELS\CAMELS_BR')
         test_dataset(ds_br, 593, 14245, 67, 12)
         return
 
     def test_cabra(self):
         for source in ['era5', 'ref', 'ens']:
-            dataset = CABra(path=r'F:\data\CAMELS\CABra', met_src=source)
+            dataset = CABra(path=r'G:\data\gscad\CAMELS\CABra', met_src=source)
             test_dataset(dataset, 735, 10956, 97, 12)
         return
 
     def test_us(self):
-        ds_us = CAMELS_US(path=r'F:\data\CAMELS\CAMELS_US')
+        ds_us = CAMELS_US(path=r'G:\data\gscad\CAMELS\CAMELS_US')
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
     def test_dk(self):
-        ds_us = CAMELS_DK(path="F:\\data\\CAMELS\\CAMELS_DK")
+        ds_us = CAMELS_DK(path="G:\data\gscad\CAMELS\CAMELS_DK")
         test_dataset(ds_us, 308, 14609, 211, 39)
         return
 
     def test_ccam(self):
-        ccam = CCAM(path="F:\\data\\CAMELS\\CCAM")
+        ccam = CCAM(path="G:\data\gscad\CAMELS\CCAM")
         test_dataset(ccam, 102, 8035, 124, 16)
         return
 
     def test_ccam_meteo(self):
-        dataset = CCAM(path="F:\\data\\CAMELS\\CCAM")
+        dataset = CCAM(path="G:\\data\\gscad\\CAMELS\\CCAM")
 
         stations = os.listdir(dataset.meteo_path)
 
@@ -419,7 +446,7 @@ class TestCamels(unittest.TestCase):
 
     def test_waterbenchiowa(self):
 
-        dataset = WaterBenchIowa(path=r'F:\data\CAMELS\WaterBenchIowa')
+        dataset = WaterBenchIowa(path=r'G:\data\gscad\CAMELS\WaterBenchIowa')
 
         data = dataset.fetch(static_features=None)
         assert len(data) == 125
@@ -452,7 +479,7 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_dk_docs(self):
 
-        dataset = CAMELS_DK(path="F:\\data\\CAMELS\\CAMELS_DK")
+        dataset = CAMELS_DK(path="F:\\data\\gscad\\CAMELS\\CAMELS_DK")
 
         assert len(dataset.stations()) == 308
         assert dataset.fetch_static_features(dataset.stations()).shape == (308, 211)

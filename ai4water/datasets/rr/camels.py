@@ -118,6 +118,9 @@ class Camels(Datasets):
     def dynamic_features(self) -> list:
         raise NotImplementedError
 
+    def area(self)->pd.Series:
+        raise NotImplementedError
+
     def _check_length(self, st, en):
         if st is None:
             st = self.start
@@ -478,7 +481,7 @@ class Camels(Datasets):
             stations:List[str] = None,
             marker='.',
             ax:plt.Axes = None,
-            show:bool = False,
+            show:bool = True,
             **kwargs
     )->plt.Axes:
         """
@@ -656,10 +659,77 @@ class LamaH(Camels):
         s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
         return s
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area_gov (Km2) of all catchments as pandas series
+        ``area_gov`` is Catchment area obtained from the administration.
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import LamaH
+        >>> dataset = LamaH(time_step="daily")
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('1')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['1', '2'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        fname = os.path.join(self.path,
+                             'CAMELS_AT1',
+                             'D_gauges',
+                             '1_attributes', 'Gauge_attributes.csv')
+        df = pd.read_csv(fname, sep=';', index_col='ID')
+
+        df.index = df.index.astype(str)
+
+        s = df.loc[stations, 'area_gov']
+        s.name = 'area'
+        return s
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
     ) ->pd.DataFrame:
+        """
+         returns coordinates of stations as DataFrame
+         with ``long`` and ``lat`` as columns.
+
+         Parameters
+         ----------
+         stations :
+             name/names of stations. If not given, coordinates
+             of all stations will be returned.
+
+         Returns
+         -------
+         coords :
+             pandas DataFrame with ``long`` and ``lat`` columns.
+             The length of dataframe will be equal to number of stations
+             wholse coordinates are to be fetched.
+
+         Examples
+         --------
+         >>> dataset = LamaH(time_step="daily")
+         >>> dataset.stn_coords() # returns coordinates of all stations
+         >>> dataset.stn_coords('1')  # returns coordinates of station whose id is 912101A
+         >>> dataset.stn_coords(['1', '2'])  # returns coordinates of two stations
+
+         """
         fname = os.path.join(self.path,
                              'CAMELS_AT1',
                              'D_gauges',
@@ -911,6 +981,55 @@ class CAMELS_US(Camels):
             cols = list(df.columns)
 
         return cols
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns (GAGES II) area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_US
+        >>> dataset = CAMELS_US()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('1030500')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['1030500', '14400000'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        fpath = os.path.join(self.path,
+                             'catchment_attrs',
+                             'camels_attributes_v2.0',
+                             'camels_topo.txt')
+
+        df = pd.read_csv(fpath, sep=";",
+                         dtype={
+                             'gauge_id': str,
+                             'gauge_lat': float,
+                             'gauge_lon': float,
+                             'elev_mean': float,
+                             'slope_mean': float,
+                             'area_gages2': float
+                         })
+        df.index = df['gauge_id']
+
+        s = df.loc[stations, 'area_gages2']
+        s.name = 'area'
+        return s
 
     def stn_coords(
             self,
@@ -1201,6 +1320,47 @@ class CAMELS_GB(Camels):
             gauge_ids.append(f.split('_')[4])
 
         return gauge_ids
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_GB
+        >>> dataset = CAMELS_GB()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('101005')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['101005', '54002'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        static_fpath = os.path.join(self.path,
+                                    'data',
+                                    'CAMELS_GB_topographic_attributes.csv')
+
+        df = pd.read_csv(static_fpath)
+
+        df.index = df['gauge_id'].astype(str)
+
+        s = df.loc[stations, 'area']
+
+        return s
 
     def stn_coords(
             self,
@@ -1503,6 +1663,43 @@ class CAMELS_AUS(Camels):
     def dynamic_features(self) -> list:
         return list(self.folders.keys())
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_AUS
+        >>> dataset = CAMELS_AUS()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('912101A')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['G0050115', '912101A'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        static_fpath = os.path.join(self.path,
+                                    'CAMELS_AUS_Attributes-Indices_MasterTable.csv')
+
+        df = pd.read_csv(static_fpath, index_col='station_id')
+        s = df.loc[stations, 'catchment_area']
+        s.name = 'area'
+        return s
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
@@ -1758,6 +1955,43 @@ class CAMELS_CL(Camels):
         path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_CL
+        >>> dataset = CAMELS_CL()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('12872001')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['12872001', '12876004'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        fpath = os.path.join(self.path,
+                             '1_CAMELScl_attributes',
+                             '1_CAMELScl_attributes.txt')
+        df = pd.read_csv(fpath, sep='\t', index_col='gauge_id')
+        df.columns = [column.strip() for column in df.columns]
+        s = df.loc['area', stations]
+        return s
 
     def stn_coords(
             self,

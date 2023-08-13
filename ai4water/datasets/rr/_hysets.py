@@ -212,6 +212,50 @@ class HYSETS(Camels):
     def end(self)->str:
         return "20181231"
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None,
+            source:str = 'gsim'
+    ) ->pd.Series:
+        """
+        Returns area_gov (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+        source : str
+            source of area calculation. It should be either ``gsim`` or ``other``
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import HYSETS
+        >>> dataset = HYSETS()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('92')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['92', '142'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        SRC_MAP = {
+            'gsim': 'Drainage_Area_GSIM_km2',
+            'other': 'Drainage_Area_km2'
+        }
+
+        s = self.fetch_static_features(
+            features=[SRC_MAP[source]],
+        )
+
+        s.columns = ['area']
+        return s.loc[stations, 'area']
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None

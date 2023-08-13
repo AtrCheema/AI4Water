@@ -1170,7 +1170,7 @@ class TrainTestSplit(object):
 
         from sklearn.model_selection import GroupShuffleSplit
         gss = GroupShuffleSplit(n_splits=1,
-                                train_size=self.test_fraction,
+                                train_size=1. - self.test_fraction,
                                 random_state=self.random_state)
         train_indices, test_indices = next(
             gss.split(x[0] if isinstance(x, list) else x,

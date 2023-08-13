@@ -151,6 +151,49 @@ class CAMELS_DK(Camels):
     def end(self)->pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31 00:00:00')
 
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_DK
+        >>> dataset = CAMELS_DK()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.stn_coords('100010')  # returns area of station whose id is 912101A
+        >>> dataset.stn_coords(['100010', '210062'])  # returns area of two stations
+        """
+
+        stations = check_attributes(stations, self.stations())
+
+        df = pd.read_csv(self.other_attr_fpath,
+                         dtype={"gauge_id": str,
+                                'gauge_lat': float,
+                                'gauge_lon': float,
+                                'area': float,
+                                'gauge_name': str,
+                                'country': str
+                                })
+        df.index = [name.split('camelsdk_')[1] for name in df['gauge_id']]
+
+        return df.loc[stations, 'area']
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
