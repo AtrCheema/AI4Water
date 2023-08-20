@@ -1761,6 +1761,8 @@ Available cases are {self.models} and you wanted to include
             name: str = "cv_scores",
             exclude: Union[str, list] = None,
             include: Union[str, list] = None,
+            plot_type:str = "box",
+            sort_by:str = 'mean',
             **kwargs
     ) -> Union[plt.Axes, None]:
         """
@@ -1776,6 +1778,10 @@ Available cases are {self.models} and you wanted to include
             include : str/list
                 models to include
             exclude : models to exclude
+            plot_type : str
+                the type of plot to draw. It should be either ``box`` or ``bar``
+            sort_by : str
+                how to sort the boxes/bars
             **kwargs : any of the following keyword arguments
 
                 - notch
@@ -1805,7 +1811,8 @@ Available cases are {self.models} and you wanted to include
         consider_exclude(exclude, self.models, cv_scores)
         cv_scores = self._consider_include(include, cv_scores)
 
-        model_names = [m.split('model_')[1] for m in list(cv_scores.keys())]
+        model_names = [shred_model_name(m) for m in list(cv_scores.keys())]
+
         if len(model_names) < 5:
             rotation = 0
         else:
@@ -1815,11 +1822,30 @@ Available cases are {self.models} and you wanted to include
 
         _, axis = plt.subplots(figsize=kwargs.get('figsize', (8, 6)))
 
-        axis.boxplot(np.array(list(cv_scores.values())).squeeze().T,
-                         notch=kwargs.get('notch', None),
-                         vert=kwargs.get('vert', None),
-                         labels=model_names
-                         )
+        data = np.array(list(cv_scores.values())).squeeze().T
+
+        if sort_by is not None:
+            data = pd.DataFrame(data, columns=model_names)
+            data = data.reindex(data.mean().sort_values(ascending=False).index, axis=1)
+            model_names = data.columns.tolist()
+            data = data.values
+
+        if plot_type == "box":
+            axis.boxplot(
+                data,
+                notch=kwargs.get('notch', None),
+                vert=kwargs.get('vert', None),
+                labels=model_names
+            )
+
+        else:
+            bar_chart(
+                data.mean(axis=0),
+                labels=model_names,
+                show=False,
+                ax=axis,
+                orient="v"
+            )
 
         axis.set_xticklabels(model_names, rotation=rotation)
         axis.set_xlabel("Models", fontsize=16)
