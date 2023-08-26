@@ -239,6 +239,8 @@ def test_hysets():
 
     test_area(hy)
 
+    test_q_mmd(hy)
+
     return
 
 
@@ -290,6 +292,21 @@ def test_area(dataset):
     assert s.name == "area"
     return
 
+
+def test_q_mmd(dataset):
+    stations = dataset.stations()
+
+    df = dataset.q_mmd(stations[0])  # returns q of station
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[1] == 1, df.shape
+
+    df = dataset.q_mmd(stations[0:2])  # returns q of two stations
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[1] == 2, df.shape
+
+    return
+
+
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
                  test_df=True, yearly_steps=366):
 
@@ -340,6 +357,8 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 
     test_area(dataset)
 
+    test_q_mmd(dataset)
+
     return
 
 
@@ -371,7 +390,7 @@ class TestCamels(unittest.TestCase):
     def test_lamah(self):
         stations = {'daily': [859, 859, 454], 'hourly': [859, 859, 454]}
         static = {'daily': [61, 62, 61], 'hourly': [61, 62, 61]}
-        num_dyn_attrs = {'daily': 22, 'hourly': 17}
+        num_dyn_attrs = {'daily': 22, 'hourly': 19}
         len_dyn_data = {'daily': 14244, 'hourly': 341856}
         test_df = True
         yearly_steps = {'daily': 366, 'hourly': 8784}

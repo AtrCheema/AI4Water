@@ -118,6 +118,36 @@ class CCAM(Camels):
     def yr_data_path(self):
         return os.path.join(self.path, "7_HydroMLYR", "7_HydroMLYR", '1_data')
 
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving ``q``/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='q',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q * 1e3  # to mm/day
+
     def area(
             self,
             stations: Union[str, List[str]] = None

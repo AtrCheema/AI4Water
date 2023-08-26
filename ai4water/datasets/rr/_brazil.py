@@ -151,6 +151,36 @@ class CAMELS_BR(Camels):
     def end(self):
         return "20181231"
 
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. he name of
+        original timeseries is ``streamflow_mm``.
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='streamflow_mm',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        #area_m2 = self.area(stations) * 1e6  # area in m2
+        #q = (q / area_m2) * 86400  # cms to m/day
+        return q  # * 1e3  # to mm/day
+
     def area(
             self,
             stations: Union[str, List[str]] = None,
@@ -516,6 +546,36 @@ class CABra(Camels):
     @property
     def end(self)->pd.Timestamp:
         return pd.Timestamp("2010-09-30")
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. It is obtained
+        by dividing ``Streamflow`` time series by area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='Streamflow',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q  * 1e3  # to mm/day
 
     def area(
             self,

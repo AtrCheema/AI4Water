@@ -240,7 +240,7 @@ class Camels(Datasets):
         if xr is None:
             raise ModuleNotFoundError("modeule xarray must be installed to use `datasets` module")
 
-        return self.fetch_stations_attributes(
+        return self.fetch_stations_features(
             stations,
             dynamic_features,
             static_features,
@@ -274,7 +274,7 @@ class Camels(Datasets):
             xds.to_netcdf(self.dyn_fname)
         return
 
-    def fetch_stations_attributes(
+    def fetch_stations_features(
             self,
             stations: list,
             dynamic_features='all',
@@ -325,7 +325,7 @@ class Camels(Datasets):
             ... # find out station ids
             >>> dataset.stations()
             ... # get data of selected stations
-            >>> dataset.fetch_stations_attributes(['912101A', '912105A', '915011A'],
+            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
             ...  as_dataframe=True)
         """
         st, en = self._check_length(st, en)
@@ -396,13 +396,13 @@ class Camels(Datasets):
             >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
             >>> camels.dynamic_features
             >>> camels.fetch_dynamic_features('224214A',
-            ... attributes=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
+            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
             ... as_dataframe=True).unstack()
         """
 
         assert isinstance(stn_id, str), f"station id must be string is is of type {type(stn_id)}"
         station = [stn_id]
-        return self.fetch_stations_attributes(
+        return self.fetch_stations_features(
             station,
             features,
             None,
@@ -411,7 +411,7 @@ class Camels(Datasets):
             as_dataframe=as_dataframe
         )
 
-    def fetch_station_attributes(
+    def fetch_station_features(
             self,
             station: str,
             dynamic_features: Union[str, list, None] = 'all',
@@ -422,7 +422,7 @@ class Camels(Datasets):
             **kwargs
     ) -> pd.DataFrame:
         """
-        Fetches attributes for one station.
+        Fetches features for one station.
 
         Parameters
         -----------
@@ -433,7 +433,7 @@ class Camels(Datasets):
             static_features :
                 names of static features/attributes to be fetches
             as_ts : bool
-                whether static attributes are to be converted into a time
+                whether static features are to be converted into a time
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
             st : str,optional
@@ -446,13 +446,13 @@ class Camels(Datasets):
         -------
         pd.DataFrame
             dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic attributes for a station/gauge_id
+            dynamic features for a station/gauge_id
 
         Examples
         --------
             >>> from ai4water.datasets import CAMELS_AUS
             >>> dataset = CAMELS_AUS()
-            >>> dataset.fetch_station_attributes('912101A')
+            >>> dataset.fetch_station_features('912101A')
 
         """
         st, en = self._check_length(st, en)
@@ -548,305 +548,6 @@ class Camels(Datasets):
         """
 
         raise NotImplementedError
-
-
-class LamaH(Camels):
-    """
-    Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
-    (mainly Austria). The dataset is downloaded from
-    from  `zenodo <https://zenodo.org/record/4609826#.YFNp59zt02w>`_
-    following the work of
-    `Klingler et al., 2021 <https://essd.copernicus.org/preprints/essd-2021-72/>`_ .
-    For ``total_upstrm`` data, there are 859 stations with 61 static features
-    and 17 dynamic features. The temporal extent of data is from 1981-01-01
-    to 2019-12-31.
-    """
-    url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
-    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
-    time_steps = ['daily', 'hourly']
-
-    static_attribute_categories = ['']
-
-    def __init__(self, *,
-                 time_step: str,
-                 data_type: str,
-                 path=None,
-                 **kwargs
-                 ):
-
-        """
-        Parameters
-        ----------
-        path : str
-            If the data is alredy downloaded then provide the complete
-            path to it. If None, then the data will be downloaded.
-            The data is downloaded once and therefore susbsequent
-            calls to this class will not download the data unless
-            ``overwrite`` is set to True.
-            time_step :
-                possible values are ``daily`` or ``hourly``
-            data_type :
-                possible values are ``total_upstrm``, ``diff_upstrm_all``
-                or ``diff_upstrm_lowimp``
-
-        Examples
-        --------
-        >>> from ai4water.datasets import LamaH
-        >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
-        # The daily dataset is from 859 with 61 static and 22 dynamic features
-        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
-        (859, 61, 22)
-        >>> df = dataset.fetch(3, as_dataframe=True)
-        >>> df.shape
-        (313368, 3)
-        >>> dataset = LamaH(time_step='hourly', data_type='total_upstrm')
-        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
-        (859, 61, 17)
-        """
-
-        assert time_step in self.time_steps, f"invalid time_step {time_step} given"
-        assert data_type in self._data_types, f"invalid data_type {data_type} given."
-
-        self.time_step = time_step
-        self.data_type = data_type
-
-        super().__init__(path=path, **kwargs)
-
-        fpath = os.path.join(self.path, 'lamah_diff_upstrm_lowimp_hourly_dyn.nc')
-
-        _data_types = self._data_types if self.time_step == 'daily' else ['total_upstrm']
-
-        if not os.path.exists(fpath):
-            for dt in _data_types:
-                for ts in self.time_steps:
-                    self.time_step = ts
-                    self.data_type = dt
-                    fname = f"lamah_{dt}_{ts}_dyn"
-                    self._maybe_to_netcdf(fname)
-
-            self.time_step = time_step
-            self.data_type = data_type
-
-        self.dyn_fname = os.path.join(self.path,
-                                      f'lamah_{data_type}_{time_step}_dyn.nc')
-
-    @property
-    def dynamic_features(self):
-        station = self.stations()[0]
-        df = self.read_ts_of_station(station)
-        return df.columns.to_list()
-
-    @property
-    def static_features(self) -> list:
-        fname = os.path.join(self.data_type_dir,
-                             f'1_attributes{SEP}Catchment_attributes.csv')
-        df = pd.read_csv(fname, sep=';', index_col='ID')
-        return df.columns.to_list()
-
-    @property
-    def data_type_dir(self):
-        directory = 'CAMELS_AT'
-        if self.time_step == 'hourly':
-            directory = 'CAMELS_AT1'  # todo, use it only for hourly, daily is causing errors
-        # self.path/CAMELS_AT/data_type_dir
-        f = [f for f in os.listdir(os.path.join(self.path, directory)) if self.data_type in f][0]
-        return os.path.join(self.path, f'{directory}{SEP}{f}')
-
-    def stations(self) -> list:
-        # assuming file_names of the format ID_{stn_id}.csv
-        _dirs = os.listdir(os.path.join(self.data_type_dir,
-                                        f'2_timeseries{SEP}{self.time_step}'))
-        s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
-        return s
-
-    def area(
-            self,
-            stations: Union[str, List[str]] = None
-    ) ->pd.Series:
-        """
-        Returns area_gov (Km2) of all catchments as pandas series
-        ``area_gov`` is Catchment area obtained from the administration.
-
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is None, which will return
-            area of all stations
-
-        Returns
-        --------
-        pd.Series
-            a pandas series whose indices are catchment ids and values
-            are areas of corresponding catchments.
-
-        Examples
-        ---------
-        >>> from ai4water.datasets import LamaH
-        >>> dataset = LamaH(time_step="daily")
-        >>> dataset.area()  # returns area of all stations
-        >>> dataset.stn_coords('1')  # returns area of station whose id is 912101A
-        >>> dataset.stn_coords(['1', '2'])  # returns area of two stations
-        """
-        stations = check_attributes(stations, self.stations())
-
-        fname = os.path.join(self.path,
-                             'CAMELS_AT1',
-                             'D_gauges',
-                             '1_attributes', 'Gauge_attributes.csv')
-        df = pd.read_csv(fname, sep=';', index_col='ID')
-
-        df.index = df.index.astype(str)
-
-        s = df.loc[stations, 'area_gov']
-        s.name = 'area'
-        return s
-
-    def stn_coords(
-            self,
-            stations:Union[str, List[str]] = None
-    ) ->pd.DataFrame:
-        """
-         returns coordinates of stations as DataFrame
-         with ``long`` and ``lat`` as columns.
-
-         Parameters
-         ----------
-         stations :
-             name/names of stations. If not given, coordinates
-             of all stations will be returned.
-
-         Returns
-         -------
-         coords :
-             pandas DataFrame with ``long`` and ``lat`` columns.
-             The length of dataframe will be equal to number of stations
-             wholse coordinates are to be fetched.
-
-         Examples
-         --------
-         >>> dataset = LamaH(time_step="daily")
-         >>> dataset.stn_coords() # returns coordinates of all stations
-         >>> dataset.stn_coords('1')  # returns coordinates of station whose id is 912101A
-         >>> dataset.stn_coords(['1', '2'])  # returns coordinates of two stations
-
-         """
-        fname = os.path.join(self.path,
-                             'CAMELS_AT1',
-                             'D_gauges',
-                             '1_attributes', 'Gauge_attributes.csv')
-        df = pd.read_csv(fname, sep=';', index_col='ID')
-
-        df.index = df.index.astype(str)
-        df = df[['lon', 'lat']]
-        df.columns = ['long', 'lat']
-        stations = check_attributes(stations, self.stations())
-
-        return df.loc[stations, :]
-
-    def _read_dynamic_from_csv(self,
-                               stations,
-                               dynamic_features: Union[str, list] = 'all',
-                               st=None,
-                               en=None,
-                               ):
-        """Reads attributes of one or more station"""
-
-        stations_attributes = {}
-
-        for station in stations:
-
-            station_df = pd.DataFrame()
-
-            if dynamic_features is not None:
-                dynamic_df = self.read_ts_of_station(station)
-
-                station_df = pd.concat([station_df, dynamic_df])
-
-            stations_attributes[station] = station_df
-
-        return stations_attributes
-
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]]=None
-    ) -> pd.DataFrame:
-        """
-        static features of LamaH
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Examples
-        --------
-            >>> from ai4water.datasets import LamaH
-            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
-            >>> df = dataset.fetch_static_features('99')  # (1, 61)
-            ...  # get list of all static features
-            >>> dataset.static_features
-            >>> dataset.fetch_static_features('99',
-            >>> features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
-        """
-        fname = os.path.join(self.data_type_dir,
-                             f'1_attributes{SEP}Catchment_attributes.csv')
-
-        df = pd.read_csv(fname, sep=';', index_col='ID')
-
-        # if features is not None:
-        static_features = check_attributes(features, self.static_features)
-
-        df = df[static_features]
-
-        if stn_id == "all":
-            stn_id = self.stations()
-
-        if isinstance(stn_id, list):
-            stations = [str(i) for i in stn_id]
-        elif isinstance(stn_id, int):
-            stations = str(stn_id)
-        else:
-            stations = stn_id
-
-        df.index = df.index.astype(str)
-        df = df.loc[stations]
-        if isinstance(df, pd.Series):
-            df = pd.DataFrame(df).transpose()
-
-        return df
-
-    def read_ts_of_station(self, station) -> pd.DataFrame:
-        # read a file containing timeseries data for one station
-        fname = os.path.join(self.data_type_dir,
-                             f'2_timeseries{SEP}{self.time_step}{SEP}ID_{station}.csv')
-
-        df = pd.read_csv(fname, sep=';')
-
-        if self.time_step == 'daily':
-            periods = pd.PeriodIndex(year=df["YYYY"], month=df["MM"], day=df["DD"],
-                                     freq="D")
-            df.index = periods.to_timestamp()
-        else:
-            periods = pd.PeriodIndex(year=df["YYYY"],
-                                     month=df["MM"], day=df["DD"], hour=df["hh"],
-                                     minute=df["mm"], freq="H")
-            df.index = periods.to_timestamp()
-
-        # remove the cols specifying index
-        [df.pop(item) for item in ['YYYY', 'MM', 'DD', 'hh', 'mm'] if item in df]
-        return df
-
-    @property
-    def start(self):
-        return "19810101"
-
-    @property
-    def end(self):
-        return "20191231"
 
 
 class CAMELS_US(Camels):
@@ -981,6 +682,36 @@ class CAMELS_US(Camels):
             cols = list(df.columns)
 
         return cols
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving ``Flow``/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='Flow',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q  * 1e3  # to mm/day
 
     def area(
             self,
@@ -1179,7 +910,7 @@ class CAMELS_US(Camels):
             >>> all_static_data.shape
                (671, 59)
         """
-        attributes = check_attributes(features, self.static_features)
+        features = check_attributes(features, self.static_features)
 
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
@@ -1202,7 +933,7 @@ class CAMELS_US(Camels):
         if stn_id == "all":
             stn_id = self.stations()
 
-        df = static_df.loc[stn_id][attributes]
+        df = static_df.loc[stn_id][features]
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df).transpose()
 
@@ -1286,13 +1017,13 @@ class CAMELS_GB(Camels):
 
     @property
     def static_attribute_categories(self) -> list:
-        attributes = []
+        features = []
         path = os.path.join(self.path, 'data')
         for f in os.listdir(path):
             if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
-                attributes.append(f.split('_')[2])
+                features.append(f.split('_')[2])
 
-        return attributes
+        return features
 
     @property
     def start(self):
@@ -1320,6 +1051,35 @@ class CAMELS_GB(Camels):
             gauge_ids.append(f.split('_')[4])
 
         return gauge_ids
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day.
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='discharge_spec',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        #area_m2 = self.area(stations) * 1e6  # area in m2
+        #q = (q / area_m2) * 86400  # cms to m/day
+        return q # * 1e3  # to mm/day
 
     def area(
             self,
@@ -1396,13 +1156,14 @@ class CAMELS_GB(Camels):
         df.columns = ['lat', 'long']
         return df.loc[stations, :]
 
-    def _read_dynamic_from_csv(self,
-                               stations,
-                               attributes: Union[str, list] = 'all',
-                               st=None,
-                               en=None,
-                               ):
-        """Fetches dynamic attribute/attributes of one or more station."""
+    def _read_dynamic_from_csv(
+            self,
+            stations,
+            features: Union[str, list] = 'all',
+            st=None,
+            en=None,
+    ):
+        """Fetches dynamic attribute/features of one or more station."""
         dyn = {}
         for stn_id in stations:
             # making one separate dataframe for one station
@@ -1427,7 +1188,7 @@ class CAMELS_GB(Camels):
             features:Union[str, List[str]]="all"
     ) -> pd.DataFrame:
         """
-        Fetches static attributes of one or more stations for one or
+        Fetches static features of one or more stations for one or
         more category as dataframe.
 
         Parameters
@@ -1462,7 +1223,7 @@ class CAMELS_GB(Camels):
            (671, 2)
         """
 
-        attributes = check_attributes(features, self.static_features)
+        features = check_attributes(features, self.static_features)
         static_fname = 'static_features.csv'
         static_fpath = os.path.join(self.path, 'data', static_fname)
         if os.path.exists(static_fpath):
@@ -1489,7 +1250,7 @@ class CAMELS_GB(Camels):
 
         static_df.index = static_df.index.astype(str)
 
-        return static_df.loc[station][attributes]
+        return static_df.loc[station][features]
 
 
 class CAMELS_AUS(Camels):
@@ -1597,7 +1358,7 @@ class CAMELS_AUS(Camels):
         Arguments:
             path: path where the CAMELS-AUS dataset has been downloaded. This path
                 must contain five zip files and one xlsx file. If None, then the
-                data will downloaded.
+                data will be downloaded.
             to_netcdf :
         """
         if path is not None:
@@ -1642,13 +1403,13 @@ class CAMELS_AUS(Camels):
 
     @property
     def static_attribute_categories(self):
-        attributes = []
+        features = []
         path = os.path.join(self.path, f'04_attributes{SEP}04_attributes')
         for f in os.listdir(path):
             if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
                 f = str(f.split('.csv')[0])
-                attributes.append(''.join(f.split('_')[2:]))
-        return attributes
+                features.append(''.join(f.split('_')[2:]))
+        return features
 
     @property
     def static_features(self) -> list:
@@ -1662,6 +1423,37 @@ class CAMELS_AUS(Camels):
     @property
     def dynamic_features(self) -> list:
         return list(self.folders.keys())
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving q_cms/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='streamflow_MLd',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        q = q * 0.01157  # mega liter per day to cms
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # to m/day
+        return q * 1e3  # to mm/day
 
     def area(
             self,
@@ -1739,16 +1531,16 @@ class CAMELS_AUS(Camels):
         df.columns = ['lat', 'long']
         return df.loc[stations, :]
 
-    def _read_static(self, stations, attributes,
+    def _read_static(self, stations, features,
                      st=None, en=None):
 
-        attributes = check_attributes(attributes, self.static_features)
+        features = check_attributes(features, self.static_features)
         static_fname = 'CAMELS_AUS_Attributes-Indices_MasterTable.csv'
         static_fpath = os.path.join(self.path, static_fname)
         static_df = pd.read_csv(static_fpath, index_col='station_id')
 
         static_df.index = static_df.index.astype(str)
-        df = static_df.loc[stations][attributes]
+        df = static_df.loc[stations][features]
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df).transpose()
 
@@ -1841,7 +1633,7 @@ class CAMELS_CL(Camels):
     104 static features and 12 dyanmic features for each catchment.
     The dyanmic features are timeseries from 1913-02-15 to 2018-03-09.
     This class downloads and processes CAMELS dataset of Chile following the work of
-    Alvarez-Garreton_ et al., 2018 .
+    `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_ .
 
     Examples
     ---------
@@ -1885,7 +1677,6 @@ class CAMELS_CL(Camels):
     >>> data['static'].shape, data['dynamic'].shape
     >>> ((1, 104), (460488, 1))
 
-    .. _Alvarez-Garreton: https://doi.org/10.5194/hess-22-5817-2018
     """
 
     urls = {
@@ -1951,10 +1742,44 @@ class CAMELS_CL(Camels):
         return "20180309"
 
     @property
+    def location(self):
+        return "Chile"
+
+    @property
     def static_features(self) -> list:
         path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving q_cms/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='streamflow_mm',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        # area_m2 = self.area(stations) * 1e6  # area in m2
+        #q = (q / area_m2) * 86400  # cms to m/day
+        return q  # * 1e3  # to mm/day
 
     def area(
             self,
@@ -1991,7 +1816,7 @@ class CAMELS_CL(Camels):
         df = pd.read_csv(fpath, sep='\t', index_col='gauge_id')
         df.columns = [column.strip() for column in df.columns]
         s = df.loc['area', stations]
-        return s
+        return s.astype(float)
 
     def stn_coords(
             self,
@@ -2142,7 +1967,7 @@ class CAMELS_CL(Camels):
            (1, 2)
 
         """
-        attributes = check_attributes(features, self.static_features)
+        features = check_attributes(features, self.static_features)
 
         if stn_id == "all":
             stn_id = self.stations()
@@ -2150,4 +1975,4 @@ class CAMELS_CL(Camels):
         if isinstance(stn_id, str):
             stn_id = [stn_id]
 
-        return self._read_static(stn_id, attributes)
+        return self._read_static(stn_id, features)

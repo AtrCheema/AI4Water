@@ -151,6 +151,37 @@ class CAMELS_DK(Camels):
     def end(self)->pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31 00:00:00')
 
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving ``streamflow``/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='streamflow',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q * 1e3  # to mm/day
+
     def area(
             self,
             stations: Union[str, List[str]] = None
@@ -246,9 +277,9 @@ class CAMELS_DK(Camels):
             st=None,
             en=None)->dict:
 
-        attributes = check_attributes(dynamic_features, self.dynamic_features)
+        features = check_attributes(dynamic_features, self.dynamic_features)
 
-        dyn = {stn: self._read_csv(stn)[attributes] for stn in stations}
+        dyn = {stn: self._read_csv(stn)[features] for stn in stations}
 
         return dyn
 

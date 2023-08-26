@@ -7,7 +7,7 @@ from .camels import CAMELS_AUS
 from .camels import CAMELS_CL
 from .camels import CAMELS_GB
 from .camels import CAMELS_US
-from .camels import LamaH
+from ._lamah import LamaH
 from ._brazil import CAMELS_BR
 from ._brazil import CABra
 from ._hysets import HYSETS

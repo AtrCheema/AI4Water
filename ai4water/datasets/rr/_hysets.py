@@ -212,10 +212,40 @@ class HYSETS(Camels):
     def end(self)->str:
         return "20181231"
 
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving q_cms/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='discharge',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q * 1e3  # to mm/day
+
     def area(
             self,
             stations: Union[str, List[str]] = None,
-            source:str = 'gsim'
+            source:str = 'other'
     ) ->pd.Series:
         """
         Returns area_gov (Km2) of all catchments as pandas series
@@ -292,7 +322,7 @@ class HYSETS(Camels):
 
         return df.loc[stations, :]
 
-    def fetch_stations_attributes(
+    def fetch_stations_features(
             self,
             stations: list,
             dynamic_features: Union[str, list, None] = 'all',
@@ -302,13 +332,13 @@ class HYSETS(Camels):
             as_dataframe: bool = False,
             **kwargs
     ):
-        """returns attributes of multiple stations
+        """returns features of multiple stations
         Examples
         --------
         >>> from ai4water.datasets import HYSETS
         >>> dataset = HYSETS()
         >>> stations = dataset.stations()[0:3]
-        >>> attributes = dataset.fetch_stations_attributes(stations)
+        >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
@@ -356,7 +386,7 @@ class HYSETS(Camels):
             en=None,
             as_dataframe=False
     ):
-        """Fetches dynamic attributes of one station.
+        """Fetches dynamic features of one station.
 
         Examples
         --------
@@ -382,7 +412,7 @@ class HYSETS(Camels):
             as_dataframe=False,
             as_ts=False
     ):
-        """Fetches dynamic attributes of station."""
+        """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
         attrs = check_attributes(dynamic_features, self.dynamic_features)
 

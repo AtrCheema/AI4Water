@@ -254,11 +254,13 @@ class Datasets(object):
         We don't host datasets. Each dataset is downloaded fromt he target remote
         server and saved into local disk.
     """
-    def __init__(self,
-                 name=None,
-                 units=None,
-                 path:str = None
-                 ):
+    def __init__(
+            self,
+            name=None,
+            units=None,
+            path:str = None,
+            processes:int = None,
+    ):
         """
         Arguments:
             name : str (default=None)
@@ -268,6 +270,8 @@ class Datasets(object):
             path : str (default=None)
                 path where the data is available (manually downloaded).
                 If None, it will be downloaded
+            processes : int
+                number of processes to use for parallel processing
         """
         if name is None:
             name = self.__class__.__name__
@@ -277,6 +281,7 @@ class Datasets(object):
 
         self.units = units
         self.name = name
+        self.processes = processes
 
     @property
     def url(self):

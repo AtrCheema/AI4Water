@@ -113,21 +113,21 @@ class HYPE(Camels):
 
     def _read_dynamic_from_csv(self,
                                stations: list,
-                               attributes: Union[str, list] = 'all',
+                               features: Union[str, list] = 'all',
                                st=None,
                                en=None,
                                ):
 
-        dynamic_features = check_attributes(attributes, self.dynamic_features)
+        dynamic_features = check_attributes(features, self.dynamic_features)
 
-        _dynamic_attributes = []
+        _dynamic_features = []
         for dyn_attr in dynamic_features:
             pref, suff = dyn_attr.split('_')[0], dyn_attr.split('_')[-1]
             _dyn_attr = f"{pref}_{self.time_step}_{suff}"
-            _dynamic_attributes.append(_dyn_attr)
+            _dynamic_features.append(_dyn_attr)
 
         df_attrs = {}
-        for dyn_attr in _dynamic_attributes:
+        for dyn_attr in _dynamic_features:
             fname = f"{dyn_attr}.csv"
             fpath = os.path.join(self.path, fname)
             index_col_name = 'DATE'
@@ -151,6 +151,34 @@ class HYPE(Camels):
             stns_dfs[st] = stn_df
 
         return stns_dfs
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. The name of
+        original timeseries is ``Streamflow_mm``.
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(stations,
+                                           dynamic_features='Streamflow_mm',
+                                           as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        return q
 
     def fetch_static_features(self, stn_id, features=None):
         """static data for HYPE is not available."""
