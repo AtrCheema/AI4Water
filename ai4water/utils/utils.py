@@ -355,7 +355,7 @@ class make_model(object):
             'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
             'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
             'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
-            'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
+            'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'KFold', 'GroupKFold']},  # todo, having kfold does not raise error
             'wandb_config': {'type': dict, 'default': None, 'between': None},
             'val_metric': {'type': (str, Callable), 'default': None},
             'model_name_': {'default': None},

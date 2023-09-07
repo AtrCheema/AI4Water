@@ -19,6 +19,7 @@ else:
     from ai4water import Model
 
 from ai4water.utils import jsonize
+from ai4water.utils.utils import make_model
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, busan_beach
 from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data
@@ -1077,6 +1078,14 @@ class TestTrainTestSplit(unittest.TestCase):
         for val in np.unique(train_groups):
             assert val not in test_groups
         return
+
+
+class TestMakeModel(unittest.TestCase):
+
+    def test_crossvalidator(self):
+        mm = make_model(cross_validator={"KFold": {'n_splits': 5}})
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

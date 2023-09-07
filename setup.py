@@ -86,9 +86,8 @@ hpo_requirements = ['optuna<=2.10.1', 'hyperopt', skopt_version, seq_met_ver]
 post_process_requirements = ['lime', 'shap', seq_met_ver]
 
 exp_requirements = ['catboost', 'lightgbm', 'xgboost',
-                    'tpot',
                     'optuna<=2.10.1', 'hyperopt', skopt_version,
-                    'h5py<2.11.0', seq_met_ver, easy_mpl_ver
+                    'h5py', seq_met_ver, easy_mpl_ver
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', seq_met_ver, easy_mpl_ver]
 

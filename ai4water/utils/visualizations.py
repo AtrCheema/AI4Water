@@ -367,12 +367,14 @@ def edf_plot(
         show : bool, optional (default=True)
             whether to show the plot or not
         **kwargs :
-            key word arguments for plot
+            key word arguments for plot_ function
 
     Returns
     -------
     plt.Axes
 
+    .. _plot:
+        https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot
     """
     x = np.linspace(np.min(y), np.max(y), num_points)
 
@@ -390,7 +392,7 @@ def edf_plot(
         xlabel=xlabel)
 
     if 'ax_kws' in kwargs:
-        ax_kws.update(ax_kws)
+        ax_kws.update(kwargs['ax_kws'])
         kwargs.pop('ax_kws')
 
     ax = em.plot(
