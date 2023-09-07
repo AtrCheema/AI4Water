@@ -40,6 +40,13 @@ class Testcross_val_score(unittest.TestCase):
         assert hasattr(model.cross_val_scores, '__len__')  # cross_val_scores are array like
         return
 
+    def test_cv_arg(self):
+        model = make_cross_validator(cv=None)
+        cv_score = model.cross_val_score(data=beach_data, cv="KFold", cv_kws={'n_splits': 5})
+        assert isinstance(cv_score, list)
+        assert hasattr(model.cross_val_scores, '__len__')  # cross_val_scores are array like
+        return
+
     def test_loocv(self):
         model = make_cross_validator(cv={'LeaveOneOut': {}}, train_fraction=0.4)
         cv_score = model.cross_val_score(data=beach_data)
@@ -70,7 +77,7 @@ class Testcross_val_score(unittest.TestCase):
 
     def test_callable_scoring(self):
         from ai4water.datasets import MtropicsLaos
-        data = MtropicsLaos().make_classification(lookback_steps=1)
+        data = MtropicsLaos(path=r'D:\data\MtropicsLaos').make_classification(lookback_steps=1)
         def f1_score_(t,p)->float:
            return ClassificationMetrics(t, p).f1_score(average="macro")
         model = Model(model="RandomForestClassifier",

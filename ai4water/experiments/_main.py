@@ -354,7 +354,7 @@ class Experiments(object):
             val_x,
             val_y):
 
-        """runs the `.fit` of allt he models being considered once.
+        """runs the `.fit` of all the models being considered once.
         Also populates following attributes
 
             - eval_models
@@ -382,9 +382,7 @@ class Experiments(object):
         self._populate_results(model_name, train_results)
 
         if cross_validate:
-            cv_scoring = model.val_metric
             self.cv_scores_[model_type] = getattr(model, f'cross_val_scores')
-            setattr(self, '_cv_scoring', cv_scoring)
 
         self.eval_models[model_type] = self.model_.path
         return
@@ -435,9 +433,7 @@ class Experiments(object):
 
         if cross_validate:
             # if we do train_best, self.model_ will change and this
-            cv_scoring = self.model_.val_metric
             self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
-            setattr(self, '_cv_scoring', cv_scoring)
 
         x, y = _combine_training_validation_data(train_x, train_y, (val_x, val_y))
         if post_optimize == 'eval_best':
@@ -484,7 +480,7 @@ class Experiments(object):
         Parameters
         ----------
             x :
-                input data. When ``run_type`` is ``dry_run``, then the each model is trained
+                input data. When ``run_type`` is ``dry_run``, then each model is trained
                 on this data. If ``run_type`` is ``optimize``, validation_data is not given,
                 then x,y pairs of validation data are extracted from this data based
                 upon splitting scheme i.e. ``val_fraction`` argument.
@@ -494,7 +490,7 @@ class Experiments(object):
                 Raw unprepared data from which x,y pairs for training and validation
                 will be extracted.
                 this will be passed to :py:meth:`ai4water.Model.fit`.
-                This is is only required if ``x`` and ``y`` are not given
+                This is only required if ``x`` and ``y`` are not given
             validation_data :
                 a tuple which consists of x,y pairs for validation data. This can only
                 be given if ``x`` and ``y`` are given and ``data`` is not given.
@@ -502,7 +498,7 @@ class Experiments(object):
                 One of ``dry_run`` or ``optimize``. If ``dry_run``, then all
                 the `models` will be trained only once. if ``optimize``, then
                 hyperparameters of all the models will be optimized. It should be noted
-                that for for ``dry_run``, the validation data is also made part of training.
+                that for ``dry_run``, the validation data is also made part of training.
                 For ``optimize`` the validation data is used for hyperparameter optimization.
             opt_method : str, optional (default="bayes")
                 which optimization method to use. options are ``bayes``,
@@ -561,6 +557,23 @@ class Experiments(object):
         >>> exp.fit(data=busan_beach(), run_type="optimize", num_iterations=20)
 
         """
+        if cross_validate:
+            warnings.warn("Please use .fitcv() method instead of .fit()")
+
+        return self._fit0(x, y, data, validation_data,
+                         run_type=run_type,
+                         opt_method=opt_method,
+                         num_iterations=num_iterations,
+                         include=include,
+                         exclude=exclude,
+                         post_optimize=post_optimize,
+                         cross_validate=cross_validate,
+                         **hpo_kws)
+
+    def _fit0(self, x, y, data, validation_data, run_type, opt_method, num_iterations,
+             include, exclude, post_optimize,
+             cross_validate=False,
+             **hpo_kws):
 
         train_x, train_y, val_x, val_y, _, _ = self.verify_data(
             x, y, data, validation_data)
@@ -633,6 +646,74 @@ class Experiments(object):
         save_json_file(os.path.join(self.exp_path, 'metrics.json'), self.metrics)
 
         return
+
+    def fitcv(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data: Optional[tuple] = None,
+            run_type: str = "dry_run",
+            opt_method: str = "bayes",
+            num_iterations: int = 12,
+            include: Union[None, list, str] = None,
+            exclude: Union[None, list, str] = '',
+            cv:str = None,
+            cv_kws:dict = None,
+            scoring: Union[str, List[str]] = None,
+            post_optimize: str = 'eval_best',
+            **hpo_kws
+    ):
+        """
+        Same as :py:meth:`ai4water.experiments.Experiments.fit` except that it combines training
+        and validation data to perform cross validation.
+
+        parameters
+        -----------
+        x :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        y :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        data :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        validation_data :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        run_type :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        opt_method :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        num_iterations :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        include :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        exclude :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        cv :
+            string defining the cross validation method e.g. ``KFold`` or ``GroupKFold``.
+            If given, will override ``cross_validator`` argument given during class initialization.
+        cv_kws :
+            dictionary defining keyword arguments to CV e.g. for KFold following dictionary
+            can be given
+                >>> {'n_splits': 5, 'shuffle': True}
+            Similarly for GroupKFold following dictionary can be given
+                >>> {'groups': x}
+            If given, will override ``cross_validator`` argument given during class initialization.
+        scoring :
+            string of list of strings e.g. ``r2`` or [r2, 'rmse'].
+            If given, will override ``val_metric`` argument given during class initialization.
+        post_optimize :
+            see :py:meth:`ai4water.experiments.Experiments.fit`
+        """
+        setattr(self, 'scoring_', scoring)
+        setattr(self, 'cv_', cv)
+        setattr(self, 'cv_kws_', cv_kws)
+
+        return self._fit0(
+            x, y, data, validation_data,
+            run_type, opt_method, num_iterations,
+            include, exclude, post_optimize,
+            cross_validate=True,
+            **hpo_kws)
 
     def eval_best(
             self,
@@ -1752,29 +1833,32 @@ Available cases are {self.models} and you wanted to include
         exp.features = load_json_file(
             os.path.join(os.path.dirname(config_path), "features.json"))
         exp.cv_scores_ = cv_scores
-        exp._cv_scoring = scoring
+        exp.scoring_ = scoring
 
         return exp
 
     def plot_cv_scores(
             self,
-            name: str = "cv_scores",
+            scoring:str=None,
             exclude: Union[str, list] = None,
             include: Union[str, list] = None,
             plot_type:str = "box",
             sort_by:str = 'mean',
+            name: str = "cv_scores",
             **kwargs
     ) -> Union[plt.Axes, None]:
         """
         Plots the box whisker plots of the cross validation scores.
 
-        This plot is only available if cross_validation was set to True during
-        :py:meth:`ai4water.experiments.Experiments.fit`.
+        This plot is only available if
+        :py:meth:`ai4water.experiments.Experiments.fitcv` was called.
 
         Arguments
         ---------
-            name : str
-                name of the file to save the plot
+            scoring : str
+                name of performance metric to use. If the user has provided multiple values
+                of ``scoring`` during call to :py:meth:`ai4water.experiments.Experiments.fitcv`
+                then, this argument can be any of those performance metrics.
             include : str/list
                 models to include
             exclude : models to exclude
@@ -1782,6 +1866,8 @@ Available cases are {self.models} and you wanted to include
                 the type of plot to draw. It should be either ``box`` or ``bar``
             sort_by : str
                 how to sort the boxes/bars
+            name : str
+                name of the file to save the plot
             **kwargs : any of the following keyword arguments
 
                 - notch
@@ -1798,15 +1884,15 @@ Available cases are {self.models} and you wanted to include
         >>> from ai4water.experiments import MLRegressionExperiments
         >>> from ai4water.datasets import busan_beach
         >>> exp = MLRegressionExperiments(cross_validator={"KFold": {"n_splits": 10}})
-        >>> exp.fit(data=busan_beach(), cross_validate=True)
+        >>> exp.fitcv(data=busan_beach())
         >>> exp.plot_cv_scores()
 
         """
         if len(self.cv_scores_) == 0:
-            return
+            raise ValueError("run .fitcv method first before calling this method")
 
-        scoring = self._cv_scoring
-        cv_scores = self.cv_scores_
+        scorings = getattr(self, 'scoring_')
+        cv_scores = self.cv_scores_.copy()
 
         consider_exclude(exclude, self.models, cv_scores)
         cv_scores = self._consider_include(include, cv_scores)
@@ -1823,6 +1909,16 @@ Available cases are {self.models} and you wanted to include
         _, axis = plt.subplots(figsize=kwargs.get('figsize', (8, 6)))
 
         data = np.array(list(cv_scores.values())).squeeze().T
+
+        if isinstance(scorings, list) and len(scorings)>1:
+            assert data.shape[0] == len(scorings)  # first dimension in data is performance metrics
+            if scoring:
+                assert scoring in scorings
+                index = scorings.index(scoring)
+                data = data[index]
+            else:
+                scoring = scorings[0]
+                data = data[0]
 
         if sort_by is not None:
             data = pd.DataFrame(data, columns=model_names)
@@ -2355,10 +2451,15 @@ Available cases are {self.models} and you wanted to include
 
         if cross_validate:
 
-            return model.cross_val_score(*_combine_training_validation_data(
-                train_x,
-                train_y,
-                validation_data))
+            return model.cross_val_score(
+                *_combine_training_validation_data(
+                    train_x,
+                    train_y,
+                    validation_data),
+                scoring=getattr(self, 'scoring_', None),
+                cv=getattr(self, 'cv_', None),
+                cv_kws=getattr(self, 'cv_kws_', None)
+            )
 
         if refit:
             # we need to combine training (x,y) + validation data.
