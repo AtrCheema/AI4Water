@@ -1143,6 +1143,8 @@ class BaseModel(NN):
             x=None,
             y=None,
             data: Union[pd.DataFrame, np.ndarray, str] = None,
+            cv:str = None,
+            cv_kws:dict = None,
             scoring: Union [str, List[str], Callable] = None,
             refit: bool = False,
             process_results:bool = False
@@ -1159,6 +1161,15 @@ class BaseModel(NN):
             data :
                 raw unprepared data which will be given to :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y from it.
+            cv : str
+                It can be any valid cross validation name from sklearn library such as
+                    - KFold
+                    - GroupKFold
+                if None, ``cross_validator`` argument will be used to define it
+            cv_kws :
+                keyword arguments that will be given to initialize cv. For example if ``cv`` is ``KFold``
+                then cv_kws can be
+                    >>> {'n_splits': 5}
             scoring : (default=None)
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
@@ -1212,11 +1223,11 @@ class BaseModel(NN):
 
         scores = []
 
-        if self.config['cross_validator'] is None:
+        if self.config['cross_validator'] is None and cv is None:
             raise ValueError("Provide the `cross_validator` argument to the `Model` class upon initiation")
 
-        cross_validator = list(self.config['cross_validator'].keys())[0]
-        cross_validator_args = self.config['cross_validator'][cross_validator]
+        cross_validator = cv or list(self.config['cross_validator'].keys())[0]
+        cross_validator_args = cv_kws or self.config['cross_validator'][cross_validator]
 
         if data is None:  # prepared data is given
             from .utils.utils import TrainTestSplit

@@ -26,6 +26,40 @@ outputs = ['blaTEM_coppml']
 df = busan_beach(input_features, outputs)
 
 
+def test_cross_val(scoring):
+    comparisons = MLRegressionExperiments(
+        input_features=input_features,
+        output_features=outputs,
+        nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
+                    'features': input_features},
+        cross_validator={"KFold": {"n_splits": 5}},
+        exp_name=f"MLRegrCrossVal_{dateandtime_now()}",
+        verbosity=0,
+        show=False, save=False)
+
+    comparisons.fitcv(data=df,
+                      include=[
+                          'HistGradientBoostingRegressor',
+                          'RandomForestRegressor'],
+                      scoring=scoring)
+    comparisons.compare_errors('r2', data=df)
+    comparisons.taylor_plot(data=df)
+    comparisons.plot_cv_scores()
+    comparisons.plot_cv_scores(scoring='mae')
+    comparisons.taylor_plot(data=df, include=['GaussianProcessRegressor',
+                                              'RandomForestRegressor'])
+    comparisons.plot_cv_scores(include=['GaussianProcessRegressor',
+                                        'RandomForestRegressor'])
+
+    models = comparisons.sort_models_by_metric('r2')
+    assert isinstance(models, pd.DataFrame)
+
+    comparisons.compare_regression_plots(data=df)
+    comparisons.compare_residual_plots(data=df)
+    comparisons.compare_edf_plots(data=df)
+    return
+
+
 class TestExperiments(unittest.TestCase):
 
     def test_dryrun(self):
@@ -108,37 +142,15 @@ class TestExperiments(unittest.TestCase):
 
         return
 
-    def test_cross_val(self):
+    def test_cross_val_with_multiple_scoring(self):
 
-        comparisons = MLRegressionExperiments(
-            input_features=input_features,
-            output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
-                        'features': input_features},
-            cross_validator = {"KFold": {"n_splits": 5}},
-            exp_name=f"MLRegrCrossVal_{dateandtime_now()}",
-            verbosity=0,
-            show=False, save=False)
+        test_cross_val(['r2', 'r2_score', 'rmse', 'mae'])
 
-        comparisons.fit(data=df,
-                        cross_validate=True,
-                        include=[
-                       'HistGradientBoostingRegressor',
-                       'RandomForestRegressor'])
-        comparisons.compare_errors('r2', data=df)
-        comparisons.taylor_plot(data=df)
-        comparisons.plot_cv_scores()
-        comparisons.taylor_plot(data=df, include=['GaussianProcessRegressor',
-                                                     'RandomForestRegressor'])
-        comparisons.plot_cv_scores(include=['GaussianProcessRegressor',
-                                                        'RandomForestRegressor'])
+        return
 
-        models = comparisons.sort_models_by_metric('r2')
-        assert isinstance(models, pd.DataFrame)
+    def test_cross_val_with_single_scoring(self):
 
-        comparisons.compare_regression_plots(data=df)
-        comparisons.compare_residual_plots(data=df)
-        comparisons.compare_edf_plots(data=df)
+        test_cross_val('r2')
 
         return
 
