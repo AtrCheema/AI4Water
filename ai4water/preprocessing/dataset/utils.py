@@ -42,15 +42,15 @@ def check_for_classification(label: np.ndarray, to_categorical):
     assert isinstance(label, np.ndarray), f"""
                             classification problem for label of type {label.__class__.__name__} not implemented yet"""
 
-    # for clsasification, it should be 2d
-    label = label.reshape(-1, label.shape[1])
+    # for clsasification, it should be 2d and integer
+    labels = label.reshape(-1, label.shape[1])
     if to_categorical:
-        assert label.shape[1] == 1
-        label = OneHotEncoder(sparse=False).fit_transform(label)
+        assert labels.shape[1] == 1
+        labels = OneHotEncoder(sparse=False).fit_transform(labels)
     # else:   # mutlti_label/binary problem
     #     # todo, is only binary_crossentropy is binary/multi_label problem?
     #     pass #assert self.loss_name() in ['binary_crossentropy']
-    return label
+    return labels.astype(np.int32)
 
 
 def decode(json_string):

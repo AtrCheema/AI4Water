@@ -153,6 +153,21 @@ class TestMiscFunctionalities(unittest.TestCase):
 
         return
 
+    def test_check_for_cls(self):
+        data = pd.DataFrame(np.random.randint(0, 10, size=(100, 3)),
+                            columns=['a', 'b', 'c'])
+        data['date'] = data.index
+        config = {'input_features':['b'],
+                  'output_features': ['c'],
+                  'split_random': True,
+                  'mode': 'classification',
+                  }
+
+        ds = DataSet(data, verbosity=0, **config)
+        x, y = ds.training_data()
+        assert 'int' in y.dtype.name
+        return
+
 
 if __name__ == "__main__":
     unittest.main()
