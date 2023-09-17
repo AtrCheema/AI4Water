@@ -2060,24 +2060,27 @@ class AttribtueSetter(object):
 
         return _default
 
-    def is_multilabel(self,
-                      output_features='',
-                      ):
+    def is_multilabel(
+            self,
+            output_features='',
+    )->bool:
         if self.mode == "classification":
             if len(output_features) > 1:
                 return True
         return False
 
-    def classes(self, y: np.ndarray):
+    def classes(self, y: np.ndarray)->np.ndarray:
+        """returns a 1d np array because sklearn's classes_ attribute is np
+        array instead of list"""
 
         if self.mode == "regression":
-            return []
+            return np.array([])
         if len(y) != y.size:
             # nd array, one hot encoded
-            return [i for i in range(y.shape[-1])]
-        return list(np.unique(y[~np.isnan(y)]))
+            return np.array([i for i in range(y.shape[-1])])
+        return np.unique(y[~np.isnan(y)])
 
-    def is_binary(self, y):
+    def is_binary(self, y)->bool:
         if self.mode == "regression":
             return False
 

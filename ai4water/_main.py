@@ -2527,14 +2527,18 @@ class BaseModel(NN):
         """
 
         # when an instance of Model is created, config is written, which
-        # will overwrite these attributes so we need to keep track of them
+        # will overwrite these attributes, so we need to keep track of them
         # so that after building the model, we can set these attributes to Model
         attrs = {}
         with open(config_path, 'r') as fp:
             config = json.load(fp)
         for attr in ['classes_', 'num_classes_', 'is_binary_', 'is_multiclass_', 'is_multilabel_']:
             if attr in config:
-                attrs[attr] = config[attr]
+                if attr == 'classes_':
+                    # because classes_ attribute should be np array instead of list
+                    attrs[attr] = np.array(config[attr])
+                else:
+                    attrs[attr] = config[attr]
 
         model = cls._get_config_and_path(
             cls,

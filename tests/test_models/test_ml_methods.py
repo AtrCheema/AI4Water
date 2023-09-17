@@ -7,8 +7,9 @@ site.addsitedir(ai4_dir)
 
 
 from ai4water.tf_attributes import tf
+from ai4water.datasets import MtropicsLaos
 
-if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+if tf and 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
     from ai4water.functional import Model
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
 else:
@@ -34,7 +35,7 @@ df_class = pd.DataFrame(np.concatenate([data_class['data'], data_class['target']
 def run_class_test(method, mode=None):
 
     if mode is None:
-        mode = "classification" if "class" in method else "regression"
+        mode = "classification" if "Class" in method else "regression"
 
     if method not in ["STACKINGREGRESSOR", "VOTINGREGRESSOR",  "LOGISTICREGRESSIONCV", # has convergence issues
                       "RIDGE_REGRESSION", "MULTIOUTPUTREGRESSOR", "REGRESSORCHAIN", "REGRESSORMIXIN",
@@ -53,7 +54,7 @@ def run_class_test(method, mode=None):
             val_fraction=0.2,
             mode=mode,
             model={method: kwargs},
-            verbosity=0)
+            verbosity=-1)
 
         return model.fit(data=df_reg if mode=="regression" else df_class)
 
@@ -354,7 +355,7 @@ class TestMLMethods(unittest.TestCase):
             train_fraction=0.7,
             category="ML",
             mode="regression",
-            model={"XGBRegressor": {}},
+            model={"RandomForestRegressor": {}},
             split_random=True,
             verbosity=0)
 
@@ -363,6 +364,25 @@ class TestMLMethods(unittest.TestCase):
         t, p = model.predict_on_test_data(data=df_reg, return_true=True)
         self.assertGreater(len(t), 1)
         self.assertGreater(len(trtt), 1)
+        return
+
+    def test_classes_attribute(self):
+        # make sure that model.classes_ is numpy array
+        data = MtropicsLaos(
+            path=r'D:\data\MtropicsLaos'
+        ).make_classification(
+            input_features=['air_temp', 'rel_hum'],
+            lookback_steps=1)
+
+        inputs = data.columns.tolist()[0:-1]
+        outputs = data.columns.tolist()[-1:]
+
+        model = Model(model="GradientBoostingClassifier", verbosity=-1,
+                      input_features=inputs, output_features=outputs)
+        model.fit(data=data)
+
+        assert isinstance(model.classes_, np.ndarray)
+
         return
 
 
