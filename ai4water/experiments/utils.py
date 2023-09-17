@@ -412,6 +412,7 @@ def classification_space(
 
     ridge_cls = _ridge_classifier(num_samples=num_samples)
     ridge_cls_cv = _ridge_classifiercv()
+    rf_cls = _RandomForestClassifier(num_samples=num_samples)
 
     spaces = {
         "AdaBoostClassifier": {
@@ -627,14 +628,9 @@ def classification_space(
             "x0":
                 ['uniform', 'auto', 10, 1]},
         "RandomForestClassifier": {
-            "param_space": [
-                Integer(low=50, high=1000, name='n_estimators', num_samples=num_samples),
-                Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
-                Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
-                Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')],
-            "x0":
-                [100, 5, 2, 0.2, 'auto']},
+            "param_space": rf_cls.space,
+            "x0": rf_cls.x0
+        },
         "RidgeClassifier": {
             "param_space": ridge_cls.space,
             "x0":
@@ -907,6 +903,22 @@ class _ExtraTreesRegressor(object):
                     Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
                     Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')]
         self.x0 = [100, 5, 2, 1, 0.0, 'auto']
+        if sklearn.__version__ > "1.1.0":  # auto is deprecated
+            self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
+            self.x0[-1] = "sqrt"
+
+
+class _RandomForestClassifier(object):
+    def __init__(self, num_samples):
+        import sklearn
+
+        self.space = [
+            Integer(low=50, high=1000, name='n_estimators', num_samples=num_samples),
+            Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
+            Integer(low=2, high=10, name='min_samples_split', num_samples=num_samples),
+            Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
+            Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')]
+        self.x0 = [100, 5, 2, 0.2, 'auto']
         if sklearn.__version__ > "1.1.0":  # auto is deprecated
             self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
             self.x0[-1] = "sqrt"

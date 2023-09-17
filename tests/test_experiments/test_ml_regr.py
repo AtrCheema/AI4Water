@@ -173,6 +173,8 @@ class TestExperiments(unittest.TestCase):
                 post_optimize='train_best')
 
         exp2 = MLRegressionExperiments.from_config(os.path.join(exp.exp_path, "config.json"))
+        exp2.show = False
+        exp2.save = False
 
         self.assertEqual(exp2.exp_name, exp.exp_name)
         self.assertEqual(exp2.exp_path, exp.exp_path)

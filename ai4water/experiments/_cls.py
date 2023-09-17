@@ -58,6 +58,9 @@ class MLClassificationExperiments(Experiments):
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
 
+        # this will help in data preparation e.g. converting labels to integers by DataSet
+        model_kws['mode'] = 'classification'
+
         super().__init__(
             cases=cases,
             exp_name=exp_name,

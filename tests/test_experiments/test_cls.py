@@ -14,7 +14,9 @@ from ai4water.experiments import MLClassificationExperiments
 from ai4water.datasets import MtropicsLaos
 
 
-data = MtropicsLaos().make_classification(
+data = MtropicsLaos(
+    path=r'D:\data\MtropicsLaos'
+).make_classification(
     input_features=['air_temp', 'rel_hum'],
     lookback_steps=1)
 
@@ -49,7 +51,7 @@ data_multiclass, input_features_cls = make_multiclass_classification(100, 10, 5)
 
 class TestCls(unittest.TestCase):
 
-    def test_basic(self):
+    def test_basic(self): # todo
         exp = MLClassificationExperiments(
             input_features=inputs,
             output_features=outputs,
@@ -62,7 +64,8 @@ class TestCls(unittest.TestCase):
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
             'LinearDiscriminantAnalysis',
         ],
-                include=['model_XGBRFClassifier', 'model_XGBClassifier']
+                include=['model_GradientBoostingClassifier',
+                         'model_HistGradientBoostingClassifier']
                 )
         exp.compare_errors('accuracy', data=data)
         exp.compare_errors('f1_score', data=data)
@@ -82,20 +85,19 @@ class TestCls(unittest.TestCase):
             show=False, save=False
         )
 
-        exp.fit(data=data,
+        exp.fitcv(data=data,
                 exclude=[
                     'LabelPropagation', 'LabelSpreading',
                     'QuadraticDiscriminantAnalysis',
                     'LinearDiscriminantAnalysis'
                 ],
-                include=['model_XGBRFClassifier', 'RandomForestClassifier'],
-                cross_validate=True,
+                include=['model_GradientBoostingClassifier', 'RandomForestClassifier'],
                 )
 
         exp.plot_cv_scores()
         return
 
-    def test_binary_optimize(self):
+    def test_binary_optimize(self): # todo
         """run MLClassificationExperiments for binary classification with optimization"""
         exp = MLClassificationExperiments(
             input_features=inputs,
@@ -108,7 +110,7 @@ class TestCls(unittest.TestCase):
         exp.fit(data=data,
                 include=[
                     # "model_AdaBoostClassifier", TODO
-                    "model_XGBClassifier",
+                    "model_HistGradientBoostingClassifier",
                     "RandomForestClassifier"
                 ],
                 run_type="optimize",
@@ -127,7 +129,7 @@ class TestCls(unittest.TestCase):
 
         exp.fit(data=data_multiclass,
                             include=[
-                                "model_XGBClassifier",
+                                "model_HistGradientBoostingClassifier",
                                 "RandomForestClassifier"
                             ],
                 )
@@ -145,7 +147,7 @@ class TestCls(unittest.TestCase):
 
         exp.fit(data=data_multiclass,
                 include=[
-                    "model_XGBClassifier",
+                    "model_HistGradientBoostingClassifier",
                     "RandomForestClassifier"
                 ],
                 cross_validate=True

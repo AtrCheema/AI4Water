@@ -1,3 +1,4 @@
+
 import gc
 import json
 import math
@@ -6,6 +7,8 @@ from typing import Union, Tuple, List, Callable, Optional
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
+from ai4water.backend import h5py
+from ai4water.backend import skopt
 from ai4water.backend import tf, os, np, pd, plt, easy_mpl, sklearn
 from ai4water.backend import xgboost, catboost, lightgbm
 from ai4water.hyperopt import HyperOpt
@@ -399,6 +402,8 @@ class Experiments(object):
             **hpo_kws,
     ):
 
+        check_skopt_availability()
+
         def objective_fn(**suggested_paras) -> float:
             config = self._get_config(model_type, model_name, **suggested_paras)
 
@@ -559,6 +564,8 @@ class Experiments(object):
         """
         if cross_validate:
             warnings.warn("Please use .fitcv() method instead of .fit()")
+
+            setattr(self, 'scoring_', None)
 
         return self._fit0(x, y, data, validation_data,
                          run_type=run_type,
@@ -1961,8 +1968,8 @@ Available cases are {self.models} and you wanted to include
             self,
             x,
             y,
-            func,
-            name,
+            func:Callable,
+            name:str,
             figsize:tuple=None,
             **kwargs
     ):
@@ -2603,7 +2610,7 @@ Available cases are {self.models} and you wanted to include
                                   category=self.category,
                                   **data_config)
 
-                if save:
+                if save and h5py:
                     verbosity = dataset.verbosity
                     dataset.verbosity = 0
                     dataset.to_disk()
@@ -2899,3 +2906,9 @@ def _combine_training_validation_data(
         raise NotImplementedError
 
     return x, y
+
+
+def check_skopt_availability():
+    if skopt is None:
+        raise NotImplementedError(f"skopt must be installed to optimize hyperparameters")
+    return
