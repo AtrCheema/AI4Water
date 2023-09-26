@@ -16,6 +16,8 @@ from ai4water.postprocessing import ProcessPredictions
 
 t = np.random.random(100)
 p = np.random.random(100)
+t1 = np.random.random(100)
+p1 = np.random.random(100)
 t_nan = t
 t_nan[20] = np.nan
 t_cls = np.random.randint(0, 2, (100, 1))
@@ -63,8 +65,38 @@ class TestProcessPrediction(unittest.TestCase):
                                 save=self.save,
                                 )
 
-        ax = pp.edf_plot(t, p)
+        ax = pp.edf_plot(t, p, for_prediction=False)
         assert isinstance(ax, plt.Axes)
+        return
+
+    def test_edf_plot_output_with_prediction(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                show=self.show,
+                                save=self.save,
+                                )
+
+        output = pp.edf_plot(t, p)
+        assert isinstance(output, list)
+        assert isinstance(output[0], plt.Axes)
+        assert isinstance(output[1], plt.Axes)
+        return
+
+    def test_reusability_of_edf_output(self):
+        pp = ProcessPredictions(mode="regression",
+                                forecast_len=1,
+                                show=self.show,
+                                save=self.save,
+                                )
+
+        output = pp.edf_plot(t, p)
+        output[0].get_legend().remove()
+        output[1].get_legend().remove()
+        output = pp.edf_plot(t1, p1, marker='*', ax=output[0], pred_axes=output[1],
+                             label=("Absolute Error 2", "Prediction 2"))
+        assert isinstance(output, list)
+        assert isinstance(output[0], plt.Axes)
+        assert isinstance(output[1], plt.Axes)
         return
 
     def test_rgr_1_output_nan(self):
@@ -171,6 +203,7 @@ class TestProcessPrediction(unittest.TestCase):
         assert isinstance(img, matplotlib.image.AxesImage)
         plt.close('all')
         return
+
 
 if __name__ == "__main__":
     unittest.main()

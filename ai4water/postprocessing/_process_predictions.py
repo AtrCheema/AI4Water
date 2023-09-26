@@ -42,7 +42,7 @@ Metrics = {
 
 
 class ProcessPredictions(Plot):
-    """post processing of results after training."""
+    """post-processing of results after training."""
 
     available_plots = [
         'regression', 'prediction', 'residual',
@@ -266,11 +266,14 @@ class ProcessPredictions(Plot):
             predicted,
             for_prediction:bool = True,
             color=None,
+            ax: plt.Axes = None,
+            pred_axes:plt.Axes = None,
             marker='-',
+            label = None,
             prefix='',
             where='',
             **kwargs
-    )->plt.Axes:
+    )->Union[plt.Axes, List[plt.Axes]]:
         """cumulative distribution function of absolute error between true and
         predicted.
 
@@ -282,10 +285,24 @@ class ProcessPredictions(Plot):
             array like
         for_prediction : bool
             whether to plot edf of prediction as well or not
+        ax : plt.Axes
+        pred_axes : plt.Axes
+            axes on which to draw the edf of prediction array. It is only valid
+            if ``for_prediction`` is set to True
         color :
-        marker :
+            color for edf line. It can a tuple if ``for_prediction`` is set to True
+        marker : str (default='-')
+            marker to use to draw line. It can a tuple if ``for_prediction`` is
+            set to True
+        label : str
+            Label to use for legend
+            It can a tuple if ``for_prediction`` is set to True.
         prefix :
         where :
+
+        Returns
+        --------
+        a matplotlib axes or a list of matplotlib axes if for_prediction is set to True
         """
 
         true = _to_1darray(true)
@@ -301,6 +318,14 @@ class ProcessPredictions(Plot):
             assert isinstance(color, tuple), f"{type(color)}"
         color1, color2 = color
 
+        if label is None:
+            label = ("Absolute Error", "Prediction")
+        elif not isinstance(label, tuple):
+            label = (label, label)
+        else:
+            assert isinstance(label, tuple), f"{type(color)}"
+        label1, label2 = label
+
         if marker is None:
             marker = ("-", "-")
         elif not isinstance(marker, tuple):
@@ -312,32 +337,37 @@ class ProcessPredictions(Plot):
 
         _plot_kws = dict(
             color=color1, show=False,
-            label="Error",
+            label=label1,
             marker=marker1,
         )
 
         ax = edf_plot(
-            error, **_plot_kws
+            error,
+            ax=ax,
+            **_plot_kws
         )
-        ax.legend(loc=(0.7, 0.1), frameon=False)
+        ax.legend(frameon=False)
+        output = ax
         if for_prediction:
             ax.grid(False)
-            ax.set_xlabel("Absolute Error", color=color1)
+            ax.set_xlabel(label1, color=color1)
             #ax.set_xticklabels(ax.get_xticklabels(), color="#005066")
             ax.set_title('')
-            ax2 = ax.twiny()
-            ax = edf_plot(predicted, show=False,
+            ax2 = pred_axes or ax.twiny()
+            ax2 = edf_plot(predicted, show=False,
                           marker=marker2,
-                          label="Prediction",
+                          label=label2,
                      color = color2, ax=ax2)
-            ax.grid(visible=True, ls='--', color='lightgrey')
-            ax.set_title('')
-            ax.set_xlabel("Prediction", color= color2)
+            ax2.grid(visible=True, ls='--', color='lightgrey')
+            ax2.set_title('')
+            ax2.set_xlabel(label2, color= color2)
             #ax.set_xticklabels(ax.get_xticklabels(), color="#B3331D")
-            #ax.legend(loc="lower right")
+
             ax2.legend(loc=(0.7, 0.18), frameon=False)
+            output = [output, ax2]
+
         self.save_or_show(fname=f"{prefix}_error_dist", where=where)
-        return ax
+        return output
 
     def murphy_plot(
             self, true,
