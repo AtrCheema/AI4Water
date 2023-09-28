@@ -13,6 +13,7 @@ def regression_space(
     dt_rgr = _dt_regressor(num_samples=num_samples)
     extree_rgr = _ExtraTreeRegressor(num_samples=num_samples)
     extrees_rgr = _ExtraTreesRegressor(num_samples=num_samples)
+    rf_rgr = _RandomForestRegressor(num_samples=num_samples)
 
     spaces = {
         "AdaBoostRegressor":{
@@ -235,16 +236,9 @@ def regression_space(
             "x0":
                 None},
         "RandomForestRegressor": {
-            "param_space": [
-                Integer(low=5, high=50, name='n_estimators', num_samples=num_samples),
-                Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-                Real(low=0.1, high=0.5, name='min_samples_split', num_samples=num_samples),
-                # Real(low=0.1, high=1.0, name='min_samples_leaf'),
-                Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
-                Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')],
-            "x0":
-                [10, 5, 0.4,  # 0.2,
-                 0.1, 'auto']},
+            "param_space": rf_rgr.space,
+            "x0": rf_rgr.x0
+                },
         "GradientBoostingRegressor": {
             "param_space": [
                 # number of boosting stages to perform
@@ -923,6 +917,23 @@ class _RandomForestClassifier(object):
             self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
             self.x0[-1] = "sqrt"
 
+class _RandomForestRegressor(object):
+    def __init__(self, num_samples):
+        import sklearn
+
+        self.space = [
+                Integer(low=5, high=50, name='n_estimators', num_samples=num_samples),
+                Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
+                Real(low=0.1, high=0.5, name='min_samples_split', num_samples=num_samples),
+                # Real(low=0.1, high=1.0, name='min_samples_leaf'),
+                Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
+                Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')]
+        self.x0 = [10, 5, 0.4,  # 0.2,
+                 0.1, 'auto']
+
+        if sklearn.__version__ > "1.1.0":  # auto is deprecated
+            self.space[-1] = Categorical(categories=['sqrt', 'log2'], name="max_features")
+            self.x0[-1] = "sqrt"
 
 def lgbm_num_leaves(num_samples:int = None):
     if num_samples and num_samples > 1000:

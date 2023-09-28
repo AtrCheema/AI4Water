@@ -1235,7 +1235,7 @@ class DataSet(_DataSet):
         else:
 
             if num_outs == 1:
-                tot_obs = data.shape[0] - int(data[self.output_features].isna().sum()) - more
+                tot_obs = data.shape[0] - int(data[self.output_features].isna().sum().iloc[0]) - more
                 tot_obs = max(tot_obs, max_tot_obs)
 
             else:
