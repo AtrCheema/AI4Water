@@ -273,7 +273,8 @@ class fANOVA(object):
             if tree.feature[node_index] < 0:
                 value = tree.value[node_index]
                 weight = _get_cardinality(subspace)
-                statistics[node_index] = [value, weight]
+                assert len(value)==1
+                statistics[node_index] = [value.item(), weight]
             else:
                 for child_node_index, child_subspace in zip(
                     _get_node_children(node_index, tree),
@@ -334,7 +335,7 @@ class fANOVA(object):
             prod_midpoints = itertools.product(*midpoints)
             prod_sizes = itertools.product(*sizes)
 
-            sample = np.full(self._n_features, np.nan, dtype=np.float)
+            sample = np.full(self._n_features, np.nan, dtype=float)
 
             values: Union[List[float], np.ndarray] = []
             weights: Union[List[float], np.ndarray] = []
