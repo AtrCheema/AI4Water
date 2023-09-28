@@ -1,9 +1,17 @@
+
 import json
 import copy
 import inspect
 import warnings
 from typing import Union, Dict
 from collections import OrderedDict
+
+from ai4water.utils.utils import JsonEncoder
+from ai4water.utils.utils import clear_weights
+from ai4water.utils.utils import jsonize, dateandtime_now
+from ai4water.utils.visualizations import edf_plot
+from ai4water.backend import hyperopt as _hyperopt
+from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
 from .utils import plot_convergences
 from .utils import get_one_tpe_x_iter
@@ -13,17 +21,12 @@ from .utils import to_skopt_space
 from .utils import save_skopt_results
 from .utils import Dimension
 from .utils import plot_convergence, plot_convergence1
-from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import plot_hyperparameters
+from .utils import plot_evaluations
 
-from ai4water.utils.utils import JsonEncoder
-from ai4water.utils.utils import clear_weights
-from ai4water.utils.utils import jsonize, dateandtime_now
-from ai4water.utils.visualizations import edf_plot
-from ai4water.backend import hyperopt as _hyperopt
-from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
-
+from ._space import Categorical, Real, Integer, Space
+from ._imports import SKOPT, HYPEROPT, OPTUNA
 
 GridSearchCV = sklearn.model_selection.GridSearchCV
 RandomizedSearchCV = sklearn.model_selection.RandomizedSearchCV
@@ -34,44 +37,6 @@ bar_chart = easy_mpl.bar_chart
 parallel_coordinates = easy_mpl.parallel_coordinates
 create_subplots = easy_mpl.utils.create_subplots
 hist = easy_mpl.hist
-
-if skopt is None:
-    pass
-else:
-    Space = skopt.space.space.Space
-    forest_minimize = skopt.forest_minimize
-    gp_minimize = skopt.gp_minimize
-    BayesSearchCV = skopt.BayesSearchCV
-    use_named_args = skopt.utils.use_named_args
-    from skopt.plots import plot_evaluations
-
-if _hyperopt is not None:
-    hp = _hyperopt.hp
-    Apply = _hyperopt.pyll.base.Apply
-    fmin_hyperopt = _hyperopt.fmin
-    tpe = _hyperopt.tpe
-    Trials = _hyperopt.Trials
-    rand = _hyperopt.rand
-else:
-    hp = None
-    Apply = None
-    fmin_hyperopt = None
-    tpe = None
-    Trials = None
-    rand = None
-
-if _hyperopt is not None:
-    try:  # atpe is only available in later versions of hyperopt
-        atpe = _hyperopt.atpe
-    except AttributeError:
-        atpe = None
-else:
-    atpe = None
-
-if optuna is None:
-    plot_contour = None
-else:
-    plot_contour = optuna.visualization.plot_contour
 
 from ._fanova import fANOVA
 
@@ -318,7 +283,7 @@ class HyperOpt(object):
                 self.optfn = GridSearchCV(estimator=objective_fn, param_grid=param_space, **kwargs)
 
         elif self.use_skopt_bayes:
-            self.optfn = BayesSearchCV(estimator=objective_fn, search_spaces=param_space, **kwargs)
+            self.optfn = SKOPT.BayesSearchCV(estimator=objective_fn, search_spaces=param_space, **kwargs)
 
     @property
     def backend(self):
@@ -449,10 +414,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     for space in x:
                         assert isinstance(space, Dimension)
                         _param_space[space.name] = space.as_hp()
-                elif isinstance(x[0], Apply):
+                elif isinstance(x[0], HYPEROPT.Apply):
                     _param_space = []
                     for space in x:
-                        assert isinstance(space, Apply), f"""invalid space type {space.__class__.__name__}"""
+                        assert isinstance(space, HYPEROPT.Apply), f"""invalid space type {space.__class__.__name__}"""
                         _param_space.append(space)
                 else:
                     raise NotImplementedError
@@ -677,7 +642,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         dims = self.dims()
         if self.use_named_args:
             # external function and this function accepts named args.
-            @use_named_args(dimensions=dims)
+            @SKOPT.use_named_args(dimensions=dims)
             def fitness(**kwargs):
                 return self.objective_fn(**kwargs, **kws)
             return fitness
@@ -689,9 +654,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         by the user
         """
         if self.algorithm == "bayes":
-            minimize_func = gp_minimize
+            minimize_func = SKOPT.gp_minimize
         else: # bayes_rf
-            minimize_func = forest_minimize
+            minimize_func = SKOPT.forest_minimize
 
         kwargs = self.gpmin_args
         if 'num_iterations' in kwargs:
@@ -871,13 +836,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         kwargs are the arguments that will go to objective function
         """
         suggest_options = {
-            'tpe': tpe.suggest,
-            'random': rand.suggest
+            'tpe': HYPEROPT.tpe.suggest,
+            'random': HYPEROPT.rand.suggest
         }
-        if atpe is not None:
-            suggest_options.update({'atpe': atpe.suggest})
+        if HYPEROPT.atpe is not None:
+            suggest_options.update({'atpe': HYPEROPT.atpe.suggest})
 
-        trials = Trials()
+        trials = HYPEROPT.Trials()
         model_kws = self.gpmin_args
         if 'num_iterations' in model_kws:
             model_kws['max_evals'] = model_kws.pop('num_iterations')
@@ -901,7 +866,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             else:
                 raise NotImplementedError
 
-        best = fmin_hyperopt(objective_f,
+        best = HYPEROPT.fmin_hyperopt(objective_f,
                              space=space,
                              algo=suggest_options[self.algorithm],
                              trials=trials,
@@ -1003,6 +968,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return np.array([self.trials.results[i]['loss'] for i in range(self.num_iterations)])
 
         elif self.backend == 'optuna':
+            if optuna.__version__ <= "2.0.0":
+                return np.array([s.value for s in self.study.trials])
             return np.array([s.values for s in self.study.trials])
 
         elif self.use_skopt_bayes or self.use_sklearn:
@@ -1208,7 +1175,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         # plot of hyperparameter space as explored by the optimizer
         plt.close('all')
-        if len(self.space()) < 20 and skopt is not None:
+        if len(self.space()) < 20:
             self._plot_evaluations()
 
         if importance:
@@ -1233,7 +1200,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(fname=os.path.join(self.opt_path, "loss_histogram.png"),
                         bbox_inches="tight")
 
-        if hp is not None:
+        if HYPEROPT.hp is not None:
             plt.close('all')
             plot_hyperparameters(
                 self._hpo_trials(),
@@ -1244,7 +1211,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             if self.backend == 'optuna':
 
-                fig = plot_contour(self.study)
+                fig = OPTUNA.plot_contour(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),
                                     auto_open=False)
 

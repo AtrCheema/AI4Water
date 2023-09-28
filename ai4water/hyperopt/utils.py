@@ -1,37 +1,22 @@
 
 import json
 from itertools import islice
+from itertools import count
+from functools import partial
 from collections import OrderedDict
 
-try:
-    from skopt.plots import plot_evaluations, plot_objective
-except (ModuleNotFoundError, ImportError):
-    plot_evaluations, plot_objective = None, None
+from matplotlib.ticker import MaxNLocator, FuncFormatter
 
 from ai4water.utils.utils import jsonize, clear_weights
-from ai4water.backend import os, np, pd, mpl, plt, skopt, easy_mpl
-from ai4water.backend import hyperopt as _hyperopt
-from ._space import Categorical, Real, Integer, Dimension
+from ai4water.backend import os, np, pd, mpl, plt, easy_mpl
+from ._space import Categorical, Real, Integer, Dimension, Space
 
-
-if skopt is None:
-    pass
-else:
-    Space = skopt.space.space.Space
-    dump = skopt.utils.dump
-
-if _hyperopt is not None:
-    space_eval = _hyperopt.space_eval
-    hp = _hyperopt.hp
-    miscs_to_idxs_vals = _hyperopt.base.miscs_to_idxs_vals
-else:
-    space_eval, hp = None, None
-    miscs_to_idxs_vals = None
+from ._imports import SKOPT, HYPEROPT
 
 plot = easy_mpl.plot
 
 
-
+##
 
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
@@ -67,7 +52,7 @@ def get_one_tpe_x_iter(tpe_vals, param_space: dict, sort=True):
     for para, para_val in tpe_vals.items():
         if is_choice(param_space[para]):
             hp_assign = {para: para_val[0]}
-            cval = space_eval(param_space[para], hp_assign)
+            cval = HYPEROPT.space_eval(param_space[para], hp_assign)
             x_iter[para] = cval
         else:
             x_iter[para] = para_val[0]
@@ -217,7 +202,7 @@ def plot_hyperparameters(
 ):
     """Copying from hyperopt because original hyperopt does not allow saving the plot."""
 
-    idxs, vals = miscs_to_idxs_vals(trials.miscs)
+    idxs, vals = HYPEROPT.miscs_to_idxs_vals(trials.miscs)
     losses = trials.losses()
     finite_losses = [y for y in losses if y not in (None, float("inf"))]
     asrt = np.argsort(finite_losses)
@@ -297,7 +282,7 @@ def post_process_skopt_results(
             pass
         else:
             plt.close('all')
-            _ = plot_objective(skopt_results)
+            _ = SKOPT.plot_objective(skopt_results)
             plt.savefig(os.path.join(pref, 'objective'), dpi=400, bbox_inches='tight')
 
     clear_weights(results=results, opt_dir=opt_path, rename=rename)
@@ -318,7 +303,7 @@ def save_skopt_results(skopt_results, opt_path):
         with open(fname + '.json', 'w') as fp:
             json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
 
-    dump(skopt_results, os.path.join(opt_path, 'hpo_results.bin'),
+    SKOPT.dump(skopt_results, os.path.join(opt_path, 'hpo_results.bin'),
          store_objective=False)
     return
 
@@ -958,3 +943,278 @@ def make_space(x):
     else:
         raise NotImplementedError
     return space
+
+
+def plot_evaluations(result, bins=20, dimensions=None,
+                     plot_dims=None):
+    """Visualize the order in which points were sampled during optimization.
+
+    This creates a 2-d matrix plot where the diagonal plots are histograms
+    that show the distribution of samples for each search-space dimension.
+
+    The plots below the diagonal are scatter-plots of the samples for
+    all combinations of search-space dimensions.
+
+    The order in which samples
+    were evaluated is encoded in each point's color.
+
+    A red star shows the best found parameters.
+
+    Parameters
+    ----------
+    result : `OptimizeResult`
+        The optimization results from calling e.g. `gp_minimize()`.
+
+    bins : int, bins=20
+        Number of bins to use for histograms on the diagonal.
+
+    dimensions : list of str, default=None
+        Labels of the dimension
+        variables. `None` defaults to `space.dimensions[i].name`, or
+        if also `None` to `['X_0', 'X_1', ..]`.
+
+    plot_dims : list of str and int, default=None
+        List of dimension names or dimension indices from the
+        search-space dimensions to be included in the plot.
+        If `None` then use all dimensions except constant ones
+        from the search-space.
+
+    Returns
+    -------
+    ax : `Matplotlib.Axes`
+        A 2-d matrix of Axes-objects with the sub-plots.
+
+    """
+    space = result.space
+    # Convert categoricals to integers, so we can ensure consistent ordering.
+    # Assign indices to categories in the order they appear in the Dimension.
+    # Matplotlib's categorical plotting functions are only present in v 2.1+,
+    # and may order categoricals differently in different plots anyway.
+    samples, minimum, iscat = _map_categories(space, result.x_iters, result.x)
+    order = range(samples.shape[0])
+
+    if plot_dims is None:
+        # Get all dimensions.
+        plot_dims = []
+        for row in range(space.n_dims):
+            if space.dimensions[row].is_constant:
+                continue
+            plot_dims.append((row, space.dimensions[row]))
+    else:
+        plot_dims = space[plot_dims]
+    # Number of search-space dimensions we are using.
+    n_dims = len(plot_dims)
+    if dimensions is not None:
+        assert len(dimensions) == n_dims
+
+    fig, ax = plt.subplots(n_dims, n_dims,
+                           figsize=(2 * n_dims, 2 * n_dims))
+
+    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95,
+                        hspace=0.1, wspace=0.1)
+
+    for i in range(n_dims):
+        for j in range(n_dims):
+            if i == j:
+                index, dim = plot_dims[i]
+                if iscat[j]:
+                    bins_ = len(dim.categories)
+                elif dim.prior == 'log-uniform':
+                    low, high = space.bounds[index]
+                    bins_ = np.logspace(np.log10(low), np.log10(high), bins)
+                else:
+                    bins_ = bins
+                if n_dims == 1:
+                    ax_ = ax
+                else:
+                    ax_ = ax[i, i]
+                ax_.hist(samples[:, index], bins=bins_,
+                         range=None if iscat[j] else dim.bounds)
+
+            # lower triangle
+            elif i > j:
+                index_i, dim_i = plot_dims[i]
+                index_j, dim_j = plot_dims[j]
+                ax_ = ax[i, j]
+                ax_.scatter(samples[:, index_j], samples[:, index_i],
+                            c=order, s=40, lw=0., cmap='viridis')
+                ax_.scatter(minimum[index_j], minimum[index_i],
+                            c=['r'], s=100, lw=0., marker='*')
+
+    # Make various adjustments to the plots.
+    return _format_scatter_plot_axes(ax, space, ylabel="Number of samples",
+                                     plot_dims=plot_dims,
+                                     dim_labels=dimensions)
+
+
+def _get_ylim_diagonal(ax):
+    """Get the min / max of the ylim for all diagonal plots.
+    This is used in _adjust_fig() so the ylim is the same
+    for all diagonal plots.
+
+    Parameters
+    ----------
+    ax : `Matplotlib.Axes`
+        2-dimensional matrix with Matplotlib Axes objects.
+
+    Returns
+    -------
+    ylim_diagonal : tuple(int)
+        The common min and max ylim for the diagonal plots.
+
+    """
+
+    # Number of search-space dimensions used in this plot.
+    if isinstance(ax, (list, np.ndarray)):
+        n_dims = len(ax)
+        # Get ylim for all diagonal plots.
+        ylim = [ax[row, row].get_ylim() for row in range(n_dims)]
+    else:
+        n_dim = 1
+        ylim = [ax.get_ylim()]
+
+    # Separate into two lists with low and high ylim.
+    ylim_lo, ylim_hi = zip(*ylim)
+
+    # Min and max ylim for all diagonal plots.
+    ylim_min = np.min(ylim_lo)
+    ylim_max = np.max(ylim_hi)
+
+    return ylim_min, ylim_max
+
+
+def _format_scatter_plot_axes(ax, space, ylabel, plot_dims,
+                              dim_labels=None):
+    # Work out min, max of y axis for the diagonal so we can adjust
+    # them all to the same value
+    diagonal_ylim = _get_ylim_diagonal(ax)
+
+    # Number of search-space dimensions we are using.
+    if isinstance(ax, (list, np.ndarray)):
+        n_dims = len(plot_dims)
+    else:
+        n_dims = 1
+
+    if dim_labels is None:
+        dim_labels = ["$X_{%i}$" % i if d.name is None else d.name
+                      for i, d in plot_dims]
+    # Axes for categorical dimensions are really integers; we have to
+    # label them with the category names
+    iscat = [isinstance(dim[1], Categorical) for dim in plot_dims]
+
+    # Deal with formatting of the axes
+    for i in range(n_dims):  # rows
+        for j in range(n_dims):  # columns
+            if n_dims > 1:
+                ax_ = ax[i, j]
+            else:
+                ax_ = ax
+            index_i, dim_i = plot_dims[i]
+            index_j, dim_j = plot_dims[j]
+            if j > i:
+                ax_.axis("off")
+            elif i > j:  # off-diagonal plots
+                # plots on the diagonal are special, like Texas. They have
+                # their own range so do not mess with them.
+                if not iscat[i]:  # bounds not meaningful for categoricals
+                    ax_.set_ylim(*dim_i.bounds)
+                if iscat[j]:
+                    # partial() avoids creating closures in a loop
+                    ax_.xaxis.set_ticks(np.arange(len(dim_j.categories)))
+                    ax_.xaxis.set_ticklabels(list(dim_j.categories))
+                else:
+                    ax_.set_xlim(*dim_j.bounds)
+                if j == 0:  # only leftmost column (0) gets y labels
+                    ax_.set_ylabel(dim_labels[i])
+                    if iscat[i]:  # Set category labels for left column
+                        ax_.yaxis.set_major_formatter(FuncFormatter(
+                            partial(_cat_format, dim_i)))
+                else:
+                    ax_.set_yticklabels([])
+
+                # for all rows except ...
+                if i < n_dims - 1:
+                    ax_.set_xticklabels([])
+                # ... the bottom row
+                else:
+                    [l.set_rotation(45) for l in ax_.get_xticklabels()]
+                    ax_.set_xlabel(dim_labels[j])
+
+                # configure plot for linear vs log-scale
+                if dim_j.prior == 'log-uniform':
+                    ax_.set_xscale('log')
+                else:
+                    ax_.xaxis.set_major_locator(MaxNLocator(6, prune='both',
+                                                            integer=iscat[j]))
+
+                if dim_i.prior == 'log-uniform':
+                    ax_.set_yscale('log')
+                else:
+                    ax_.yaxis.set_major_locator(MaxNLocator(6, prune='both',
+                                                            integer=iscat[i]))
+
+            else:  # diagonal plots
+                ax_.set_ylim(*diagonal_ylim)
+                if not iscat[i]:
+                    low, high = dim_i.bounds
+                    ax_.set_xlim(low, high)
+                ax_.yaxis.tick_right()
+                ax_.yaxis.set_label_position('right')
+                ax_.yaxis.set_ticks_position('both')
+                ax_.set_ylabel(ylabel)
+
+                ax_.xaxis.tick_top()
+                ax_.xaxis.set_label_position('top')
+                ax_.set_xlabel(dim_labels[j])
+
+                if dim_i.prior == 'log-uniform':
+                    ax_.set_xscale('log')
+                else:
+                    ax_.xaxis.set_major_locator(MaxNLocator(6, prune='both',
+                                                            integer=iscat[i]))
+                    if iscat[i]:
+                        ax_.xaxis.set_major_formatter(FuncFormatter(
+                            partial(_cat_format, dim_i)))
+
+    return ax
+
+
+
+def _map_categories(space, points, minimum):
+    """
+    Map categorical values to integers in a set of points.
+
+    Returns
+    -------
+    mapped_points : np.array, shape=points.shape
+        A copy of `points` with categoricals replaced with their indices in
+        the corresponding `Dimension`.
+
+    mapped_minimum : np.array, shape (space.n_dims,)
+        A copy of `minimum` with categoricals replaced with their indices in
+        the corresponding `Dimension`.
+
+    iscat : np.array, shape (space.n_dims,)
+       Boolean array indicating whether dimension `i` in the `space` is
+       categorical.
+    """
+    points = np.asarray(points, dtype=object)  # Allow slicing, preserve cats
+    iscat = np.repeat(False, space.n_dims)
+    min_ = np.zeros(space.n_dims)
+    pts_ = np.zeros(points.shape)
+    for i, dim in enumerate(space.dimensions):
+        if isinstance(dim, Categorical):
+            iscat[i] = True
+            catmap = dict(zip(dim.categories, count()))
+            pts_[:, i] = [catmap[cat] for cat in points[:, i]]
+            min_[i] = catmap[minimum[i]]
+        else:
+            pts_[:, i] = points[:, i]
+            min_[i] = minimum[i]
+    return pts_, min_, iscat
+
+
+def _cat_format(dimension, x, _):
+    """Categorical axis tick formatter function.  Returns the name of category
+    `x` in `dimension`.  Used with `matplotlib.ticker.FuncFormatter`."""
+    return str(dimension.categories[int(x)])

@@ -5,6 +5,7 @@ from ai4water.utils.utils import dateandtime_now
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
+from ai4water.experiments.utils import _RandomForestRegressor
 
 if skopt is not None:
     from skopt.space.space import Space
@@ -95,11 +96,7 @@ def run_unified_interface(algorithm,
 
             return np.random.randn()
 
-    search_space = [
-        Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features'),
-        Integer(low=3, high=30, name='max_depth', num_samples=num_samples),
-        Real(low=0.1, high=0.5, name='min_samples_split', num_samples=num_samples),
-    ]
+    search_space = _RandomForestRegressor(num_samples).space
 
     optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
                          backend=backend,
@@ -117,8 +114,11 @@ def run_unified_interface(algorithm,
 
     files_to_check = ["convergence.png",
                       "iterations.json",
-     "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
-     'distributions.png',
+                      "edf.png",
+                      "parallel_coordinates.png",
+                      "iterations_sorted.json",
+                      'distributions.png',
+                      "evaluations.png"
      ]
 
     if optuna is not None:

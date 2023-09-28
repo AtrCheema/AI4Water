@@ -2,22 +2,10 @@
 from typing import Union
 
 from ai4water.utils.utils import jsonize
-from ai4water.backend import np, skopt, optuna
+from ai4water.backend import np, skopt
 from ai4water.backend import hp
 
-
-if optuna is not None:
-    CategoricalDistribution = optuna.distributions.CategoricalDistribution
-    UniformDistribution = optuna.distributions.UniformDistribution
-    IntLogUniformDistribution = optuna.distributions.IntLogUniformDistribution
-    IntUniformDistribution = optuna.distributions.IntUniformDistribution
-    LogUniformDistribution = optuna.distributions.LogUniformDistribution
-else:
-    CategoricalDistribution = None
-    UniformDistribution = None
-    IntLogUniformDistribution = None
-    IntUniformDistribution = None
-    LogUniformDistribution = None
+from ._imports import OPTUNA
 
 
 # helper class to be able to print [1, ..., 4] instead of [1, '...', 4]
@@ -43,7 +31,8 @@ else:
 
 
 if skopt is None:
-
+    # minimal classes which will make the submodule work even
+    # when skopt is not installed.
     class _Real(Dimension):
         def __init__(self, low, high, prior="uniform", base=10, transform=None,
                      name=None, dtype=float):
@@ -64,6 +53,11 @@ if skopt is None:
             self.transformer = None
             self.transform_ = transform
 
+        @property
+        def bounds(self):
+            return (self.low, self.high)
+
+
     class _Integer(Dimension):
 
         def __init__(self, low, high, prior="uniform", base=10, transform=None,
@@ -83,6 +77,9 @@ if skopt is None:
             self.dtype = dtype
             self.transform_ = transform
 
+        @property
+        def bounds(self):
+            return (self.low, self.high)
 
     class _Categorical(Dimension):
         def __init__(self, categories, prior=None, transform=None, name=None):
@@ -96,10 +93,27 @@ if skopt is None:
                                       len(self.categories))
             else:
                 self.prior_ = prior
+
+        @property
+        def bounds(self):
+            return self.categories
+
+    class _Space(object):
+        def __init__(self, dimensions):
+            self.dimensions = [dim for dim in dimensions]
+
+        def __iter__(self):
+            return iter(self.dimensions)
+
+        @property
+        def n_dims(self):
+            """The dimensionality of the original space."""
+            return len(self.dimensions)
 else:
     _Real = skopt.space.Real
     _Integer = skopt.space.Integer
     _Categorical = skopt.space.Categorical
+    _Space = skopt.space.space.Space
 
 
 class Real(_Real):
@@ -167,6 +181,10 @@ class Real(_Real):
         self.grid = grid
 
     @property
+    def is_constant(self):
+        return self.low == self.high
+
+    @property
     def grid(self):
         return self._grid
 
@@ -210,9 +228,9 @@ class Real(_Real):
     def to_optuna(self):
         """returns an equivalent optuna space"""
         if self.prior != 'log':
-            return UniformDistribution(low=self.low, high=self.high)
+            return OPTUNA.UniformDistribution(low=self.low, high=self.high)
         else:
-            return LogUniformDistribution(low=self.low, high=self.high)
+            return OPTUNA.LogUniformDistribution(low=self.low, high=self.high)
 
     def serialize(self):
         """Serializes the `Real` object so that it can be saved in json"""
@@ -291,6 +309,10 @@ class Integer(_Integer):
         self.grid = grid
 
     @property
+    def is_constant(self):
+        return self.low == self.high
+
+    @property
     def grid(self):
         return self._grid
 
@@ -331,9 +353,9 @@ class Integer(_Integer):
     def to_optuna(self):
         """returns an equivalent optuna space"""
         if self.prior != 'log':
-            return IntUniformDistribution(low=self.low, high=self.high)
+            return OPTUNA.IntUniformDistribution(low=self.low, high=self.high)
         else:
-            return IntLogUniformDistribution(low=self.low, high=self.high)
+            return OPTUNA.IntLogUniformDistribution(low=self.low, high=self.high)
 
     def serialize(self):
         """Serializes the `Integer` object so that it can be saved in json"""
@@ -374,6 +396,10 @@ class Categorical(_Categorical):
     def grid(self):
         return self.categories
 
+    @property
+    def is_constant(self):
+        return len(self.categories) <= 1
+
     def as_hp(self, as_named_args=True):
         categories = self.categories
         if isinstance(categories, tuple):
@@ -385,7 +411,7 @@ class Categorical(_Categorical):
         return _trial.suggest_categorical(name=self.name, choices=self.categories)
 
     def to_optuna(self):
-        return CategoricalDistribution(choices=self.categories)
+        return OPTUNA.CategoricalDistribution(choices=self.categories)
 
     def serialize(self):
         """Serializes the `Categorical object` so that it can be saved in json"""
@@ -405,6 +431,10 @@ class Categorical(_Categorical):
             prior = self.prior
 
         return f"Categorical(categories={cats}, prior={prior} name='{self.name}')"
+
+
+class Space(_Space):
+    pass
 
 
 def check_prior(kwargs: dict):
