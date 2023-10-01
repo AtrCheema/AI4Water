@@ -1,8 +1,6 @@
 
 from typing import Union
 
-from sklearn.utils.validation import assert_all_finite
-
 from ai4water.backend import np, pd, plt, stats
 from ai4water.backend import easy_mpl as em
 from ai4water.utils.utils import dateandtime_now, deepcopy_dict_without_clone

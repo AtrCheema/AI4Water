@@ -3,8 +3,6 @@ import json
 
 from ai4water.backend import np, pd, sklearn
 
-OneHotEncoder = sklearn.preprocessing.OneHotEncoder
-
 
 def consider_intervals(data, intervals):
     _source = data
@@ -38,6 +36,7 @@ def load_data_from_hdf5(data_type, data):
 
 
 def check_for_classification(label: np.ndarray, to_categorical):
+    OneHotEncoder = sklearn.preprocessing.OneHotEncoder
 
     assert isinstance(label, np.ndarray), f"""
                             classification problem for label of type {label.__class__.__name__} not implemented yet"""

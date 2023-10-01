@@ -17,11 +17,13 @@ from .utils import check_for_classification
 from .utils import consider_intervals, decode
 from .utils import load_data_from_hdf5
 
-train_test_split = sklearn.model_selection.train_test_split
-KFold = sklearn.model_selection.KFold
-LeaveOneOut = sklearn.model_selection.LeaveOneOut
-TimeSeriesSplit = sklearn.model_selection.TimeSeriesSplit
-ShuffleSplit = sklearn.model_selection.ShuffleSplit
+# because dataset sub-module needs to be independent of sklearn
+if sklearn:
+    train_test_split = sklearn.model_selection.train_test_split
+    KFold = sklearn.model_selection.KFold
+    LeaveOneOut = sklearn.model_selection.LeaveOneOut
+    TimeSeriesSplit = sklearn.model_selection.TimeSeriesSplit
+    ShuffleSplit = sklearn.model_selection.ShuffleSplit
 
 Patch = mpl.patches.Patch
 cmap_cv = plt.cm.coolwarm
