@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from ai4water.datasets import CABra
 from ai4water.datasets import CCAM
 from ai4water.datasets import CAMELS_DK
+from ai4water.datasets import CAMELS_CH
 from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
 from ai4water.datasets import WaterBenchIowa
@@ -248,9 +249,9 @@ def test_plot_stations(dataset):
     stations = dataset.stations()
     dataset.plot_stations(show=False)
     plt.close()
-    dataset.plot_stations(stations[0:3])
+    dataset.plot_stations(stations[0:3], show=False)
     plt.close()
-    dataset.plot_stations(marker='o', ms=0.3)
+    dataset.plot_stations(marker='o', ms=0.3, show=False)
     plt.close()
     ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
     ax.set_title("Stations")
@@ -494,6 +495,11 @@ class TestCamels(unittest.TestCase):
 
         data = dataset.fetch_static_features('592', features=['slope', 'area'])
         assert data.shape == (1,2)
+        return
+
+    def test_camels_ch(self):
+        ds_swiss = CAMELS_CH(path=r'Z:\atr\gscad\CAMELS\CAMELS_CH')
+        test_dataset(ds_swiss, 331, 8036, 209, 9)
         return
 
     def test_camels_dk_docs(self):

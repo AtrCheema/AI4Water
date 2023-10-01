@@ -32,7 +32,7 @@ class CCAM(Camels):
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (128560, 10)
-    >>> df.index.names == ['time', 'dynamic_features']
+    >>> data.index.names == ['time', 'dynamic_features']
     True
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -173,8 +173,8 @@ class CCAM(Camels):
         >>> from ai4water.datasets import CCAM
         >>> dataset = CCAM()
         >>> dataset.area()  # returns area of all stations
-        >>> dataset.stn_coords('92')  # returns area of station whose id is 912101A
-        >>> dataset.stn_coords(['92', '142'])  # returns area of two stations
+        >>> dataset.area('92')  # returns area of station whose id is 912101A
+        >>> dataset.area(['92', '142'])  # returns area of two stations
         """
 
         stations = check_attributes(stations, self.stations())
@@ -334,7 +334,7 @@ class CCAM(Camels):
         features = check_attributes(features, def_features)
         stations = check_attributes(stn_id, self.meteo_stations)
         if xr is None:
-            pass
+            raise ModuleNotFoundError(f"xarray must be installed")
         else:
 
             dyn = xr.load_dataset(self.meteo_nc_path)

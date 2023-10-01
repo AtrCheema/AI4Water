@@ -27,7 +27,7 @@ from .postprocessing import prediction_distribution_plot
 
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
-from .preprocessing.transformations import Transformations
+from .preprocessing import Transformations
 
 from .models._tensorflow.custom_training import train_step, test_step
 

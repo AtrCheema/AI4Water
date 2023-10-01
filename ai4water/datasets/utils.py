@@ -197,7 +197,7 @@ def bar(current_size, total_size, width):
     return
 
 
-def check_attributes(attributes, check_against: list) -> list:
+def check_attributes(attributes, check_against: list, attribute_name:str = '') -> list:
     if attributes == 'all' or attributes is None:
         attributes = check_against
     elif not isinstance(attributes, list):
@@ -207,7 +207,9 @@ def check_attributes(attributes, check_against: list) -> list:
     else:
         assert isinstance(attributes, list), f'unknown attributes {attributes}'
 
-    assert all(elem in check_against for elem in attributes)
+    assert all(elem in check_against for elem in attributes), f"""
+    The names of some {attribute_name} are not valid/allowed
+    """
 
     return attributes
 

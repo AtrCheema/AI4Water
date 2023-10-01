@@ -134,3 +134,14 @@ CABra
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+
+CAMELS_CH
+=============
+.. autoclass:: ai4water.datasets.rr.CAMELS_CH
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
