@@ -277,7 +277,7 @@ def post_process_skopt_results(
 ):
 
     pref=opt_path
-    if len(skopt_results.x) < threshold:
+    if threshold > len(skopt_results.x)>1:
         if skopt_results.space.n_dims == 1:
             pass
         else:

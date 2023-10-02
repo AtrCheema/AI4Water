@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import pickle
 import unittest
@@ -109,6 +110,38 @@ class TestHyperOpt(unittest.TestCase):
             # model can be saved, used for predictions or scoring
             np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
         #("BayesSearchCV test passed")
+        return
+
+    def test_early_stopping_skopt(self):
+        from skopt.callbacks import EarlyStopper
+
+        class MinObjEarlyStopper(EarlyStopper):
+
+            def __init__(self, min_val:float=0.2):
+                self.min_val = min_val
+
+            def _criterion(self, result):
+                if result.fun < self.min_val:
+                    print('early stopping acheived!')
+                    return True
+                print('early stopping not acheived!')
+                return False
+
+        def objective(**suggestions):
+            obj = random.random()
+            print(f'returning {obj}')
+            return obj
+
+        opt = HyperOpt("bayes", objective_fn=objective,
+                       param_space=[Categorical([1,2,3,4,5], name='a'),
+                                    Categorical([9,8,7,6,5], name='b')],
+                       num_iterations=15,
+                       callback=[MinObjEarlyStopper()],
+                       process_results=False
+                       )
+
+        _ = opt.fit()
+
         return
 
     def test_gpmin_skopt(self):

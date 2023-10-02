@@ -380,7 +380,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 for k, v in x.items():
                     assert isinstance(v, Dimension), f"""
                             space for parameter {k} is of invalid type {v.__class__.__name__}.
-                            For {self.algorithm}, it must be of type {Dimension.__name__}
+                            For {self.algorithm} algorithm, it must be of type {Dimension.__name__}
                             """
                     _param_space.append(v)
             else:
