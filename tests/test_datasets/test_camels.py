@@ -20,6 +20,7 @@ from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
 from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
 from ai4water.datasets import WaterBenchIowa
 
+gscad_path = '/mnt/datawaha/hyex/atr/gscad/'
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_dataframe=False):
     print(f"test_dynamic_data for {dataset.name}")
@@ -373,7 +374,7 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_aus(self):
-        ds_aus = CAMELS_AUS(path=r'G:\data\gscad\CAMELS\CAMELS_AUS')
+        ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS', 'CAMELS_AUS'))
         test_dataset(ds_aus, 222, 21184, 161, 26)
         return
 
@@ -422,27 +423,27 @@ class TestCamels(unittest.TestCase):
 
     def test_cabra(self):
         for source in ['era5', 'ref', 'ens']:
-            dataset = CABra(path=r'G:\data\gscad\CAMELS\CABra', met_src=source)
+            dataset = CABra(path=os.path.join(gscad_path, 'CAMELS', 'CABra'), met_src=source)
             test_dataset(dataset, 735, 10956, 97, 12)
         return
 
     def test_us(self):
-        ds_us = CAMELS_US(path=r'G:\data\gscad\CAMELS\CAMELS_US')
+        ds_us = CAMELS_US(path=os.path.join(gscad_path, 'CAMELS', 'CAMELS_US'))
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
     def test_dk(self):
-        ds_us = CAMELS_DK(path="G:\data\gscad\CAMELS\CAMELS_DK")
+        ds_us = CAMELS_DK(path=os.path.join(gscad_path, 'CAMELS', 'CAMELS_DK'))
         test_dataset(ds_us, 308, 14609, 211, 39)
         return
 
     def test_ccam(self):
-        ccam = CCAM(path="G:\data\gscad\CAMELS\CCAM")
+        ccam = CCAM(path=os.path.join(gscad_path, 'CAMELS', 'CCAM'))
         test_dataset(ccam, 102, 8035, 124, 16)
         return
 
     def test_ccam_meteo(self):
-        dataset = CCAM(path="G:\\data\\gscad\\CAMELS\\CCAM")
+        dataset = CCAM(path=os.path.join(gscad_path, 'CAMELS', 'CCAM'))
 
         stations = os.listdir(dataset.meteo_path)
 
@@ -498,13 +499,13 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_camels_ch(self):
-        ds_swiss = CAMELS_CH(path=r'Z:\atr\gscad\CAMELS\CAMELS_CH')
+        ds_swiss = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS', 'CAMELS_CH'))
         test_dataset(ds_swiss, 331, 8036, 209, 9)
         return
 
     def test_camels_dk_docs(self):
 
-        dataset = CAMELS_DK(path="F:\\data\\gscad\\CAMELS\\CAMELS_DK")
+        dataset = CAMELS_DK(path= os.path.join(gscad_path, 'CAMELS', 'CAMELS_DK'))
 
         assert len(dataset.stations()) == 308
         assert dataset.fetch_static_features(dataset.stations()).shape == (308, 211)

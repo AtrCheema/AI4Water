@@ -152,33 +152,8 @@ class HYPE(Camels):
 
         return stns_dfs
 
-    def q_mmd(
-            self,
-            stations: Union[str, List[str]] = None
-    )->pd.DataFrame:
-        """
-        returns streamflow in the units of milimeter per day. The name of
-        original timeseries is ``Streamflow_mm``.
-
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is None, which will return
-            area of all stations
-
-        Returns
-        --------
-        pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
-            are catchment/station ids.
-
-        """
-        stations = check_attributes(stations, self.stations())
-        q = self.fetch_stations_features(stations,
-                                           dynamic_features='Streamflow_mm',
-                                           as_dataframe=True)
-        q.index = q.index.get_level_values(0)
-        return q
+    def _mmd_feature_name(self) ->str:
+        return 'Streamflow_mm'
 
     def fetch_static_features(self, stn_id, features=None):
         """static data for HYPE is not available."""

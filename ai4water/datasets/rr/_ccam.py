@@ -148,77 +148,13 @@ class CCAM(Camels):
         q = (q / area_m2) * 86400  # cms to m/day
         return q * 1e3  # to mm/day
 
-    def area(
-            self,
-            stations: Union[str, List[str]] = None
-    ) ->pd.Series:
-        """
-        Returns area (Km2) of all catchments as pandas series
+    @property
+    def _area_name(self) ->str:
+        return 'area'
 
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is None, which will return
-            area of all stations
-
-
-        Returns
-        --------
-        pd.Series
-            a pandas series whose indices are catchment ids and values
-            are areas of corresponding catchments.
-
-        Examples
-        ---------
-        >>> from ai4water.datasets import CCAM
-        >>> dataset = CCAM()
-        >>> dataset.area()  # returns area of all stations
-        >>> dataset.area('92')  # returns area of station whose id is 912101A
-        >>> dataset.area(['92', '142'])  # returns area of two stations
-        """
-
-        stations = check_attributes(stations, self.stations())
-
-        df = self.fetch_static_features(features=['area'])
-        df.columns = ['area']
-
-        return df.loc[stations, 'area']
-
-    def stn_coords(
-            self,
-            stations:Union[str, List[str]] = None
-    ) ->pd.DataFrame:
-        """
-        returns coordinates of stations as DataFrame
-        with ``long`` and ``lat`` as columns.
-
-        Parameters
-        ----------
-        stations :
-            name/names of stations. If not given, coordinates
-            of all stations will be returned.
-
-        Returns
-        -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
-            The length of dataframe will be equal to number of stations
-            wholse coordinates are to be fetched.
-
-        Examples
-        --------
-        >>> from ai4water.datasets import CCAM
-        >>> dataset = CCAM()
-        >>> dataset.stn_coords() # returns coordinates of all stations
-        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
-        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
-
-        """
-        df = self.fetch_static_features(features=['lat', 'lon'])
-        df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
-
-        return df.loc[stations, :]
+    @property
+    def _coords_name(self) ->List[str]:
+        return ['lat', 'lon']
 
     def stations(self):
         """Returns station ids for catchments on Yellow River"""

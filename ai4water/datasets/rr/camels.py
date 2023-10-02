@@ -98,7 +98,7 @@ class Camels(Datasets):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list],
+            stn_id: Union[str, list] = None,
             features: Union[str, list] = None
     ):
         """Fetches all or selected static attributes of one or more stations.
@@ -134,8 +134,53 @@ class Camels(Datasets):
     def dynamic_features(self) -> list:
         raise NotImplementedError
 
-    def area(self)->pd.Series:
+    @property
+    def _area_name(self)->str:
         raise NotImplementedError
+
+    @property
+    def _mmd_feature_name(self)->str:
+        raise NotImplementedError
+
+    @property
+    def _coords_name(self)->List[str]:
+        raise NotImplementedError
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area (Km2) of all/selected catchments as pandas series
+
+        parameters
+        ----------
+        stations : str/list (default=None)
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import CAMELS_CH
+        >>> dataset = CAMELS_CH()
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.area('2004')  # returns area of station whose id is 2004
+        >>> dataset.area(['2004', '6004'])  # returns area of two stations
+        """
+
+        stations = check_attributes(stations, self.stations())
+
+        df = self.fetch_static_features(features=[self._area_name])
+        df.columns = ['area']
+
+        return df.loc[stations, 'area']
 
     def _check_length(self, st, en):
         if st is None:
@@ -221,23 +266,24 @@ class Camels(Datasets):
 
         Examples
         --------
+        >>> from ai4water.datasets import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> # get data of 10% of stations
         >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
         ...  # fetch data of 5 (randomly selected) stations
-        >>> df = dataset.fetch(stations=5, as_dataframe=True)
+        >>> five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
         ... # fetch data of 3 selected stations
-        >>> df = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        >>> three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
         ... # fetch data of a single stations
-        >>> df = dataset.fetch(stations='318076', as_dataframe=True)
+        >>> single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
         >>> data = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> data['dynamic']
         ... # get only selected dynamic features
-        >>> df = dataset.fetch(stations='318076',
+        >>> sel_dyn_features = dataset.fetch(stations='318076',
         ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
         ... # fetch data between selected periods
-        >>> df = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
+        >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         if isinstance(stations, int):
@@ -524,6 +570,7 @@ class Camels(Datasets):
 
         Examples
         --------
+        >>> from ai4water.datasets import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> dataset.plot_stations()
         >>> dataset.plot_stations(['1', '2', '3'])
@@ -544,10 +591,39 @@ class Camels(Datasets):
 
         return ax
 
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving ``q``/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_stations_features(
+            stations,
+            dynamic_features=self._mmd_feature_name,
+            as_dataframe=True)
+        q.index = q.index.get_level_values(0)
+        return q
+
     def stn_coords(
             self,
             stations:Union[str, List[str]] = None
-    )->pd.DataFrame:
+    ) ->pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -558,12 +634,30 @@ class Camels(Datasets):
             name/names of stations. If not given, coordinates
             of all stations will be returned.
 
+        Returns
+        -------
+        coords :
+            pandas DataFrame with ``long`` and ``lat`` columns.
+            The length of dataframe will be equal to number of stations
+            wholse coordinates are to be fetched.
+
         Examples
         --------
+        >>> from ai4water.datasets import CAMELS_CH
+        >>> dataset = CAMELS_CH()
+        >>> dataset.stn_coords() # returns coordinates of all stations
+        >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
+        >>> dataset.stn_coords(['2004', '6004'])  # returns coordinates of two stations
+
+        >>> from ai4water.datasets import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
         >>> dataset.stn_coords(['G0050115', '912101A'])  # returns coordinates of two stations
-        """
 
-        raise NotImplementedError
+        """
+        df = self.fetch_static_features(features=self._coords_name)
+        df.columns = ['lat', 'long']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
