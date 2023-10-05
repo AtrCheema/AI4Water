@@ -2,6 +2,7 @@
 import unittest
 import os
 
+import sklearn
 import xgboost
 import catboost
 import lightgbm
@@ -21,7 +22,7 @@ outputs = data.columns.tolist()[-1:]
 
 def get_model(model_name, **kwargs):
     model = Model(model=model_name,
-                  verbosity=0,
+                  verbosity=-1,
                   **kwargs)
 
     model.fit(data=data)
@@ -41,7 +42,7 @@ class TestML(unittest.TestCase):
         return
 
     def test_catboost(self):
-        assert catboost.__version__ == "'0.26'"
+        assert catboost.__version__ == "0.26"
         p = get_model("CatBoostRegressor")
         assert np.allclose(p.sum(), 118372625.26412539), p.sum()
 
@@ -66,7 +67,10 @@ class TestML(unittest.TestCase):
         p = get_model("RandomForestRegressor",
                       x_transformation="minmax",
                       y_transformation="log")
-        assert np.allclose(p.sum(), 833541.2080729741), p.sum()
+        if sklearn.__version__ == "1.3.1":
+            assert np.allclose(p.sum(), 883875.4172481719), p.sum()
+        else:
+            assert np.allclose(p.sum(), 833541.2080729741), p.sum()
 
         return
 
@@ -164,7 +168,11 @@ class TestML(unittest.TestCase):
                 "replace_zeros": True
             }
         ])
-        assert np.allclose(p.sum(), 1017556.4220493606), p.sum()
+
+        if sklearn.__version__ == "1.3.1":
+            assert np.allclose(p.sum(), 1002079.7481467836), p.sum()
+        else:
+            assert np.allclose(p.sum(), 1017556.4220493606), p.sum()
 
         return
 
@@ -199,6 +207,7 @@ class TestML(unittest.TestCase):
             '21_posix': 60611115352064.0,
             '115_posix': 60611115352064.0,
             '26_posix': 0,
+            '29_posix': 60611144712192.0,
             '21_nt': 60611115352064.0,
             '23_nt': 60611115352064.0,
             '25_nt': 60611144712192.0,

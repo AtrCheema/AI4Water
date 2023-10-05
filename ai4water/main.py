@@ -2,6 +2,7 @@
 from typing import Any, List
 from collections import OrderedDict
 
+from distutils.version import LooseVersion
 
 from ._main import BaseModel
 from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, MULTI_INPUT_LAYERS
@@ -99,10 +100,8 @@ class Model(MODEL, BaseModel):
                 setattr(self, 'output_lyrs', outs)
                 self._go_up = False  # do not reinitiate BaseModel and other upper classes
 
-                maj_ver = int(tf.__version__.split('.')[0])
-                min_ver = int(tf.__version__.split('.')[1][0])
                 # in tf versions >= 2.5, we don't need to specify inputs and outputs as keyword arguments
-                if maj_ver>1 and min_ver>=5:
+                if LooseVersion(tf.__version__)>="2.5.0":
                     MODEL.__init__(self, self._input_lyrs(), self.output_lyrs)
                 else:
                     MODEL.__init__(self, inputs=self._input_lyrs(), outputs=self.output_lyrs)
@@ -468,27 +467,16 @@ class Model(MODEL, BaseModel):
 
         return input_lyrs  # , outs
 
-    def call(self, inputs, training=None, mask=None, run_call=True):
+    def call(self, inputs, training=None, mask=None, run_call=True, **kwargs):
 
-        version = ''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')
-        return getattr(self, f'call_{version}')(inputs, training, mask, run_call=run_call)
+        if LooseVersion(tf.__version__) >= "2.5.0":
+            return self.call_250(inputs, training=training, mask=mask, run_call=run_call, **kwargs)
+        elif LooseVersion(tf.__version__) >= "2.0":
+            return self.call_210(inputs, training=training, mask=mask, run_call=run_call, **kwargs)
+        else:
+            return self.call_115(inputs, training=training, mask=mask, run_call=run_call, **kwargs)
 
-    def call_260(self, *args, **kwargs):
-        return self.call_250(*args, **kwargs)
-
-    def call_270(self, *args, **kwargs):
-        return self.call_250(*args, **kwargs)
-
-    def call_290(self, *args, **kwargs):
-        return self.call_250(*args, **kwargs)
-
-    def call_280(self, *args, **kwargs):
-        return self.call_250(*args, **kwargs)
-
-    def call_200(self, *args, **kwargs):
-        return self.call_210(*args, **kwargs)
-
-    def call_250(self, inputs, training=None, mask=None, run_call=True):
+    def call_250(self, inputs, training=None, mask=None, run_call=True, **kwargs):
 
         self.treat_casted_inputs(inputs)
 
@@ -571,7 +559,7 @@ class Model(MODEL, BaseModel):
 
         return outs
 
-    def call_210(self, inputs, training=True, mask=None, run_call=True):
+    def call_210(self, inputs, training=True, mask=None, run_call=True, **kwargs):
 
         if int(''.join(np.__version__.split('.')[0:2]).ljust(3, '0')) >= 120:
             raise NumpyVersionException("Decrease")
@@ -680,7 +668,7 @@ class Model(MODEL, BaseModel):
 
         return
 
-    def call_115(self, inputs, training=None, mask=None, run_call=True):
+    def call_115(self, inputs, training=None, mask=None, run_call=True, **kwargs):
         outs = inputs
 
         # inputs can be a list of tensors

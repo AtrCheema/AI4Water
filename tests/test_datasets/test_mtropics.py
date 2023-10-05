@@ -10,7 +10,7 @@ import pandas as pd
 from ai4water.datasets import MtropicsLaos, ecoli_mekong
 
 
-laos = MtropicsLaos(path=r'F:\data\MtropicsLaos')
+laos = MtropicsLaos(path='/mnt/datawaha/hyex/atr/data/MtropicsLaos/')
 
 
 class TestMtropicsLaos(unittest.TestCase):

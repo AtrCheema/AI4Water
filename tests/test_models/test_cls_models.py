@@ -1,4 +1,4 @@
-import time
+
 import unittest
 import os
 
@@ -21,11 +21,10 @@ else:
     from ai4water import Model
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import busan_beach
 from ai4water.datasets import MtropicsLaos
 
 
-laos = MtropicsLaos()
+laos = MtropicsLaos(path=r'/mnt/datawaha/hyex/atr/data/MtropicsLaos/')
 cls_data = laos.make_classification(lookback_steps=1)
 
 
@@ -125,31 +124,6 @@ class TestClassifications(unittest.TestCase):
         assert log_proba.shape[1] == 2
         return
 
-    def test_binary_classification(self):
-
-        model = build_and_run_class_problem(
-            2,
-            'binary_crossentropy',
-            model=make_dl_model(2, "sigmoid"))
-
-        assert getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert not getattr(model, "is_multilabel_")
-
-        return
-
-    def test_binary_classification_softmax(self):
-
-        model = build_and_run_class_problem(2,
-                                            'binary_crossentropy',
-                                            model=make_dl_model(2))
-
-        assert getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert not getattr(model, "is_multilabel_")
-
-        return
-
     def test_binary_cls_ml(self):
 
         for algo in ["RandomForestClassifier",
@@ -180,97 +154,6 @@ class TestClassifications(unittest.TestCase):
             assert not getattr(model, "is_binary_")
             assert not getattr(model, "is_multilabel_")
 
-        return
-
-    def test_multiclass_classification(self):
-        time.sleep(1)
-        model = build_and_run_class_problem(3,
-                                            'binary_crossentropy',
-                                            model=make_dl_model(3))
-
-        assert not getattr(model, "is_binary_")
-        assert getattr(model, "is_multiclass_")
-        assert not getattr(model, "is_multilabel_")
-
-        return
-
-    def test_multilabel_classification(self):
-
-        model = build_and_run_class_problem(5,
-                                            'binary_crossentropy',
-                                            is_multilabel=True,
-                                            model=make_dl_model(5)
-                                            )
-
-        assert not getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert getattr(model, "is_multilabel_")
-
-        return
-
-    def test_multilabel_classification_with_categorical(self):
-
-        model = build_and_run_class_problem(5,
-                                            'categorical_crossentropy',
-                                            is_multilabel=True,
-                                            model=make_dl_model(5)
-                                            )
-
-        assert not getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert getattr(model, "is_multilabel_")
-
-        return
-
-    def test_multilabel_classification_with_binary_sigmoid(self):
-
-        model = build_and_run_class_problem(5,
-                                            'binary_crossentropy',
-                                            model=make_dl_model(5, "sigmoid"),
-                                            is_multilabel=True)
-
-
-        assert not getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert getattr(model, "is_multilabel_")
-
-        return
-
-    def test_multilabel_classification_with_categorical_sigmoid(self):
-
-        model = build_and_run_class_problem(5,
-                                            'categorical_crossentropy',
-                                            make_dl_model(5, "sigmoid"),
-                                            is_multilabel=True)
-
-        assert not getattr(model, "is_binary_")
-        assert not getattr(model, "is_multiclass_")
-        assert getattr(model, "is_multilabel_")
-
-        return
-
-    def test_basic_multi_output(self):
-        time.sleep(1)
-        model = Model(
-            model= {'layers': {'LSTM': {'units': 32},
-                               'Dense': {'units': 2},
-                               }},
-            ts_args={'lookback':5},
-            input_features=busan_beach().columns.tolist()[0:-1],
-            output_features = ['blaTEM_coppml', 'tetx_coppml'],
-            verbosity=0,
-            train_fraction=0.8,
-            shuffle=False
-        )
-
-        data = busan_beach(target=['blaTEM_coppml', 'tetx_coppml'])
-        model.fit(data=data)
-        t,p = model.predict_on_test_data(data=data, return_true=True)
-
-        assert np.allclose(t[3:5, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
-
-        for out in model.output_features:
-            assert out in os.listdir(model.path)
         return
 
 

@@ -1,10 +1,10 @@
+
 import unittest
 import os
 import sys
 import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
-
 
 import numpy as np
 import tensorflow as tf
@@ -171,6 +171,7 @@ class TestModels(unittest.TestCase):
             '21_posix': 1548.395502996973,
             '26_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
+            '29_posix': 310.3837890625,
             '21_nt': 311.81280517578125,
             '23_nt': 192.28048198313545,
             '25_nt': 310.38372802734375,
@@ -196,6 +197,7 @@ class TestModels(unittest.TestCase):
                 '23_nt': 197.4112326089435,
                 '25_nt': 305.4326171875,
                 '27_nt': 305.4326171875,
+                '29_posix': 305.4326171875,
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:
@@ -217,6 +219,7 @@ class TestModels(unittest.TestCase):
                        verbosity=0)
         model.fit(data=df)
         return
+
 
 if __name__ == "__main__":
     unittest.main()

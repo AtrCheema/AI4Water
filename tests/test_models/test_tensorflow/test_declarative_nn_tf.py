@@ -1,3 +1,4 @@
+
 import os
 import site
 import unittest
@@ -31,7 +32,7 @@ def build_model(layers, lookback):
                   input_features=inputs,
                   output_features=outputs,
                   ts_args={'lookback':lookback},
-                  verbosity=0
+                  verbosity=-1
     )
     return model
 

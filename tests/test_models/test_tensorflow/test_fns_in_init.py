@@ -15,7 +15,7 @@ data = busan_beach()
 input_features = data.columns.tolist()[0:-1]
 output_features = data.columns.tolist()[-1:]
 
-laos = MtropicsLaos()
+laos = MtropicsLaos(path=r'/mnt/datawaha/hyex/atr/data/MtropicsLaos/')
 cls_data = laos.make_classification(lookback_steps=1)
 input_features_cls = cls_data.columns.tolist()[0:-1]
 output_features_cls = cls_data.columns.tolist()[-1:]
@@ -35,7 +35,7 @@ multi_cls_data = pd.DataFrame(np.concatenate([X, y], axis=1),
 class TestModels(unittest.TestCase):
 
     def test_mlp(self):
-        model = Model(model=MLP(32),
+        model = Model(model=MLP(8),
                       input_features=input_features,
                       output_features=output_features,
                       epochs=1,
@@ -45,7 +45,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_lstm(self):
-        model = Model(model=LSTM(32),
+        model = Model(model=LSTM(8),
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
@@ -54,7 +54,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_attenlstm(self):
-        model = Model(model=AttentionLSTM(32),
+        model = Model(model=AttentionLSTM(8),
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
@@ -73,7 +73,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_cnn(self):
-        model = Model(model=CNN(32, 2),
+        model = Model(model=CNN(8, 2),
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 5},
@@ -82,7 +82,8 @@ class TestModels(unittest.TestCase):
         return
 
     def test_cnnlstm(self):
-        model = Model(model=CNNLSTM(input_shape=(9, 13), sub_sequences=3),
+        model = Model(model=CNNLSTM(input_shape=(9, 13),
+                                    sub_sequences=3),
                       input_features=input_features,
                       output_features=output_features,
                       ts_args={'lookback': 9},
@@ -91,7 +92,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_mlp_for_cls_binary(self):
-        model = Model(model=MLP(32,
+        model = Model(model=MLP(4,
                                 mode="classification",
                                 num_outputs=2),
                       input_features=input_features_cls,
@@ -104,7 +105,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_mlp_for_cls_binary_softmax(self):
-        model = Model(model=MLP(32,
+        model = Model(model=MLP(4,
                                 mode="classification",
                                 num_outputs=2,
                                 output_activation="softmax",
@@ -120,7 +121,7 @@ class TestModels(unittest.TestCase):
         return
 
     def test_mlp_for_cls_multicls(self):
-        model = Model(model=MLP(32, mode="classification",
+        model = Model(model=MLP(4, mode="classification",
                                 num_outputs=4),
                       input_features=multi_cls_inp,
                       output_features=multi_cls_out,
@@ -142,11 +143,14 @@ class TestModels(unittest.TestCase):
 
         lookback_steps = 9
         # get configuration of CNNLSTM as dictionary which can be given to Model
-        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, 32, 32)
+        model_config = LSTMAutoEncoder(
+            (lookback_steps, len(input_features)),
+            2, 2, 4,
+            4)
         # build the model
         model = Model(model=model_config, input_features=input_features,
                       output_features=output_features, ts_args={"lookback": lookback_steps},
-                      verbosity=0)
+                      verbosity=-1)
         # train the model
         model.fit(data=data, verbose=-1, epochs=1)
 
@@ -156,11 +160,15 @@ class TestModels(unittest.TestCase):
         lookback_steps = 9
         # specify neurons in each of encoder and decoder LSTMs
 
-        model_config = LSTMAutoEncoder((lookback_steps, len(input_features)), 2, 2, [64, 32], [32, 64])
+        model_config = LSTMAutoEncoder(
+            (lookback_steps, len(input_features)),
+            2,
+            2, [8, 4],
+            [4, 8])
         # build the model
         model = Model(model=model_config, input_features=input_features,
                       output_features=output_features, ts_args={"lookback": lookback_steps},
-                      verbosity=0)
+                      verbosity=-1)
         # train the model
         model.fit(data=data, verbose=-1, epochs=1)
         return

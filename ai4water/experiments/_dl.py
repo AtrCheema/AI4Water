@@ -15,15 +15,15 @@ class DLRegressionExperiments(Experiments):
     A framework for comparing several basic DL architectures for a given data.
     This class can also be used for hyperparameter optimization of more than
     one DL models/architectures. However, the parameters which determine
-    the dimensions of input data such as ``lookback`` should are
-    not allowed to optimize when using random or grid search.
+    the dimensions of input data such as ``lookback`` are
+    not allowed to be optimized when using random or grid search.
 
     To check the available models
 
     >>> exp = DLRegressionExperiments(...)
     >>> exp.models
 
-    If learning rate, batch size, and lookback are are to be optimzied,
+    If learning rate, batch size, and lookback are to be optimzied,
     their space can be specified in the following way:
 
     >>> exp = DLRegressionExperiments(...)

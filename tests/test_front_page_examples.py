@@ -103,7 +103,7 @@ class TestFrontPage(unittest.TestCase):
         model = Model(
             model={"RandomForestRegressor": {
                 "n_estimators": Integer(low=5, high=30, name='n_estimators', num_samples=10),
-                "max_leaf_nodes": Integer(low=2, high=30, prior='log', name='max_leaf_nodes', num_samples=10),
+                "max_leaf_nodes": Integer(low=2, high=30, prior='uniform', name='max_leaf_nodes', num_samples=10),
                 "min_weight_fraction_leaf": Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=10),
                 "max_depth": Integer(low=2, high=10, name='max_depth', num_samples=10),
                 "min_samples_split": Integer(low=2, high=10, name='min_samples_split', num_samples=10),

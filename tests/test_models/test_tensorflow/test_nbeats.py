@@ -76,7 +76,6 @@ class TestNBeats(unittest.TestCase):
         model.fit(x=x, y=y)
         return
 
-
     def test_ai4water_with_inherent_data(self):
         model = Model(model={"layers": {
             "NBeats": {"lookback": 10, "forecast_len": 1, "num_exo_inputs": 12},
@@ -91,6 +90,7 @@ class TestNBeats(unittest.TestCase):
 
         model.fit(data=busan_beach)
         return
+
 
 if __name__ == "__main__":
 

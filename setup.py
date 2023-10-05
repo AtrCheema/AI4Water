@@ -18,6 +18,7 @@ easy_mpl_ver = 'easy_mpl[all]>=0.21.3'
 sklearn_ver = "scikit-learn >=0.23.0, <= 1.3.1"
 hyperopt_ver = "hyperopt >= 0.2.3, <= 0.2.7"
 optuna_ver = "optuna >= 2.0.0, <= 3.3.0"
+tf2_ver = "tensorflow <= 2.9.0"
 
 min_requirements = [
     sklearn_ver,
@@ -26,7 +27,7 @@ min_requirements = [
     ]
 
 extra_requires = [
-'tensorflow==2.7.0', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+tf2_ver, # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 
 'h5py', # only if you want to save batches
@@ -61,7 +62,7 @@ hyperopt_ver,
 tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',
                sklearn_ver, seq_met_ver, 'AttentionLSTM']
 
-tf2_requires = ['h5py', easy_mpl_ver, 'tensorflow<=2.7',
+tf2_requires = ['h5py', easy_mpl_ver, tf2_ver,
                sklearn_ver, seq_met_ver, 'AttentionLSTM']
 
 tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', easy_mpl_ver, 'tensorflow==1.15',

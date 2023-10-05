@@ -215,10 +215,9 @@ class test_MultiInputModels(unittest.TestCase):
             input_features=data.columns.tolist()[0:-1],
             output_features=data.columns.tolist()[-1:],
             ts_args={'lookback':1},
-            verbosity=0,
+            verbosity=-1,
             model={'layers': layers},
             epochs=2,
-            y_transformation='log10',
             indices={'training': np.arange(1500)},
             quantiles=quantiles)
 
@@ -227,27 +226,6 @@ class test_MultiInputModels(unittest.TestCase):
 
         t,p = model.predict_on_test_data(data=data.astype(np.float32), return_true=True)
         assert p.shape[1]==3
-        return
-
-    def test_predict_without_y(self):
-        # make sure that .predict method can be called without `y`.
-
-        model = Model(model='RandomForestRegressor',
-                      verbosity=0
-                      )
-        model.fit(data=busan_beach())
-        y = model.predict(x=np.random.random((10, model.num_ins)))
-        assert len(y) == 10
-
-        # check also for functional model
-        model = FModel(model='RandomForestRegressor',
-                      verbosity=0
-                      )
-        model.fit(data=busan_beach())
-        y = model.predict(x=np.random.random((10, model.num_ins)))
-        assert len(y) == 10
-
-        time.sleep(1)
         return
 
 

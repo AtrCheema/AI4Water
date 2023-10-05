@@ -1066,7 +1066,7 @@ class BaseModel(NN):
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
                 elif self.mode == 'classification':
-                    num_classes = getattr(self, "num_clases_")
+                    num_classes = getattr(self, "num_classes_")
                     activation = self.layers[-1].get_config()['activation']
                     if getattr(self, "is_binary_"):
                         if activation == "softmax":
@@ -1255,6 +1255,7 @@ class BaseModel(NN):
                 self._maybe_change_residual_threshold(train_y)
                 self.fit(x=train_x, y=train_y.reshape(-1, ))
             else:
+                self.reset_weights()
                 self.fit(x=train_x, y=train_y)
             # since we have access to true y, it is better to provide it
             # it will be used for processing of results
@@ -3653,6 +3654,10 @@ class BaseModel(NN):
     def _fit_transform_y(self, y):
         """fits and transforms y and puts the transformer in config witht he key
         'y_transformer_'"""
+        if self.quantiles and self.config['y_transformation']:
+            raise NotImplementedError("""
+            y_transformation is not implemented when quantiles are given
+            """)
         return self._fit_transform(
             y,
             'y_transformer_',
@@ -3873,6 +3878,23 @@ class BaseModel(NN):
         self.config['x_transformation'] = _reduce_nquantiles_in_config(self.config['x_transformation'], num_exs)
         self.config['y_transformation'] = _reduce_nquantiles_in_config(self.config['y_transformation'], num_exs)
 
+        return
+
+    def reset_weights(self):
+        """
+        resets parameters (weights+biases) to their default/initial state
+        """
+        if self.config['backend'] == 'tensorflow':
+            session = K.get_session()
+            for layer in self._model.layers:
+                if hasattr(layer, 'kernel_initializer'):
+                    layer.kernel.initializer.run(session=session)
+                if hasattr(layer, 'bias_initializer'):
+                    layer.bias.initializer.run(session=session)
+        else:
+            for layer in self.children():
+                if hasattr(layer, 'reset_parameters'):
+                    layer.reset_parameters()
         return
 
 def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):

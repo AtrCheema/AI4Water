@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 from SeqMetrics import ClassificationMetrics
+from sklearn.model_selection import KFold
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
@@ -17,7 +18,7 @@ def make_cross_validator(cv, **kwargs):
         model={'RandomForestRegressor': {}},
         cross_validator=cv,
         val_metric="mse",
-        verbosity=0,
+        verbosity=-1,
         **kwargs
     )
 
@@ -77,13 +78,22 @@ class Testcross_val_score(unittest.TestCase):
 
     def test_callable_scoring(self):
         from ai4water.datasets import MtropicsLaos
-        data = MtropicsLaos(path=r'D:\data\MtropicsLaos').make_classification(lookback_steps=1)
+        data = MtropicsLaos(path=r'/mnt/datawaha/hyex/atr/data/MtropicsLaos/').make_classification(lookback_steps=1)
         def f1_score_(t,p)->float:
            return ClassificationMetrics(t, p).f1_score(average="macro")
         model = Model(model="RandomForestClassifier",
                       cross_validator={"KFold": {"n_splits": 5}},)
         model.cross_val_score(data=data, scoring=f1_score_)
         return
+
+    def test_cv_argument(self):
+        model = make_cross_validator(cv=None)
+        cv_score = model.cross_val_score(data=beach_data,
+                                         cv="KFold", cv_kws={'n_splits': 5})
+        assert isinstance(cv_score, list)
+        assert hasattr(model.cross_val_scores, '__len__')  # cross_val_scores are array like
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

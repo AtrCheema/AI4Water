@@ -153,7 +153,8 @@ class Test_TFT(unittest.TestCase):
             model._model.fit(x=x,y=y, validation_split=0.3, verbose=0)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         else:
-            model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0, **kwargs)
+            model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0,
+                         **kwargs)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         #assert model.forecast_len == 1
         #assert model.forecast_step == 0

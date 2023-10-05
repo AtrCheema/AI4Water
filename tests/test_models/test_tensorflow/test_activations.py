@@ -54,6 +54,7 @@ class TestActivations(unittest.TestCase):
             '25_posix_functional': [0.0870760977268219, 0.1053781732916832],
             '26_posix_functional': [0.04948361963033676, 0.043167594820261],
             '26_posix_subclassing': [0.0870760977268219, 0.1053781732916832],
+            '29_posix_subclassing': [0.05800264701247215, 0.060560449957847595],
             '23_nt': [0.0870760977268219, 0.1053781732916832],
             '24_nt': [0.0870760977268219, 0.1053781732916832],
             '21_nt_subclassing': [0.05831814541686642, 0.06065350695798756],
@@ -86,7 +87,7 @@ class TestActivations(unittest.TestCase):
                       output_features=output_features,
                       x_transformation='minmax',
                       y_transformation="minmax",
-                      verbosity=0
+                      verbosity=-1
                       )
 
         model.fit(data=df)

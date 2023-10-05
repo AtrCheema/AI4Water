@@ -27,7 +27,7 @@ The specific purposes of the repository are
  provides a framework to build layered models using python dictionary and with 
  several helper tools which fasten the process of  modeling time-series forecasting.
 
--    provide a uniform interface for optimizing hyper-parameters for 
+-    provide a uniform interface for optimizing hyperparameters for 
  [skopt](https://scikit-optimize.github.io/stable/index.html);
  [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) 
  based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) 
@@ -217,7 +217,7 @@ data = MtropicsLaos().make_regression(lookback_steps=1)
 model = Model(
     model = {"RandomForestRegressor": {
         "n_estimators": Integer(low=5, high=30, name='n_estimators', num_samples=10),
-       "max_leaf_nodes": Integer(low=2, high=30, prior='log', name='max_leaf_nodes', num_samples=10),
+       "max_leaf_nodes": Integer(low=2, high=30, prior='uniform', name='max_leaf_nodes', num_samples=10),
         "min_weight_fraction_leaf": Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=10),
         "max_depth": Integer(low=2, high=10, name='max_depth', num_samples=10),
         "min_samples_split": Integer(low=2, high=10, name='min_samples_split', num_samples=10),

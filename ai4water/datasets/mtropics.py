@@ -604,7 +604,7 @@ class MtropicsLaos(Datasets):
 
     def _load_hydro_from_xl_files(self):
         """
-        Most of the files are saved as a peace of shit in excel.
+        Most of the files are saved as a piece of shit in Excel.
         I wish I had never consdered reading those files
         """
 

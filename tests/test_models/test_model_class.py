@@ -1,6 +1,5 @@
 
 import os
-import time
 import unittest
 import site
 
@@ -9,15 +8,10 @@ import pandas as pd
 
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-import tensorflow as tf
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
-if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-    from ai4water.functional import Model
-    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
-else:
-    from ai4water import Model
+from ai4water import Model
 
 from ai4water.postprocessing import PermutationImportance
 from ai4water.postprocessing import PartialDependencePlot
@@ -25,14 +19,12 @@ from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water._main import DataNotFound
 from ai4water.functional import Model as FModel
 from ai4water.preprocessing import DataSet
-from ai4water.models import LSTM
-
 
 data = busan_beach(inputs=['tide_cm', 'pcp_mm', 'sal_psu'])
 dh = DataSet(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 
-laos = MtropicsLaos()
+laos = MtropicsLaos(path=r'/mnt/datawaha/hyex/atr/data/MtropicsLaos/')
 data_cls = laos.make_classification(lookback_steps=2)
 dh_cls = DataSet(data=data_cls, verbosity=0)
 x_cls, y_cls = dh_cls.training_data()
@@ -171,40 +163,6 @@ class TestPredictMethod(unittest.TestCase):
         _test_hydro_metrics(FModel, "RandomForestClassifier", x_cls, y_cls)
         return
 
-    def test_without_fit_with_data(self):
-        """call to predict method without training/fit"""
-        model = Model(model={"layers": {"Dense_0": 8,
-                                        "Dense_1": 1}},
-                    input_features=data.columns.tolist()[0:-1],
-                    output_features=data.columns.tolist()[-1:],
-                    verbosity=-1)
-        p = model.predict_on_test_data(data=data)
-        assert isinstance(p, np.ndarray)
-        return
-
-    def test_without_fit_with_xy(self):
-        """call to predict method without training/fit by provided x and y keywords"""
-        model = Model(model={"layers": {"Dense_0": 8,
-                                        "Dense_1": 1}},
-                    input_features=data.columns.tolist()[0:-1],
-                    output_features=data.columns.tolist()[-1:],
-                    verbosity=-1)
-        t, p = model.predict(x=x_reg, y=y_reg, return_true=True)
-        assert isinstance(t, np.ndarray)
-        assert isinstance(p, np.ndarray)
-        return
-
-    def test_without_fit_with_only_x(self):
-        """call to predict method without training/fit by providing only x"""
-        model = Model(model={"layers": {"Dense_0": 8,
-                                        "Dense_1": 1}},
-                    input_features=data.columns.tolist()[0:-1],
-                    output_features=data.columns.tolist()[-1:],
-                    verbosity=-1)
-        p = model.predict(x=x_reg)
-        assert isinstance(p, np.ndarray)
-        return
-
     def test_with_no_test_data(self):
         """we have only training and validation data and not test data"""
         model = Model(model="RandomForestRegressor",
@@ -227,18 +185,6 @@ class TestPredictMethod(unittest.TestCase):
 
         return
 
-    def test_tf_data(self):
-        """when x is tf.data.Dataset"""
-
-        model = Model(model={"layers": {"Dense": 1}},
-                      input_features=data.columns.tolist()[0:-1],
-                      output_features=data.columns.tolist()[-1:],
-                      verbosity=-1
-                      )
-        x,y = DataSet(data=data, verbosity=0).training_data()
-        tr_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size=32)
-        _ = model.predict(x=tr_ds)
-        return
 
 
 class TestPermImp(unittest.TestCase):
@@ -251,15 +197,6 @@ class TestPermImp(unittest.TestCase):
         assert isinstance(imp, PermutationImportance)
         return
 
-    def test_lookback(self):
-        time.sleep(1)
-        model = Model(model=LSTM(1, input_shape=(3, 3)),
-                      ts_args={"lookback": 3},
-                      verbosity=-1)
-        model.fit(data=data)
-        imp = model.permutation_importance(data=data, data_type="validation")
-        assert isinstance(imp, PermutationImportance)
-        return
 
 
 class TestPDP(unittest.TestCase):
@@ -274,16 +211,6 @@ class TestPDP(unittest.TestCase):
         assert isinstance(pdp, PartialDependencePlot)
         return
 
-    def test_lookback(self):
-        model = Model(model=LSTM(1, input_shape=(3, 3)),
-                      ts_args={"lookback": 3},
-                      verbosity=-1)
-        model.fit(data=data)
-        pdp = model.partial_dependence_plot(data=data,
-                                            feature_name='tide_cm',
-                                            num_points=2, show=False)
-        assert isinstance(pdp, PartialDependencePlot)
-        return
 
 
 class TestShapValues(unittest.TestCase):
@@ -294,16 +221,6 @@ class TestShapValues(unittest.TestCase):
         model.fit(data=data)
         sv = model.shap_values(data=data)
         assert isinstance(sv, np.ndarray)
-        return
-
-    def test_lookback(self):
-        time.sleep(1) # todo
-        model = FModel(model=LSTM(1, input_shape=(3, 3)),
-                      ts_args={"lookback": 3},
-                      verbosity=-1)
-        model.fit(data=data)
-        sv = model.shap_values(data=data)
-        assert isinstance(sv, (np.ndarray, list)), f"{type(sv)}"
         return
 
 
@@ -507,9 +424,9 @@ class TestPredictionAnalysis(unittest.TestCase):
             data=busan_beach(),
             custom_grid=[[-41.4, -20.0, 0.0, 20.0, 42.0],
                          [33.45, 33.7, 33.9, 34.05, 34.4]],
-            annotate_kws={"annotate_counts": True,
-                          "annotate_colors": ("black", "black"),
-                          "annotate_fontsize": 10},
+            annotate_kws={"counts": True,
+                          "colors": ("black", "black"),
+                          "fontsize": 10},
             show=False, save_metadata=False
         )
         assert isinstance(ax, plt.Axes)

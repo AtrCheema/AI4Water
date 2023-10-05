@@ -96,12 +96,13 @@ class TestModels(unittest.TestCase):
 
     def test_IA_with_transformation(self):
 
-        prediction = make_and_run(InputAttentionModel,
-                                  data=arg_busan,
-                                  input_features=arg_input_features,
-                                  x_transformation='minmax',
-                                  y_transformation='zscore',
-                                  output_features=arg_output_features)
+        prediction = make_and_run(
+            InputAttentionModel,
+              data=arg_busan,
+              input_features=arg_input_features,
+              x_transformation='minmax',
+              y_transformation='zscore',
+              output_features=arg_output_features)
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
@@ -120,15 +121,16 @@ class TestModels(unittest.TestCase):
 
     def test_DA_with_transformation(self):
 
-        prediction = make_and_run(DualAttentionModel,
-                                  data=arg_busan,
-                                  teacher_forcing=False,
-                                  batch_size=8,
-                                  drop_remainder=True,
-                                  input_features=arg_input_features,
-                                  x_transformation='minmax',
-                                  y_transformation='zscore',
-                                  output_features=arg_output_features)
+        prediction = make_and_run(
+            DualAttentionModel,
+              data=arg_busan,
+              teacher_forcing=False,
+              batch_size=8,
+              drop_remainder=True,
+              input_features=arg_input_features,
+              x_transformation='minmax',
+              y_transformation='zscore',
+              output_features=arg_output_features)
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
@@ -143,18 +145,18 @@ class TestModels(unittest.TestCase):
         return
 
 
-    # def test_DualAttentionModel(self):
-    #     # DualAttentionModel based model
-    #
-    #     prediction = make_and_run(
-    #         DualAttentionModel,
-    #         data=nasdaq,
-    #         input_features=nasdaq_input_features,
-    #         output_features=nasdaq_output_features
-    #     )
-    #
-    #     self.assertGreater(float(abs(prediction[0].sum())), 0.0)
-    #     return
+    def test_DualAttentionModel(self):
+        # DualAttentionModel based model
+
+        prediction = make_and_run(
+            DualAttentionModel,
+            data=nasdaq,
+            input_features=nasdaq_input_features,
+            output_features=nasdaq_output_features
+        )
+
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
 
     def test_da_without_prev_y(self):
         prediction = make_and_run(

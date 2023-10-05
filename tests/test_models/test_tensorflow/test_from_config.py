@@ -12,7 +12,6 @@ from ai4water.utils.utils import find_best_weight
 
 from ai4water.functional import Model as FModel
 
-
 data = busan_beach()
 dh = DataSet(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
@@ -54,12 +53,9 @@ def _test_from_config_basic(
     return
 
 
-class TestFromConfigML(unittest.TestCase):
-    models = ["RandomForestRegressor",
-              "XGBRegressor",
-              "CatBoostRegressor",
-              "LGBMRegressor"
-              ]
+class TestFromConfig(unittest.TestCase):
+    models = [mlp_model]
+
     def test_subclassing(self):
         _test_from_config_basic(Model, self.models, x_reg, y_reg)
         return
@@ -89,5 +85,4 @@ class TestFromConfigML(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()
