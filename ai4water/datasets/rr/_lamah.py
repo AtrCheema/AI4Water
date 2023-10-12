@@ -649,3 +649,9 @@ class LamaH(Camels):
     def end(self):  # todo, is it untill 2017 or 2019?
         return "20191231"
 
+
+class LamaHIce(Camels):
+    """
+
+    """
+    url = "https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/"

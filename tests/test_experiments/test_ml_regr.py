@@ -45,11 +45,16 @@ def test_cross_val(scoring):
     comparisons.compare_errors('r2', data=df)
     comparisons.taylor_plot(data=df)
     comparisons.plot_cv_scores()
-    comparisons.plot_cv_scores(scoring='mae')
+    if 'mae' in scoring:
+        comparisons.plot_cv_scores(scoring='mae')
     comparisons.taylor_plot(data=df, include=['GaussianProcessRegressor',
                                               'RandomForestRegressor'])
     comparisons.plot_cv_scores(include=['GaussianProcessRegressor',
                                         'RandomForestRegressor'])
+    comparisons.plot_cv_scores(sort_by=None)
+    comparisons.plot_cv_scores(sort_by="median")
+    comparisons.plot_cv_scores(fill_color="green", patch_artist=True)
+    comparisons.plot_cv_scores(plot_type="bar", color="green")
 
     models = comparisons.sort_models_by_metric('r2')
     assert isinstance(models, pd.DataFrame)

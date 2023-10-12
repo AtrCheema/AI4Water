@@ -28,6 +28,7 @@ bar_chart = easy_mpl.bar_chart
 taylor_plot = easy_mpl.taylor_plot
 dumbbell_plot = easy_mpl.dumbbell_plot
 reg_plot = easy_mpl.regplot
+
 create_subplots = easy_mpl.utils.create_subplots
 
 if tf is not None:
@@ -1851,11 +1852,12 @@ Available cases are {self.models} and you wanted to include
             include: Union[str, list] = None,
             plot_type:str = "box",
             sort_by:str = 'mean',
+            figsize:Tuple[float, float] = None,
             name: str = "cv_scores",
             **kwargs
     ) -> Union[plt.Axes, None]:
         """
-        Plots the box whisker plots of the cross validation scores.
+        Plots the cross validation scores either as box whisker or bar charts.
 
         This plot is only available if
         :py:meth:`ai4water.experiments.Experiments.fitcv` was called.
@@ -1872,15 +1874,16 @@ Available cases are {self.models} and you wanted to include
             plot_type : str
                 the type of plot to draw. It should be either ``box`` or ``bar``
             sort_by : str
-                how to sort the boxes/bars
+                how to sort the boxes/bars. It can be
+                    - ``mean``
+                    - ``median``
+                    - None
+            figsize : tuple
+                figure size as (width, height)
             name : str
                 name of the file to save the plot
-            **kwargs : any of the following keyword arguments
-
-                - notch
-                - vert
-                - figsize
-                - bbox_inches
+            **kwargs : dict
+                any keyword argument for bar_chart or boxplot
 
         Returns
         -------
@@ -1899,6 +1902,10 @@ Available cases are {self.models} and you wanted to include
             raise ValueError("run .fitcv method first before calling this method")
 
         scorings = getattr(self, 'scoring_')
+
+        if not isinstance(scorings, list):
+            scorings = [scorings]
+
         cv_scores = self.cv_scores_.copy()
 
         consider_exclude(exclude, self.models, cv_scores)
@@ -1913,41 +1920,47 @@ Available cases are {self.models} and you wanted to include
 
         plt.close()
 
-        _, axis = plt.subplots(figsize=kwargs.get('figsize', (8, 6)))
+        _, axis = plt.subplots(figsize=figsize or (8, 6))
 
-        data = np.array(list(cv_scores.values())).squeeze().T
+        data = np.array(list(cv_scores.values())).T
 
-        if isinstance(scorings, list) and len(scorings)>1:
+        if len(scorings)>1:
             assert data.shape[0] == len(scorings)  # first dimension in data is performance metrics
-            if scoring:
-                assert scoring in scorings
-                index = scorings.index(scoring)
-                data = data[index]
-            else:
-                scoring = scorings[0]
-                data = data[0]
 
-        if sort_by is not None:
+        if scoring:
+            assert scoring in scorings, f"availabel scorings are {scorings} but you have passed {scoring}"
+            index = scorings.index(scoring)
+            data = data[index]
+        else:
+            scoring = scorings[0]
+            data = data[0]
+
+        if sort_by == "mean":
             data = pd.DataFrame(data, columns=model_names)
             data = data.reindex(data.mean().sort_values(ascending=False).index, axis=1)
             model_names = data.columns.tolist()
             data = data.values
+        elif sort_by == "median":
+            data = pd.DataFrame(data, columns=model_names)
+            data = data.reindex(data.median().sort_values(ascending=False).index, axis=1)
+            model_names = data.columns.tolist()
+            data = data.values
 
         if plot_type == "box":
-            axis.boxplot(
+            easy_mpl.boxplot(
                 data,
-                notch=kwargs.get('notch', None),
-                vert=kwargs.get('vert', None),
-                labels=model_names
+                show=False,
+                ax=axis,
+                **kwargs
             )
 
         else:
             bar_chart(
                 data.mean(axis=0),
-                labels=model_names,
                 show=False,
                 ax=axis,
-                orient="v"
+                orient="v",
+                **kwargs
             )
 
         axis.set_xticklabels(model_names, rotation=rotation)
@@ -1957,7 +1970,7 @@ Available cases are {self.models} and you wanted to include
         fname = os.path.join(os.getcwd(),
                              f'results{SEP}{self.exp_name}{SEP}{name}_{len(model_names)}.png')
         if self.save:
-            plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+            plt.savefig(fname, dpi=300, bbox_inches="tight")
 
         if self.show:
             plt.show()
@@ -2457,13 +2470,19 @@ Available cases are {self.models} and you wanted to include
         """Trains the model"""
 
         if cross_validate:
+            scoring = getattr(self, 'scoring_', None)
+            # if class level attribute scoring_ is still None, we need to set it because it will
+            # be used in plot_cv_scores
+            if scoring is None:
+                scoring = model.val_metric
+                setattr(self, 'scoring_', scoring)
 
             return model.cross_val_score(
                 *_combine_training_validation_data(
                     train_x,
                     train_y,
                     validation_data),
-                scoring=getattr(self, 'scoring_', None),
+                scoring=scoring,
                 cv=getattr(self, 'cv_', None),
                 cv_kws=getattr(self, 'cv_kws_', None)
             )
