@@ -1455,8 +1455,8 @@ def prepare_data(
             the output will be skipped. If array then it must be a boolean mask
             indicating which examples to include/exclude. The length of mask should
             be equal to the number of generated examples. The number of generated
-            examples is difficult to prognose because it depend upon lookback, input_steps,
-            and forecast_step. Thus it is better to provide an integer indicating
+            examples is difficult to prognose because it depend, upon lookback, input_steps,
+            and forecast_step. Thus, it is better to provide an integer indicating
             which values in outputs are to be considered as invalid. Default is
             None, which indicates all the generated examples will be returned.
 

@@ -14,7 +14,7 @@ else:
 
 skopt_version = "scikit-optimize >= 0.7.0, <= 0.9.1"
 seq_met_ver = 'SeqMetrics>=1.3.3'
-easy_mpl_ver = 'easy_mpl[all]>=0.21.3'
+easy_mpl_ver = 'easy_mpl[all]>=0.21.4'
 sklearn_ver = "scikit-learn >=0.23.0, <= 1.3.1"
 hyperopt_ver = "hyperopt >= 0.2.3, <= 0.2.7"
 optuna_ver = "optuna >= 2.0.0, <= 3.3.0"
@@ -28,7 +28,7 @@ min_requirements = [
 
 extra_requires = [
 tf2_ver, # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
-skopt_version,  # only if you want to use file hyper_opt.py for hyper-parameter optimization
+skopt_version,  # only if you want to use file hyper_opt.py for hyperparameter optimization
 
 'h5py', # only if you want to save batches
 'xgboost',
@@ -155,7 +155,9 @@ setup(
               'ai4water/et',
               'ai4water/experiments',
               'ai4water/eda',
-              'ai4water/envs'
+              'ai4water/envs',
+              'ai4water/envs/swat',
+              'ai4water/envs/swat',
               ],
 
     install_requires=min_requirements,

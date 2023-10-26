@@ -18,7 +18,7 @@ class HYSETS(Camels):
 
     +---------------+------------------------------+
     |sources        | dynamic_features             |
-    |===============|==============================|
+    +===============+==============================+
     |SNODAS_SWE     | dscharge, swe                |
     +---------------+------------------------------+
     |SCDNA          | discharge, pr, tasmin, tasmax|
@@ -39,7 +39,7 @@ class HYSETS(Camels):
 
     +----------------------------+------------------+
     |dynamic_features            |      shape       |
-    |============================|==================|
+    +============================+==================+
     |time                        |   (25202,)       |
     +----------------------------+------------------+
     |watershedID                 |   (14425,)       |
@@ -121,15 +121,15 @@ class HYSETS(Camels):
             pr_source :
                 source of pr data
             kwargs :
-                arguments for `Camels` base class
+                arguments for ``Camels`` base class
 
         """
 
-        assert swe_source in self.SWE_SRC, f'source must be one of {self.SWE_SRC}'
-        assert discharge_source in self.Q_SRC, f'source must be one of {self.Q_SRC}'
-        assert tasmin_source in self.OTHER_SRC, f'source must be one of {self.OTHER_SRC}'
-        assert tasmax_source in self.OTHER_SRC, f'source must be one of {self.OTHER_SRC}'
-        assert pr_source in self.OTHER_SRC, f'source must be one of {self.OTHER_SRC}'
+        assert swe_source in self.SWE_SRC, f'swe source must be one of {self.SWE_SRC}'
+        assert discharge_source in self.Q_SRC, f'discharge source must be one of {self.Q_SRC}'
+        assert tasmin_source in self.OTHER_SRC, f'tsmin source must be one of {self.OTHER_SRC}'
+        assert tasmax_source in self.OTHER_SRC, f'tsmax source must be one of {self.OTHER_SRC}'
+        assert pr_source in self.OTHER_SRC, f'pr source must be one of {self.OTHER_SRC}'
 
         self.sources = {
             'swe': swe_source,
@@ -190,6 +190,10 @@ class HYSETS(Camels):
 
     def stations(self) -> List[str]:
         """
+        retuns a list of station names. The ``Watershed_ID`` of the station is used
+        as station name instead of ``Official_ID``. This is because in .nc files
+        watershed_ID is used for stations instead of Official_ID
+
         Returns
         -------
         list
@@ -197,6 +201,7 @@ class HYSETS(Camels):
 
         Examples
         --------
+        >>> from ai4water.datasets import HYSETS
         >>> dataset = HYSETS()
         ... # get name of all stations as list
         >>> dataset.stations()
@@ -269,8 +274,8 @@ class HYSETS(Camels):
         >>> from ai4water.datasets import HYSETS
         >>> dataset = HYSETS()
         >>> dataset.area()  # returns area of all stations
-        >>> dataset.stn_coords('92')  # returns area of station whose id is 912101A
-        >>> dataset.stn_coords(['92', '142'])  # returns area of two stations
+        >>> dataset.area('92')  # returns area of station whose id is 912101A
+        >>> dataset.area(['92', '142'])  # returns area of two stations
         """
         stations = check_attributes(stations, self.stations())
 
@@ -434,7 +439,7 @@ class HYSETS(Camels):
         for stn in stations:
             xds1 = xds[[f'{k}_{v}' for k, v in sources.items()]].sel(watershed=stn, time=slice(st, en))
             xds1 = xds1.rename_vars({f'{k}_{v}': k for k, v in sources.items()})
-            x[stn] = xds1.to_dataframe(['time'])
+            x[stn] = xds1.to_dataframe(['time'])  # todo, this fails in older xr versions
         xds = xr.Dataset(x)
         xds = xds.rename_dims({'dim_1': 'dynamic_features'})
         xds = xds.rename_vars({'dim_1': 'dynamic_features'})
@@ -519,6 +524,10 @@ class HYSETS(Camels):
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
     def read_static_data(self):
+        """
+        reads the HYSETS_watershed_properties.txt file while using `Watershed_ID`
+        as index instead of ``Official_ID``.
+        """
         fname = os.path.join(self.path, 'HYSETS_watershed_properties.txt')
         static_df = pd.read_csv(fname, index_col='Watershed_ID', sep=';')
         static_df.index = static_df.index.astype(str)
