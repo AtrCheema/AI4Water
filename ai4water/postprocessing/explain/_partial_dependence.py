@@ -1,4 +1,4 @@
-
+import warnings
 from typing import Callable, Union, List
 
 from easy_mpl import plot
@@ -513,6 +513,10 @@ class PartialDependencePlot(ExplainerMixin):
         """generates the grid for evaluation of model"""
         if isinstance(feature, list):
             # one hot encoded feature
+
+            if self.num_points != len(feature):
+                warnings.warn(f"Changing num_points from {self.num_points} to {len(feature)}")
+
             self.num_points = len(feature)
             xs = pd.get_dummies(feature)
             return [repeat(xs.iloc[i].values, len(data)) for i in range(len(xs))]

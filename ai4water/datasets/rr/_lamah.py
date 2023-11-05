@@ -652,6 +652,84 @@ class LamaH(Camels):
 
 class LamaHIce(Camels):
     """
+    Daily and hourly hydro-meteorological time series data of 107 river basins
+    of Iceland. The total period of dataset is from 1950 to 2021. The average
+    length of daily data is 33 years while for that of hourly it is 11 years.
+    The dataset is available on hydroshare at
+    https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/ .
+    The paper : https://doi.org/10.5194/essd-2023-349
 
     """
-    url = "https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/"
+
+    url = {
+'Caravan_extension_lamahice.zip':
+'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/Caravan_extension_lamahice.zip',
+'lamah_ice.zip':
+'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/lamah_ice.zip',
+'lamah_ice_hourly.zip':
+'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/lamah_ice_hourly.zip'
+    }
+    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
+    time_steps = ['daily', 'hourly']
+    def __init__(
+            self,
+            path=None,
+            overwrite=False,
+            *,
+            time_step:str = "daily",
+            data_type:str = "total_upstrm",
+            **kwargs):
+        super().__init__(path=path, **kwargs)
+        self.path = path
+
+        self._download(overwrite=overwrite)
+
+        assert time_step in self.time_steps, f"invalid time_step {time_step} given"
+        assert data_type in self._data_types, f"invalid data_type {data_type} given."
+
+        self.time_step = time_step
+        self.data_type = data_type
+
+    """
+    
+    Parameters
+    ----------
+        path : str
+            If the data is alredy downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        time_step :
+                possible values are ``daily`` or ``hourly``
+        data_type :
+                possible values are ``total_upstrm``, ``diff_upstrm_all``
+                or ``diff_upstrm_lowimp``    
+    """
+    @property
+    def start(self):
+        return "19510101"
+
+    @property
+    def end(self):  # todo, is it untill 2017 or 2019?
+        return "20211231"
+
+    @property
+    def gauges_path(self):
+        """returns the path where gauge data files are located"""
+        if self.time_step == "hourly":
+            return os.path.join(self.path, "lamah_ice_hourly", "lamah_ice_hourly", "D_gauges")
+        return os.path.join(self.path, "lamah_ice", "lamah_ice", "D_gauges")
+
+    @property
+    def q_path(self):
+        """path where all q files are located"""
+        if self.time_step == "hourly":
+            return os.path.join(self.gauges_path, "2_timeseries", "hourly")
+        return os.path.join(self.gauges_path, "2_timeseries", "daily")
+
+    def stations(self)->List[str]:
+        """
+        returns names of stations as a list
+        """
+        return [fname.split('.')[0].split('_')[1] for fname in os.listdir(self.q_path)]

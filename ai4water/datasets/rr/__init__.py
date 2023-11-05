@@ -18,3 +18,4 @@ from ._gsha import GSHA
 from ._ccam import CCAM
 from ._rrluleasweden import RRLuleaSweden
 from ._camels import CAMELS_CH
+from ._lamah import LamaHIce
