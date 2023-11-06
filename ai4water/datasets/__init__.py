@@ -18,6 +18,7 @@ from .rr import CCAM
 from .rr import RRLuleaSweden
 from .rr import CABra
 from .rr import CAMELS_CH
+from .rr import LamaHIce
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

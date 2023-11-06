@@ -5,6 +5,7 @@ from typing import Union, List
 import concurrent.futures as cf
 from multiprocessing import cpu_count
 
+
 from ai4water.utils.utils import dateandtime_now
 from ai4water.backend import pd, xr, np
 from ..utils import check_attributes
@@ -323,8 +324,8 @@ class LamaH(Camels):
         >>> from ai4water.datasets import LamaH
         >>> dataset = LamaH(time_step="daily")
         >>> dataset.area()  # returns area of all stations
-        >>> dataset.stn_coords('1')  # returns area of station whose id is 912101A
-        >>> dataset.stn_coords(['1', '2'])  # returns area of two stations
+        >>> dataset.area('1')  # returns area of station whose id is 912101A
+        >>> dataset.area(['1', '2'])  # returns area of two stations
         """
         stations = check_attributes(stations, self.stations())
 
@@ -671,6 +672,11 @@ class LamaHIce(Camels):
     }
     _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
     time_steps = ['daily', 'hourly']
+    DTYPES = {
+        'total_upstrm': 'A_basins_total_upstrm',
+        'diff_upstrm_all': 'B_basins_intermediate_all',
+        'diff_upstrm_lowimp': 'C_basins_intermediate_lowimp'
+    }
     def __init__(
             self,
             path=None,
@@ -733,3 +739,172 @@ class LamaHIce(Camels):
         returns names of stations as a list
         """
         return [fname.split('.')[0].split('_')[1] for fname in os.listdir(self.q_path)]
+
+    def gauge_attributes(self)->pd.DataFrame:
+        """
+        returns gauge attributes from following two files
+
+            - Gauge_attributes.csv
+            - hydro_indices_filtered_obs.csv
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (111, 29)
+        """
+        g_attr_fpath = os.path.join(self.gauges_path, "1_attributes", "Gauge_attributes.csv")
+
+        df_gattr = pd.read_csv(g_attr_fpath)
+        df_gattr.index = df_gattr.pop('id').astype(str)
+
+        hydro_idx_fpath = os.path.join(self.gauges_path, "1_attributes", "hydro_indices_filtered_obs.csv")
+
+        df_hidx = pd.read_csv(hydro_idx_fpath)
+        df_hidx.index = df_hidx.pop('id').astype(str)
+
+        df = pd.concat([df_gattr, df_hidx], axis=1)
+
+        return df
+
+    def stn_coords(
+            self,
+            stations:Union[str, List[str]] = None
+    ) ->pd.DataFrame:
+        """
+         returns coordinates of stations as DataFrame
+         with ``long`` and ``lat`` as columns.
+
+         Parameters
+         ----------
+         stations :
+             name/names of stations. If not given, coordinates
+             of all stations will be returned.
+
+         Returns
+         -------
+         coords :
+             pandas DataFrame with ``long`` and ``lat`` columns.
+             The length of dataframe will be equal to number of stations
+             wholse coordinates are to be fetched.
+
+         Examples
+         --------
+         >>> dataset = LamaHIce(time_step="daily")
+         >>> dataset.stn_coords() # returns coordinates of all stations
+         >>> dataset.stn_coords('1')  # returns coordinates of station whose id is 912101A
+         >>> dataset.stn_coords(['1', '2'])  # returns coordinates of two stations
+
+         """
+        g_attr_fpath = os.path.join(self.gauges_path, "1_attributes", "Gauge_attributes.csv")
+
+        df = pd.read_csv(g_attr_fpath)
+
+        df.index = df.pop('id').astype(str)
+        df = df[['lon', 'lat']]
+        df.columns = ['long', 'lat']
+        stations = check_attributes(stations, self.stations())
+
+        return df.loc[stations, :]
+
+    def area(
+            self,
+            stations: Union[str, List[str]] = None
+    ) ->pd.Series:
+        """
+        Returns area_gov (Km2) of all catchments as pandas series
+        ``area_gov`` is Catchment area obtained from the administration.
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.Series
+            a pandas series whose indices are catchment ids and values
+            are areas of corresponding catchments.
+
+        Examples
+        ---------
+        >>> from ai4water.datasets import LamaHIce
+        >>> dataset = LamaHIce(time_step="daily")
+        >>> dataset.area()  # returns area of all stations
+        >>> dataset.area('1')  # returns area of station whose id is 912101A
+        >>> dataset.area(['1', '2'])  # returns area of two stations
+        """
+        stations = check_attributes(stations, self.stations())
+
+        df = self.catchment_attributes()
+        return df.loc[stations, 'area_calc']
+
+    def _catch_attr_path(self)->str:
+        p = "lamah_ice"
+        if self.time_step == "hourly":
+            p = "lamah_ice_hourly"
+
+        path = os.path.join(self.path, p,
+                             p,
+                             self.DTYPES[self.data_type],
+                             "1_attributes")
+        return path
+
+    def catchment_attributes(self)->pd.DataFrame:
+        """returns catchment attributes as DataFrame with 90 columns
+        """
+
+        fpath = os.path.join(self._catch_attr_path(), "Catchment_attributes.csv")
+
+        df = pd.read_csv(fpath)
+        df.index = df.pop('id').astype(str)
+        return df
+
+    def wat_bal_attrs(self)->pd.DataFrame:
+        """water balance attributes"""
+        fpath = os.path.join(self._catch_attr_path(),
+                             "Water_balance_using_all_streamflow_data.csv")
+
+        df = pd.read_csv(fpath)
+        df.index = df.pop('Unnamed: 0').astype(str)
+        df.columns = [col + "_all" for col in df.columns]
+        return df
+
+    def wat_bal_filt_attrs(self)->pd.DataFrame:
+        """water balance attributes from filtered q"""
+        fpath = os.path.join(self._catch_attr_path(),
+                             "Water_balance_using_filtered_streamflow_data.csv")
+
+        df = pd.read_csv(fpath)
+        df.index = df.pop('Unnamed: 0').astype(str)
+        df.columns = [col + "_filtered" for col in df.columns]
+        return df
+
+    def basin_attributes(self)->pd.DataFrame:
+        """returns basin attributes which are catchment attributes, water
+        balance all attributes and water balance filtered attributes
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (111, 104) where 104 are the static
+            catchment/basin attributes
+        """
+        cat = self.catchment_attributes()
+        wat_bal_all = self.wat_bal_attrs()
+        wat_bal_filt = self.wat_bal_filt_attrs()
+
+        df = pd.concat([cat, wat_bal_all, wat_bal_filt], axis=1)
+        return df
+    
+    def fetch_static_features(
+            self,
+            stn_id: Union[str, list] = None,
+            features: Union[str, list] = None
+    )->pd.DataFrame:
+
+        basin = self.basin_attributes()
+        gauge = self.gauge_attributes()
+
+        df = pd.concat([basin, gauge], axis=1)
+        return df
