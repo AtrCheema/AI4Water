@@ -69,7 +69,7 @@ class Camels(Datasets):
 
     def __init__(
             self,
-            path=None,
+            path:str = None,
             prefix:str = None,
             **kwargs
     ):
@@ -89,7 +89,7 @@ class Camels(Datasets):
         self.prefix = prefix
         self.path = path
 
-    def stations(self):
+    def stations(self)->List[str]:
         raise NotImplementedError
 
     def _read_dynamic_from_csv(self, stations, dynamic_features, st=None,
@@ -100,7 +100,7 @@ class Camels(Datasets):
             self,
             stn_id: Union[str, list] = None,
             features: Union[str, list] = None
-    ):
+    )->pd.DataFrame:
         """Fetches all or selected static attributes of one or more stations.
 
         Parameters
@@ -110,6 +110,11 @@ class Camels(Datasets):
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe
 
         Examples
         --------

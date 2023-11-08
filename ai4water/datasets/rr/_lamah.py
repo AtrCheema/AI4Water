@@ -1,6 +1,7 @@
 
 import gc
 import os
+from datetime import datetime
 from typing import Union, List
 import concurrent.futures as cf
 from multiprocessing import cpu_count
@@ -850,6 +851,21 @@ class LamaHIce(Camels):
                              "1_attributes")
         return path
 
+    def _clim_ts_path(self)->str:
+        p0 = "lamah_ice"
+        p1 = "2_timeseries"
+        p2 = "daily"
+
+        if self.time_step == "hourly":
+            p0 = "lamah_ice_hourly"
+            p1 = "2_timeseries"
+            p2 = "hourly"
+
+        path = os.path.join(self.path, p0, p0,
+                             self.DTYPES[self.data_type],
+                            p1, p2, "meteorological_data")
+        return path
+
     def catchment_attributes(self)->pd.DataFrame:
         """returns catchment attributes as DataFrame with 90 columns
         """
@@ -896,7 +912,7 @@ class LamaHIce(Camels):
 
         df = pd.concat([cat, wat_bal_all, wat_bal_filt], axis=1)
         return df
-    
+
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = None,
@@ -907,4 +923,142 @@ class LamaHIce(Camels):
         gauge = self.gauge_attributes()
 
         df = pd.concat([basin, gauge], axis=1)
+        return df
+
+    def q_mmd(
+            self,
+            stations: Union[str, List[str]] = None
+    )->pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per day. This is obtained
+        by diving q_cms/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is None, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas DataFrame whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        stations = check_attributes(stations, self.stations())
+        q = self.fetch_q(stations)
+        area_m2 = self.area(stations) * 1e6  # area in m2
+        q = (q / area_m2) * 86400  # cms to m/day
+        return q * 1e3  # to mm/day
+
+    def fetch_q(
+            self,
+            stations:Union[str, List[str]] = None,
+    ):
+        """
+        returns streamflow for one or more stations
+
+        parameters
+        -----------
+        stations : str/List[str]
+            name or names of stations for which streamflow is to be fetched
+
+        Returns
+        --------
+        pd.DataFrame
+            a pandas dataframe whose index is the time and columns are names of stations
+            For daily timestep, the dataframe has shape of 32630 rows and 111 columns
+
+        """
+        stations = check_attributes(stations, self.stations())
+
+        qs = []
+        for stn in stations:
+            qs.append(self.fetch_stn_q(stn))
+
+        return pd.concat(qs, axis=1)
+
+    def fetch_stn_q(self, stn:str)->pd.Series:
+        """returns streamflow for single station"""
+
+        fpath = os.path.join(self.q_path, f"ID_{stn}.csv")
+
+        df = pd.read_csv(fpath, sep=';',
+                         dtype={'YYYY': int,
+                                'MM': int,
+                                'DD': int,
+                                'qobs': np.float32,
+                                'qc_flag': np.float32
+                                })
+
+        index = df.apply(
+            lambda x:datetime.strptime("{0} {1} {2}".format(
+                x['YYYY'].astype(int),x['MM'].astype(int), x['DD'].astype(int)),"%Y %m %d"),
+            axis=1)
+        df.index = pd.to_datetime(index)
+
+        return df['qobs']
+
+    def fetch_clim_features(
+            self,
+            stations:Union[str, List[str]] = None
+    ):
+        """Returns climate time series data for one or more stations
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        stations = check_attributes(stations, self.stations())
+        raise NotImplementedError
+
+    def fetch_stn_clim(self, stn)->pd.DataFrame:
+        """returns climate time series data for one station
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe with 23 columns
+        """
+        fpath = os.path.join(self._clim_ts_path(), f"ID_{stn}.csv")
+
+        dtypes = {
+            "YYYY": np.int32,
+            "DD": np.int32,
+            "MM": np.int32,
+            "2m_temp_max": np.float32,
+            "2m_temp_mean": np.float32,
+            "2m_temp_min": np.float32,
+            "2m_dp_temp_max": np.float32,
+            "2m_dp_temp_mean": np.float32,
+            "2m_dp_temp_min": np.float32,
+            "10m_wind_u": np.float32,
+            "10m_wind_v": np.float32,
+            "fcst_alb": np.float32,
+            "lai_high_veg": np.float32,
+            "lai_low_veg": np.float32,
+            "swe": np.float32,
+            "surf_net_solar_rad_max": np.int32,
+            "surf_net_solar_rad_mean": np.int32,
+            "surf_net_therm_rad_max": np.int32,
+            "surf_net_therm_rad_mean": np.int32,
+            "surf_press": np.float32,
+            "total_et": np.float32,
+            "prec": np.float32,
+            "volsw_123": np.float32,
+            "volsw_4": np.float32,
+            "prec_rav": np.float32,
+            "prec_carra": np.float32,
+        }
+        df = pd.read_csv(fpath, sep=';', dtype=dtypes)
+
+        index = df.apply(
+            lambda x: datetime.strptime("{0} {1} {2}".format(
+                x['YYYY'].astype(int), x['MM'].astype(int), x['DD'].astype(int)), "%Y %m %d"),
+            axis=1)
+        df.index = pd.to_datetime(index)
+        for col in ['YYYY', 'MM', 'DD', 'DOY']:
+            df.pop(col)
+
         return df
