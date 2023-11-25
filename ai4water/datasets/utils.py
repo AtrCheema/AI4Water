@@ -285,7 +285,8 @@ def maybe_download(
         name=None,
         include:list=None,
         files_to_check:list = None,
-                   **kwargs):
+        verbosity:int = 1,
+        **kwargs):
     """
     Parameters
     ----------
@@ -300,6 +301,7 @@ def maybe_download(
         are not present will be downloaded. This argument can be used to
         make sure that only undownloaded files are downloaded again instead
         of downloading all the files again
+    verbosity : int
     **kwargs :
         any keyword arguments for download_and_unzip function
     """
@@ -313,10 +315,11 @@ def maybe_download(
                                files_to_check=files_to_check,
                                **kwargs)
         else:
-            print(f"""
-    Not downloading the data since the directory 
-    {ds_dir} already exists.
-    Use overwrite=True to remove previously saved files and download again""")
+            if verbosity:
+                print(f"""
+        Not downloading the data since the directory 
+        {ds_dir} already exists.
+        Use overwrite=True to remove previously saved files and download again""")
             sanity_check(name, ds_dir, url)
     else:
         download_and_unzip(ds_dir, url=url, include=include, **kwargs)

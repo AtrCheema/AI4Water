@@ -87,7 +87,9 @@ class CAMELS_US(Camels):
     def __init__(
             self,
             data_source:str='basin_mean_daymet',
-            path=None):
+            path=None,
+            **kwargs
+    ):
 
         """
         parameters
@@ -111,7 +113,7 @@ class CAMELS_US(Camels):
         assert data_source in self.folders, f'allwed data sources are {self.folders.keys()}'
         self.data_source = data_source
 
-        super().__init__(path=path, name="CAMELS_US")
+        super().__init__(path=path, name="CAMELS_US", **kwargs)
 
         self.path = path
 
@@ -457,7 +459,7 @@ class CAMELS_GB(Camels):
                         "discharge_vol", "peti",
                         "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, **kwargs):
         """
         parameters
         ------------
@@ -468,7 +470,7 @@ class CAMELS_GB(Camels):
             calls to this class will not download the data unless
             ``overwrite`` is set to True.
         """
-        super().__init__(name="CAMELS_GB", path=path)
+        super().__init__(name="CAMELS_GB", path=path, **kwargs)
 
         self._maybe_to_netcdf('camels_gb_dyn')
 
@@ -793,7 +795,9 @@ class CAMELS_AUS(Camels):
     def __init__(
             self,
             path: str = None,
-            to_netcdf:bool = True
+            to_netcdf:bool = True,
+            verbosity:int = 1,
+            **kwargs
     ):
         """
         Arguments:
@@ -808,7 +812,7 @@ class CAMELS_AUS(Camels):
                 raise FileNotFoundError(f"The path {path} does not exist")
         self.path = path
 
-        super().__init__(path=path)
+        super().__init__(path=path, verbosity=verbosity, **kwargs)
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
@@ -1146,7 +1150,8 @@ class CAMELS_CL(Camels):
                         ]
 
     def __init__(self,
-                 path: str = None
+                 path: str = None,
+                 **kwargs,
                  ):
         """
         Arguments:
@@ -1154,7 +1159,7 @@ class CAMELS_CL(Camels):
                   contain five zip files and one xlsx file.
         """
 
-        super().__init__(path=path)
+        super().__init__(path=path, **kwargs)
         self.path = path
 
         if not os.path.exists(self.path):

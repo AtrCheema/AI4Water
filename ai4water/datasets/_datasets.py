@@ -259,6 +259,7 @@ class Datasets(object):
             name=None,
             units=None,
             path:str = None,
+            verbosity:int = 1,
             processes:int = None,
     ):
         """
@@ -282,6 +283,7 @@ class Datasets(object):
         self.units = units
         self.name = name
         self.processes = processes
+        self.verbosity = verbosity
 
     @property
     def url(self):
@@ -317,7 +319,9 @@ class Datasets(object):
             any keyword arguments for maybe_download function
         """
         maybe_download(self.path, overwrite=overwrite,
-                       url=self.url, name=self.name, **kwargs)
+                       url=self.url, name=self.name,
+                       verbosity=self.verbosity,
+                       **kwargs)
         return
 
     def _download_and_unzip(self):

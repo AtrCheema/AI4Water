@@ -71,6 +71,7 @@ class Camels(Datasets):
             self,
             path:str = None,
             prefix:str = None,
+            verbosity:int = 1,
             **kwargs
     ):
         """
@@ -81,9 +82,10 @@ class Camels(Datasets):
             prefix : str
                 path like, The path where the data should be downloaded.
                 only valid if ``path`` is None.
+            verbosity : int
             kwargs : dict
         """
-        super(Camels, self).__init__(path=path, **kwargs)
+        super(Camels, self).__init__(path=path, verbosity=verbosity, **kwargs)
         if prefix:
             assert path is None
         self.prefix = prefix
@@ -366,7 +368,7 @@ class Camels(Datasets):
             st : start of data to be fetched.
             en : end of data to be fetched.
             as_dataframe : whether to return the data as pandas dataframe. default
-                is xr.dataset object
+                is xr.DataSet object
             kwargs dict: additional keyword arguments
 
         Returns:
@@ -375,7 +377,7 @@ class Camels(Datasets):
             such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
             it consists of `data_vars` equal to number of stations and for each
             station, the `DataArray` is of dimensions (time, dynamic_features).
-            where `time` is defined by `st` and `en` i.e length of `DataArray`.
+            where `time` is defined by `st` and `en` i.e. length of `DataArray`.
             In case, when the returned object is pandas DataFrame, the first index
             is `time` and second index is `dyanamic_features`. Static attributes
             are always returned as pandas DataFrame and have following shape
@@ -507,7 +509,7 @@ class Camels(Datasets):
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
             st : str,optional
-                starting point from which the data to be fetched. By default
+                starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
             en : str, optional
                 end point of data to be fetched. By default the dat will be fetched
