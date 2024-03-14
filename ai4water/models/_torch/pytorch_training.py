@@ -119,6 +119,7 @@ class Learner(AttributeContainer):
             shuffle: bool = True,
             to_monitor: list = None,
             use_cuda:bool = False,
+            mode: str = 'regression',
             path: str = None,
             wandb_config:dict = None,
             verbosity=1,
@@ -140,9 +141,14 @@ class Learner(AttributeContainer):
                 case `to_monitor` does not improve.
             shuffle :
             use_cuda : whether to use cuda or not
+            mode : str
+                mode of the model. It can be one of following
+                    - 'regression'
+                    - 'classification'
             to_monitor : list of metrics to monitor
             path : path to save results/weights
             wandb_config : config for wandb
+            verbosity : int
 
         Example
         -------
@@ -193,7 +199,12 @@ class Learner(AttributeContainer):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.patience = patience
+        self.mode = mode
         self.wandb_config = wandb_config
+        self.use_wb = self._use_wb()
+
+    def _use_wb(self):
+        return self.wandb_config is not None and wandb is not None
 
     def fit(
             self,
@@ -298,7 +309,7 @@ class Learner(AttributeContainer):
 
         if len(true) >0 and plots is not None and pred.size > 0.0:
             pp = ProcessPredictions(
-                mode="regression",
+                mode=self.mode,
                 path=self.path,
                 forecast_len=1, # todo, what if this is not satisfied
                 output_features=None,
@@ -306,6 +317,9 @@ class Learner(AttributeContainer):
                 show=bool(self.verbosity),
             )
             pp(true, pred, model=self)
+
+            if self.use_wb:
+                self.wb_run_.log_predict(true, pred, mode=self.mode, prefix=dateandtime_now())
 
         #if self.use_cuda:
         torch.cuda.empty_cache()
@@ -411,13 +425,16 @@ class Learner(AttributeContainer):
     def train_for_epoch(self):
         """Trains pytorch model for one complete epoch"""
 
-        epoch_losses = {metric: np.full(len(self.train_loader), np.nan) for metric in self.to_monitor}
+        # empty list instead of np.full(len(self.train_loader), np.nan) because we can't determine len of generator datasets
+        epoch_losses = {metric: [] for metric in self.to_monitor}
 
         # todo, it would be better to avoid reshaping/view at all
         if hasattr(self.model, 'num_outs'):
             num_outs = self.model.num_outs
         else:
             num_outs = self.num_outs
+        
+        batch_loss = 0.0
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
 
@@ -433,21 +450,23 @@ class Learner(AttributeContainer):
             loss = loss.float()
             loss.backward()
 
+            batch_loss += loss.detach().item()
+
+            if self.verbosity>0:
+                print(f"\rEpoch: {self.epoch}, batch: {i}, loss: {round(batch_loss/(i+1),3)}", end='', flush=True)
+
             self.optimizer.step()
             self.optimizer.zero_grad()
 
             # calculate metrics for each mini-batch
             er = TorchMetrics(batch_y, pred_y)
 
-            for k, v in epoch_losses.items():
-                v[i] = getattr(er, k)().detach().item()
+            for loss in epoch_losses.keys():
+                epoch_losses[loss].append(getattr(er, loss)().detach().item())
             # epoch_losses['mse'][i] = loss.detach()
 
         # take the mean for all mini-batches without considering infinite values
-        self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
-
-        if self.wandb_config is not None:
-            wandb.log(self.train_epoch_losses, step=self.epoch)
+        self.train_epoch_losses = {k: round(float(np.mean(np.array(v)[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
         if self.use_cuda:
             torch.cuda.empty_cache()
@@ -472,9 +491,6 @@ class Learner(AttributeContainer):
 
             # take the mean for all mini-batches
             self.val_epoch_losses = {f'val_{k}': round(float(np.mean(v)), 4) for k, v in epoch_losses.items()}
-
-            if self.wandb_config is not None:
-                wandb.log(self.val_epoch_losses, step=self.epoch)
 
             for k, v in self.val_epoch_losses.items():
                 metric = k.split('_')[1]
@@ -531,16 +547,31 @@ class Learner(AttributeContainer):
             y=y,
             validation_data=validation_data)
 
-        if self.wandb_config is not None:
-            assert wandb is not None
+        self.wb_run_ = self._maybe_init_wandb()
+
+        return
+    
+    def _maybe_init_wandb(self):
+        """initializes the wandb and creates a run for the model if wandb_config is not None.
+        """
+        wb_run = None
+        if self.use_wb:
+
             assert isinstance(self.wandb_config, dict)
 
-            wandb.init(name=os.path.basename(self.path),
-                       project=self.wandb_config.get('probject', 'test_project'),
-                       notes='This is Learner from AI4Water test run',
-                       tags=['ai4water', 'pytorch'],
-                       entity=self.wandb_config.get('entity', ''))
-        return
+            from ..._wb import WB
+
+            iconfig = dict(
+                name=os.path.basename(self.path),
+                project=self.wandb_config.get('probject', 'test_project'),
+                notes='This is Learner from AI4Water test run',
+                tags=['ai4water', 'pytorch'],
+                )
+            
+            iconfig.update(self.wandb_config)
+            wb_run = WB(self.model, iconfig)
+
+        return wb_run
 
     def on_train_end(self):
 
@@ -556,8 +587,9 @@ class Learner(AttributeContainer):
 
         setattr(self, 'history', History())
 
-        if self.wandb_config is not None:
-            wandb.finish()
+        if self.use_wb:
+            self.wb_run_.log_loss_curve(History())
+            #self.wb_run_.finish()
 
         return History()
 
@@ -630,6 +662,9 @@ class Learner(AttributeContainer):
                            )
 
         self.update_metrics()
+
+        if self.use_wb:
+            self.wb_run_.on_epoch_end(self.epoch, self.train_epoch_losses, self.val_epoch_losses)
 
         return
 

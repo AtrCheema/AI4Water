@@ -25,27 +25,36 @@ class WB:
 
     def init(self):
         """calls wandb.init and creates wb_run_ attribute"""
-        target = self.output_features
+        target = getattr(self, 'output_features', None)
+        category = getattr(self, 'category', None)
+        mode = getattr(self, 'mode', None)
+        path = getattr(self, 'path', None)
+        model_name = getattr(self, 'model_name', None)
+        val_metric = getattr(self, 'val_metric', None)
+        input_features = getattr(self, 'input_features', None)
+        config = getattr(self, 'config', {})
+        name = None
+
         if isinstance(target, list):
             target = target[0]
 
-        if target is not None:
-            name = f"{target[0:7]}_{self.mode}_{self.category}_{os.path.basename(self.path)[-15:]}"
-        else:
-            name = f"{self.mode}_{self.category}_{os.path.basename(self.path)[-15:]}"
+        if target is not None and path:
+            name = f"{target[0:7]}_{mode}_{category}_{os.path.basename(path)[-15:]}"
+        elif path:
+            name = f"{mode}_{category}_{os.path.basename(self.path)[-15:]}"
 
-        def_tags = [self.category, self.mode,
-                    f"{self.model_name}",
-                    self.val_metric]
+        def_tags = [category, mode,
+                    f"{model_name}",
+                    val_metric]
 
-        if self.input_features is not None:
-            def_tags += [f"{len(self.input_features)}_inputs"]
+        if input_features is not None:
+            def_tags += [f"{len(input_features)}_inputs"]
 
         def_tags += [f"target_{target}"]
 
         init_config = dict(
-            config=jsonize(self.config),
-            notes=f"{self.mode} with {self.category}",
+            config=jsonize(config),
+            notes=f"{mode} with {category}",
             tags=def_tags,
             name=name
         )
@@ -54,9 +63,9 @@ class WB:
 
         for k in ['training_data', 'validation_data', 'monitor']:
             wandb_config.pop(k, None)
-
+        print('before', wandb_config)
         init_config.update(wandb_config)
-
+        print('here', init_config)
         run = wandb.init(**init_config)
 
         setattr(self, 'wb_run_', run)
@@ -95,6 +104,21 @@ class WB:
             self.wb_run_.log({f"scatter_{prefix}": wandb.plot.scatter(
                 table,
                 "true", "prediction")})
+        return
+
+    def log_loss_curve(self, history, prefix=''):
+        """plots the loss curve on wb."""
+        if history is not None:
+            self.wb_run_.log({"loss": history.history['loss']})
+            if 'val_loss' in history.history:
+                self.wb_run_.log({f"val_loss_{prefix}": history.history['val_loss']})
+        return
+    
+    def on_epoch_end(self, epoch, train_losses, val_losses=None, prefix=''):
+        """logs epoch end results on wb."""
+        self.wb_run_.log(train_losses, step=epoch)
+        if val_losses:
+            self.wb_run_.log(val_losses, step=epoch)
         return
 
     def finish(self):

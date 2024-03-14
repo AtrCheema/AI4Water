@@ -3,13 +3,16 @@ import unittest
 import os
 import sys
 import site
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+dirname = os.path.dirname
+ai4_dir = dirname(dirname(dirname(dirname(os.path.abspath(__file__)))))
 site.addsitedir(ai4_dir)
 
 import torch
 import numpy as np
 import torch.nn as nn
 from torch import sigmoid
+from torch.utils.data import IterableDataset
+
 import matplotlib.pyplot as plt
 
 from ai4water.models._torch import Learner
@@ -55,14 +58,15 @@ def criterion_cross(labels, outputs):
     return out
 
 
-def make_learner(epochs=501, use_cuda=False, in_features=1):
+def make_learner(epochs=501, use_cuda=False, in_features=1, **kwargs):
     model = Net(in_features, 2, 1)
     learner = Learner(model=model,
                       num_epochs=epochs,
                       patience=50,
                       batch_size=1,
                       shuffle=False,
-                      use_cuda=use_cuda
+                      use_cuda=use_cuda,
+                    **kwargs
                       )
 
     learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
@@ -75,6 +79,24 @@ def get_xy(in_features=1):
     Y = torch.zeros(X.shape[0])
     Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
     return X, Y
+
+
+class IterDataset(IterableDataset):
+    def __init__(self, generator, **kwargs):
+        self.generator = generator
+        self.kwargs = kwargs
+
+    def __iter__(self):
+        return self.generator(**self.kwargs)
+
+
+def get_iterdataset(in_features=1):
+    def generator():
+        for i in range(10):
+            yield np.random.random((1, in_features)), np.random.random((1, 1))
+
+    ds = IterDataset(generator)
+    return torch.utils.data.DataLoader(ds, batch_size=1, shuffle=False)
 
 
 class TestLearner(unittest.TestCase):
@@ -96,9 +118,27 @@ class TestLearner(unittest.TestCase):
         return
 
     def test_multi_ins(self):
-        learner = make_learner(in_features=14)
+        learner = make_learner(in_features=14, epochs=4)
         X, Y = get_xy(in_features=14)
         learner.fit(x=X, y=Y)
+        return
+    
+    def test_IterDataset(self):
+        learner = make_learner(in_features=2, epochs=4)
+        ds = get_iterdataset(in_features=2)
+        h = learner.fit(ds)
+        return
+    
+    def test_wandb(self):
+        try:
+            import wandb
+        except ImportError:
+            return
+        learner = make_learner(in_features=2, epochs=4,
+                               verbosity=0,
+                               wandb_config=dict(project='test', entity='ai4water'))
+        X, Y = get_xy(in_features=2)
+        h = learner.fit(x=X, y=Y)
         return
 
     # def test_use_cuda(self):
