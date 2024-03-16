@@ -129,6 +129,12 @@ class TestLearner(unittest.TestCase):
         h = learner.fit(ds)
         return
     
+    def test_IterDataset_for_val(self):
+        learner = make_learner(in_features=2, epochs=4)
+        ds = get_iterdataset(in_features=2)
+        h = learner.fit(ds, validation_data=ds)
+        return
+
     def test_wandb(self):
         try:
             import wandb

@@ -25,6 +25,10 @@ class WB:
 
     def init(self):
         """calls wandb.init and creates wb_run_ attribute"""
+
+        assert wandb is not None, """wandb is not installed. 
+        Please install it using pip install wandb"""
+
         target = getattr(self, 'output_features', None)
         category = getattr(self, 'category', None)
         mode = getattr(self, 'mode', None)
@@ -63,9 +67,9 @@ class WB:
 
         for k in ['training_data', 'validation_data', 'monitor']:
             wandb_config.pop(k, None)
-        print('before', wandb_config)
+
         init_config.update(wandb_config)
-        print('here', init_config)
+
         run = wandb.init(**init_config)
 
         setattr(self, 'wb_run_', run)

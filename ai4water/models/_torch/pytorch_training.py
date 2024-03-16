@@ -477,7 +477,7 @@ class Learner(AttributeContainer):
 
         if self.val_loader is not None:
 
-            epoch_losses = {metric: np.full(len(self.val_loader), np.nan) for metric in self.to_monitor}
+            epoch_losses = {metric: [] for metric in self.to_monitor}
 
             for i, (batch_x, batch_y) in enumerate(self.val_loader):
 
@@ -486,11 +486,11 @@ class Learner(AttributeContainer):
                 # calculate metrics for each mini-batch
                 er = TorchMetrics(batch_y, pred_y)
 
-                for k, v in epoch_losses.items():
-                    v[i] = getattr(er, k)().detach().item()
+                for metric in epoch_losses.keys():
+                    epoch_losses[metric].append(getattr(er, metric)().detach().item())
 
             # take the mean for all mini-batches
-            self.val_epoch_losses = {f'val_{k}': round(float(np.mean(v)), 4) for k, v in epoch_losses.items()}
+            self.val_epoch_losses = {f'val_{k}': round(float(np.nanmean(v)), 4) for k, v in epoch_losses.items()}
 
             for k, v in self.val_epoch_losses.items():
                 metric = k.split('_')[1]
