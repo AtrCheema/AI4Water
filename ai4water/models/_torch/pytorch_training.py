@@ -1,11 +1,13 @@
 
+import gc
+import time
 from typing import Union, Tuple, List
 
-import gc
 from SeqMetrics import RegressionMetrics
 
-from ai4water.postprocessing import ProcessPredictions
 from ai4water.backend import os, np, torch, pd
+from ai4water.postprocessing import ProcessPredictions
+from ai4water.utils.utils import dateandtime_now, find_best_weight
 
 try:
     import wandb
@@ -24,7 +26,6 @@ if torch is not None:
 else:
     LOSSES = {}
 
-from ai4water.utils.utils import dateandtime_now, find_best_weight
 
 F = {
     'mse': [np.nanmin, np.less],
@@ -117,7 +118,7 @@ class Learner(AttributeContainer):
             num_epochs: int = 14,
             patience: int = 100,
             shuffle: bool = True,
-            to_monitor: list = None,
+            to_monitor: List[str] = None,
             use_cuda:bool = False,
             mode: str = 'regression',
             path: str = None,
@@ -145,10 +146,14 @@ class Learner(AttributeContainer):
                 mode of the model. It can be one of following
                     - 'regression'
                     - 'classification'
-            to_monitor : list of metrics to monitor
+            to_monitor : List[str]
+                list of metrics to monitor
             path : path to save results/weights
             wandb_config : config for wandb
             verbosity : int
+                - 0 means nothing will be printed, 
+                - 1 means metrics' values after each epoch will be printed.
+                - 2 means loss values after each batch will be printed.
 
         Example
         -------
@@ -202,6 +207,8 @@ class Learner(AttributeContainer):
         self.mode = mode
         self.wandb_config = wandb_config
         self.use_wb = self._use_wb()
+
+        self.start_time = time.time()
 
     def _use_wb(self):
         return self.wandb_config is not None and wandb is not None
@@ -452,7 +459,7 @@ class Learner(AttributeContainer):
 
             batch_loss += loss.detach().item()
 
-            if self.verbosity>0:
+            if self.verbosity>1:
                 print(f"\rEpoch: {self.epoch}, batch: {i}, loss: {round(batch_loss/(i+1),3)}", end='', flush=True)
 
             self.optimizer.step()
@@ -468,8 +475,6 @@ class Learner(AttributeContainer):
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(np.array(v)[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
-        if self.use_cuda:
-            torch.cuda.empty_cache()
         return
 
     def validate_for_epoch(self):
@@ -479,7 +484,7 @@ class Learner(AttributeContainer):
 
             epoch_losses = {metric: [] for metric in self.to_monitor}
 
-            for i, (batch_x, batch_y) in enumerate(self.val_loader):
+            for _, (batch_x, batch_y) in enumerate(self.val_loader):
 
                 batch_y, pred_y = self.eval(batch_x, batch_y)
 
@@ -651,6 +656,8 @@ class Learner(AttributeContainer):
                     break
 
         if self.verbosity > 0:
+            if self.verbosity > 1:
+                print('')  # 
             print(formatter.format(self.epoch, *self.train_epoch_losses.values(), *self.val_epoch_losses.values()))
 
         for cb in self.cbs:
@@ -665,7 +672,8 @@ class Learner(AttributeContainer):
 
         if self.use_wb:
             self.wb_run_.on_epoch_end(self.epoch, self.train_epoch_losses, self.val_epoch_losses)
-
+        if self.use_cuda:
+            torch.cuda.empty_cache()
         return
 
     def _get_loader(self, x, y=None, batch_size=None, shuffle=True):
