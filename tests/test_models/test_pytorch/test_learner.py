@@ -144,7 +144,16 @@ class TestLearner(unittest.TestCase):
                                verbosity=0,
                                wandb_config=dict(project='test', entity='ai4water'))
         X, Y = get_xy(in_features=2)
-        h = learner.fit(x=X, y=Y)
+        _ = learner.fit(x=X, y=Y)
+        return
+    
+    def test_max_time(self):
+        learner = make_learner(in_features=2, epochs=50, 
+                               max_time=0.00058 # roughly 2 seconds
+                               )
+        X, Y = get_xy(in_features=2)
+        _ = learner.fit(x=X, y=Y)
+        learner.stopped_early_ == 2
         return
 
     # def test_use_cuda(self):

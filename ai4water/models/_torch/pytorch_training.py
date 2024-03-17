@@ -123,6 +123,7 @@ class Learner(AttributeContainer):
             mode: str = 'regression',
             path: str = None,
             wandb_config:dict = None,
+            max_time: int = 100,
             verbosity=1,
             **kwargs
     ):
@@ -130,13 +131,10 @@ class Learner(AttributeContainer):
         Initializes the Learner class
 
         Arguments:
-            model : a pytorch model having following attributes and methods
-
-                - num_outs
-                - w_path
-                - `loss`
-                - `get_optimizer`
-            batch_size : batch size
+            model : torch.nn.Module
+                a pytorch model
+            batch_size : int
+                batch size
             num_epochs : Number of epochs for which to train the model
             patience : how many epochs to wait before stopping the training in
                 case `to_monitor` does not improve.
@@ -148,8 +146,15 @@ class Learner(AttributeContainer):
                     - 'classification'
             to_monitor : List[str]
                 list of metrics to monitor
-            path : path to save results/weights
-            wandb_config : config for wandb
+            wandb_config : dict
+                config for wandb
+            max_time : int
+                maximum time in hours for which to train the model. The training loop
+                will stop after this time.
+                This is useful when training on cloud and you want to stop the training
+                after certain time.
+            path : 
+                path to save results/weights
             verbosity : int
                 - 0 means nothing will be printed, 
                 - 1 means metrics' values after each epoch will be printed.
@@ -208,6 +213,7 @@ class Learner(AttributeContainer):
         self.wandb_config = wandb_config
         self.use_wb = self._use_wb()
 
+        self.max_time = max_time
         self.start_time = time.time()
 
     def _use_wb(self):
@@ -270,6 +276,14 @@ class Learner(AttributeContainer):
             if epoch - self.best_epoch > self.patience:
                 if self.verbosity > 0:
                     print(f"Stopping early because improvment in loss did not happen since {self.best_epoch}th epoch")
+                self.stopped_early_ = 1
+                break
+            
+            time_in_hours = (time.time() - self.start_time) / 3600
+            if time_in_hours > self.max_time:
+                if self.verbosity > 0:
+                    print(f"Stopping early because max_time of {self.max_time} hours is reached")
+                self.stopped_early_ = 2
                 break
 
         return self.on_train_end()
