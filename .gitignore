@@ -17,6 +17,7 @@ __pycache__/
 .vscode/
 .eggs/
 AI4Water.egg-info/
+wandb/
 
 # private stuff
 results/
