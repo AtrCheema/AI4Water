@@ -14,10 +14,16 @@ class WB:
     def __init__(
             self,
             model,
-            config:dict
+            config:dict,
+            log_loss: bool = True,
+            log_predictions: bool = True,
+            log_model: bool = True,
     ):
         self.wandb_config = config.copy()
         self.model = model
+        self.log_loss = log_loss
+        self.log_predictions = log_predictions
+        self.log_model = log_model
         self.init()
 
     def __getattr__(self, item):
@@ -29,13 +35,13 @@ class WB:
         assert wandb is not None, """wandb is not installed. 
         Please install it using pip install wandb"""
 
-        target = getattr(self, 'output_features', None)
-        category = getattr(self, 'category', None)
-        mode = getattr(self, 'mode', None)
-        path = getattr(self, 'path', None)
-        model_name = getattr(self, 'model_name', None)
-        val_metric = getattr(self, 'val_metric', None)
-        input_features = getattr(self, 'input_features', None)
+        target = getattr(self, 'output_features', 'None')
+        category = getattr(self, 'category', 'None')
+        mode = getattr(self, 'mode', 'None')
+        path = getattr(self, 'path', 'None')
+        model_name = getattr(self, 'model_name', 'None')
+        val_metric = getattr(self, 'val_metric', 'None')
+        input_features = getattr(self, 'input_features', 'None')
         config = getattr(self, 'config', {})
         name = None
 
@@ -110,12 +116,19 @@ class WB:
                 "true", "prediction")})
         return
 
-    def log_loss_curve(self, history, prefix=''):
+    def log_loss_curve(
+            self, 
+            history:dict, 
+            prefix=''
+            ):
         """plots the loss curve on wb."""
         if history is not None:
-            self.wb_run_.log({"loss": history.history['loss']})
-            if 'val_loss' in history.history:
-                self.wb_run_.log({f"val_loss_{prefix}": history.history['val_loss']})
+            for k, v in history.items():
+                
+                # check if all values are not nan
+                if np.all(np.isnan(v)):
+                    self.wb_run_.log({f"{k}_{prefix}": v})
+
         return
     
     def on_epoch_end(self, epoch, train_losses, val_losses=None, prefix=''):
