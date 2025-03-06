@@ -1,5 +1,7 @@
 
 import os
+import math
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -83,7 +85,11 @@ class WB:
 
     def callbacks_tf(self, callbacks, train_data, validation_data):
         """makes callbacks for WB"""
-        from wandb.keras import WandbCallback
+        # for some versions importing WandbCallback directly from wandb.keras is not working
+        try:
+            from wandb.keras import WandbCallback
+        except ModuleNotFoundError:
+            from wandb.integration.keras import WandbCallback
 
         if callbacks is None:
             callbacks = {}
@@ -118,7 +124,7 @@ class WB:
 
     def log_loss_curve(
             self, 
-            history:dict, 
+            history:Dict[str, List[float]], 
             prefix=''
             ):
         """plots the loss curve on wb."""
@@ -130,7 +136,13 @@ class WB:
                     try:
                         self.wb_run_.log({f"{k}_{prefix}": v})
                     except Exception as e:
-                        print(f"Error in logging {k} on wb. Error: {e}")
+                        # remove nans from v which is a numpy array
+                        v = v[~np.isnan(v)]
+                        try:
+                            self.wb_run_.log({f"{k}_{prefix}": v})
+                            print(f"Logging {k} after removing nans on wb.")
+                        except Exception as e:
+                            print(f"Error in logging {k} on wb. Error: {e}")
 
         return
     

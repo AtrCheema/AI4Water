@@ -607,8 +607,8 @@ class Learner(AttributeContainer):
             iconfig = dict(
                 name=os.path.basename(self.path),
                 project=self.wandb_config.get('probject', 'test_project'),
-                notes='This is Learner from AI4Water test run',
-                tags=['ai4water', 'pytorch'],
+                notes='This is Learner from AI4Water',
+                tags=['ai4water', 'pytorch', 'learner'],
                 )
             
             iconfig.update(self.wandb_config)
