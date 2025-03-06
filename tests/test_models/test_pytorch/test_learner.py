@@ -162,6 +162,11 @@ class TestLearner(unittest.TestCase):
         _ = learner.fit(x=X, y=Y)        
         return
 
+    def test_w_path(self):
+        learner = make_learner(in_features=2, epochs=2,)
+        assert os.path.exists(learner.w_path)
+        return
+
     # def test_use_cuda(self):
     #     import torch
     #     use_cuda = False

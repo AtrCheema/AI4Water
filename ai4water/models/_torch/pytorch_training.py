@@ -28,25 +28,6 @@ for k,v in METRIC_TYPES.items():
         F[k] = [np.nanmin, np.less]
     else:
         raise ValueError(f"unknown metric type {v}")
-# F = {
-#     'mse': [np.nanmin, np.less],
-#     'mae': [np.nanmin, np.less],
-#     'nse': [np.nanmax, np.greater],
-#     'nse_alpha': [np.nanmax, np.greater],
-#     'nse_beta': [np.nanmax, np.greater],
-#     'nse_mod': [np.nanmax, np.greater],
-#     'nse_rel': [np.nanmax, np.greater],
-#     'nse_bound': [np.nanmax, np.greater],
-#     'r2': [np.nanmax, np.greater],
-#     'pbias': [np.nanmin, np.less],
-#     'mape': [np.nanmin, np.less],
-#     'rmse': [np.nanmin, np.less],
-#     'nrmse': [np.nanmin, np.less],
-#     'kge': [np.nanmax, np.greater],
-#     'kge_mod': [np.nanmax, np.greater],
-#     'kge_bound': [np.nanmax, np.greater],
-#     'kge_np': [np.nanmax, np.greater],
-# }
 
 
 class AttributeContainer(object):
@@ -242,6 +223,15 @@ class Learner(AttributeContainer):
 
     def _use_wb(self):
         return self.wandb_config is not None and wandb is not None
+
+    @property
+    def w_path(self)->Union[str, os.PathLike]:
+        weight_path = getattr(self.model, 'w_path', None)
+        if weight_path is None:
+            weight_path = os.path.join(self.path, 'weights')
+            if not os.path.exists(weight_path):
+                os.makedirs(weight_path)
+        return weight_path
 
     def fit(
             self,
@@ -558,7 +548,7 @@ class Learner(AttributeContainer):
 
     def _weight_fname(self, epoch, loss):
 
-        return os.path.join(getattr(self.model, 'w_path', self.path), f"weights_{epoch}_{loss}")
+        return os.path.join(self.w_path, f"weights_{epoch}_{loss}")
 
     def _get_train_val_loaders(self, x, y=None, validation_data=None):
 
@@ -658,15 +648,14 @@ class Learner(AttributeContainer):
             assert os.path.exists(weight_file_path), f"{weight_file_path} does not exist"
             best_weights = os.path.basename(weight_file_path)
         else:
-            w_path = getattr(self.model, 'w_path', self.path)
-            best_weights = find_best_weight(w_path, epoch_identifier=self.best_epoch)
+            best_weights = find_best_weight(self.w_path, epoch_identifier=self.best_epoch)
 
             if best_weights is not None:
 
                 if best_weights.endswith(".hdf5"):  # todo, find_best_weight should not add .hdf5
                     best_weights = best_weights.split(".hdf5")[0]
 
-                weight_file_path = os.path.join(w_path, best_weights)
+                weight_file_path = os.path.join(self.w_path, best_weights)
 
         if best_weights is not None:
             # fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
