@@ -219,7 +219,7 @@ class Learner(AttributeContainer):
         self.max_time = max_time
         self.start_time = time.time()
 
-        self.avg_fn = np.nanmean
+        self.agg_fn = np.nanmean  # method to aggregate across batches for each epoch
 
     def _use_wb(self):
         return self.wandb_config is not None and wandb is not None
@@ -505,7 +505,7 @@ class Learner(AttributeContainer):
                 epoch_losses[loss].append(getattr(er, loss)())
 
         # take the mean/median for all mini-batches without considering infinite values
-        self.train_epoch_losses = {k: round(float(self.avg_fn(np.array(v)[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
+        self.train_epoch_losses = {k: round(float(self.agg_fn(np.array(v)[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
         return
 
@@ -532,12 +532,19 @@ class Learner(AttributeContainer):
                     epoch_losses[metric].append(getattr(er, metric)())
 
             # take the mean for all mini-batches
-            self.val_epoch_losses = {f'val_{k}': round(float(self.avg_fn(v)), 4) for k, v in epoch_losses.items()}
+            self.val_epoch_losses = {f'val_{k}': round(float(self.agg_fn(v)), 4) for k, v in epoch_losses.items()}
 
             for k, v in self.val_epoch_losses.items():
                 metric = k.split('_')[1]
                 f1 = F[metric][0]
                 f2 = F[metric][1]
+
+                # for first epoch, the weights must be saved no matter what
+                # the value of v is w.r.t its previous values!
+                if self.epoch == 0:
+                    torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
+                    self.best_epoch = self.epoch
+                    break
 
                 if f2(v, f1(self.val_metrics[k])):
                     torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
@@ -691,6 +698,13 @@ class Learner(AttributeContainer):
                 f1 = F[k][0]
                 f2 = F[k][1]
 
+                # if it is the first epoch, the weights must be saved no matter what
+                # the value of v is w.r.t its previous values!
+                if self.epoch == 0:
+                    torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
+                    self.best_epoch = self.epoch
+                    break
+
                 if f2(v, f1(self.train_metrics[k])):
                     torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
                     self.best_epoch = self.epoch
@@ -709,6 +723,8 @@ class Learner(AttributeContainer):
                            val_data=self.val_loader
                            )
 
+        # should be done after saving the model because when saving the weights we want to compare the current
+        # metrics' values with the previous values.
         self.update_metrics()
 
         if self.use_wb:

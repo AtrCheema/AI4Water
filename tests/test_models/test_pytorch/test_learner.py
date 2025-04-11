@@ -147,7 +147,7 @@ class TestLearner(unittest.TestCase):
         return
     
     def test_max_time(self):
-        learner = make_learner(in_features=2, epochs=50, 
+        learner = make_learner(in_features=2, epochs=100, 
                                max_time=0.00058 # roughly 2 seconds
                                )
         X, Y = get_xy(in_features=2)
@@ -165,6 +165,39 @@ class TestLearner(unittest.TestCase):
     def test_w_path(self):
         learner = make_learner(in_features=2, epochs=2,)
         assert os.path.exists(learner.w_path)
+        return
+
+    def test_train_for_single_epoch(self):
+        # weights should be saved when when model is trained even for single epoch
+        learner = make_learner(in_features=2, epochs=1,)
+        X, Y = get_xy(in_features=2)
+        learner.fit(x=X, y=Y)
+        assert len(os.listdir(learner.w_path)) > 0
+        return
+
+    def train_for_two_epochs(self):
+        # two weights should be saved when when model is trained for two epochs
+        # this can not always be true if metrics in second epoch is not better
+        # than metrics in first epoch, however, here it should be true!
+        learner = make_learner(in_features=2, epochs=2,)
+        X, Y = get_xy(in_features=2)
+        learner.fit(x=X, y=Y)
+        assert len(os.listdir(learner.w_path)) > 1
+        return
+
+    def test_train_for_single_epoch_with_val_data(self):
+        # weights should be saved when when model is trained even for single epoch
+        learner = make_learner(in_features=2, epochs=1,)
+        X, Y = get_xy(in_features=2)
+        learner.fit(x=X, y=Y, validation_data=(X, Y))
+        assert len(os.listdir(learner.w_path)) > 0
+        return
+
+    def train_for_two_epochs_with_val_data(self):
+        learner = make_learner(in_features=2, epochs=2)
+        X, Y = get_xy(in_features=2)
+        learner.fit(x=X, y=Y, validation_data=(X, Y))
+        assert len(os.listdir(learner.w_path)) > 1
         return
 
     # def test_use_cuda(self):
