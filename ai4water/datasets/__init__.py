@@ -1,7 +1,8 @@
 
 import warnings
-warnings.warn("""datasets module is deprecated. Please install water-datasets and import
-              corresponding dataset from there.""", UserWarning)
+warnings.warn("""datasets module is deprecated. Please install aqua-fetch using
+              pip install aqua-fetch
+              and import corresponding dataset from there.""", UserWarning)
 
 
 from typing import Union

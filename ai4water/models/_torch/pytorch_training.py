@@ -20,6 +20,7 @@ from .pytorch_attributes import LOSSES, OPTIMIZERS
 from SeqMetrics.utils import METRIC_TYPES
 
 
+METRIC_TYPES.update({'loss': 'min'})
 F = {}
 for k,v in METRIC_TYPES.items():
     if v == "max":
@@ -501,8 +502,11 @@ class Learner(AttributeContainer):
             # calculate metrics for each mini-batch
             er = RegressionMetrics(batch_y.detach().cpu().numpy(), pred_y.detach().cpu().numpy())
 
-            for loss in epoch_losses.keys():
-                epoch_losses[loss].append(getattr(er, loss)())
+            for metric in epoch_losses.keys():
+                if metric == 'loss':
+                    epoch_losses[metric].append(float(loss.detach().item()))
+                else:
+                    epoch_losses[metric].append(getattr(er, metric)())
 
         # take the mean/median for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(self.agg_fn(np.array(v)[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
@@ -528,8 +532,12 @@ class Learner(AttributeContainer):
                 # calculate metrics for each mini-batch  # todo : is detach.numpy expensive?
                 er = RegressionMetrics(batch_y.detach().cpu().numpy(), pred_y.detach().cpu().numpy())
 
-                for metric in epoch_losses.keys():
-                    epoch_losses[metric].append(getattr(er, metric)())
+                for metric in epoch_losses.keys(): ###
+                    if metric == 'loss':
+                        val_loss = self.criterion(batch_y, pred_y)
+                        epoch_losses[metric].append(val_loss.detach().item())
+                    else:
+                        epoch_losses[metric].append(getattr(er, metric)())
 
             # take the mean for all mini-batches
             self.val_epoch_losses = {f'val_{k}': round(float(self.agg_fn(v)), 4) for k, v in epoch_losses.items()}
@@ -583,7 +591,7 @@ class Learner(AttributeContainer):
 
             print("{}".format('*' * 70))
         if hasattr(self.model, 'loss'):
-            self.criterion = self.model.loss()
+            self.criterion = self.model.loss()  # todo : should we initialize the loss or not
         else:
             self.criterion = self.loss
 
@@ -626,9 +634,6 @@ class Learner(AttributeContainer):
     def on_train_end(self):
 
         self.update_weights()
-
-        self.train_metrics['loss'] = self.train_metrics.pop('mse')
-        self.val_metrics['val_loss'] = self.val_metrics.pop('val_mse')
 
         class History(object):
             history = {}
@@ -726,6 +731,9 @@ class Learner(AttributeContainer):
         # should be done after saving the model because when saving the weights we want to compare the current
         # metrics' values with the previous values.
         self.update_metrics()
+
+        if getattr(self, 'scheduler', None) is not None:
+            self.scheduler.step()
 
         if self.use_wb:
             self.wb_run_.on_epoch_end(self.epoch, self.train_epoch_losses, self.val_epoch_losses)
@@ -856,12 +864,12 @@ class Learner(AttributeContainer):
 
 def get_metrics_to_monitor(metrics):
     if metrics is None:
-        _metrics = ['mse']
+        _metrics = ['loss']
     elif isinstance(metrics, list):
 
-        _metrics = ['mse'] + metrics
+        _metrics = ['loss'] + metrics
     else:
         assert isinstance(metrics, str)
-        _metrics = ['mse', metrics]
+        _metrics = ['loss', metrics]
 
     return list(set(_metrics))
