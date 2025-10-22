@@ -16,7 +16,7 @@ try:
 except ModuleNotFoundError:
     to_torch_dataset = None
 
-from .pytorch_attributes import LOSSES, OPTIMIZERS
+from .pytorch_attributes import LOSSES
 from SeqMetrics.utils import METRIC_TYPES
 
 

@@ -12,6 +12,9 @@ import collections.abc as collections_abc
 
 import scipy
 from ai4water.backend import np, pd, plt, os
+
+from numpy.lib.stride_tricks import as_strided
+
 from easy_mpl import imshow, plot
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
@@ -1700,82 +1703,109 @@ def prepare_data(
         else:
             raise TypeError(f"unknown data type for data {data.__class__.__name__}")
 
-    if num_inputs is None and num_outputs is None:
-        raise ValueError("""
-Either of num_inputs or num_outputs must be provided.
-""")
-
-    features = data.shape[1]
-    if num_outputs is None:
-        num_outputs = features - num_inputs
-
-    if num_inputs is None:
-        num_inputs = features - num_outputs
-
-    assert num_inputs + num_outputs == features, f"""
-num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}"""
-
-    if len(data) <= 1:
+    data = np.ascontiguousarray(data)  # ensures predictable strides
+    T, F = data.shape
+    if T <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")
 
+    if num_inputs is None and num_outputs is None:
+        raise ValueError("Either of num_inputs or num_outputs must be provided.")
+
+    if num_outputs is None:
+        num_outputs = F - num_inputs
+    if num_inputs is None:
+        num_inputs = F - num_outputs
+
+    Xsrc = data[:, :num_inputs] if num_inputs > 0 else data[:, :0]
+    Ysrc = data[:, -num_outputs:] if num_outputs > 0 else data[:, :0]
+
+    # exact original semantics
     time_steps = lookback
     if known_future_inputs:
-        lookback = lookback + forecast_len
         assert forecast_len > 1, f"""
             known_futre_inputs should be True only when making predictions at multiple 
             horizons i.e. when forecast length/number of horizons to predict is > 1.
-            known_future_inputs: {known_future_inputs}
-            forecast_len: {forecast_len}"""
+            known_future_inputs: {known_future_inputs} forecast_len: {forecast_len}"""
 
-    examples = len(data)
+        assert output_steps == input_steps == forecast_step, \
+            "different output_steps and input_steps with known_future_inputs are not supported yet"
+        lookback = lookback + forecast_len  # mutate (matches original)
 
-    x = []
-    prev_y = []
-    y = []
+    # number of examples: exactly the original loop's range formula
+    n_examples = T - lookback*input_steps - forecast_step - forecast_len*output_steps + 2
+    if n_examples <= 0:
+        raise ValueError(
+            f"no examples generated from data {data.shape} with lookback {lookback} "
+            f"input_steps {input_steps} forecast_step {forecast_step} forecast_len {forecast_len}"
+        )
 
-    for i in range(examples - lookback * input_steps + 1 - forecast_step - forecast_len + 1):
-        stx, enx = i, i + lookback * input_steps
-        x_example = data[stx:enx:input_steps, 0:features - num_outputs]
+    t_stride, f_stride = data.strides  # bytes per step along time/feature
 
-        st, en = i, i + (lookback - 1) * input_steps
-        y_data = data[st:en:input_steps, features - num_outputs:]
+    # ---------- X (inputs) ----------
+    # windows: start at i (0..n_examples-1), length lookback, with step input_steps
+    if num_inputs > 0:
+        # base pointer is Xsrc; shape (T, num_inputs)
+        # shape: (n_examples, lookback, num_inputs)
+        # strides along: sample -> +1 row; window -> +input_steps rows; feature -> feature stride
+        x = as_strided(
+            Xsrc,
+            shape=(n_examples, lookback, num_inputs),
+            strides=(t_stride, input_steps * t_stride, f_stride),
+            writeable=False
+        )
+    else:
+        x = np.empty((n_examples, lookback, 0), dtype=data.dtype)
 
-        sty = (i + time_steps * input_steps) + forecast_step - input_steps
-        eny = sty + forecast_len
-        target = data[sty:eny, features - num_outputs:]
+    # ---------- prev_y (previous outputs) ----------
+    # original uses *current* (possibly mutated) lookback:
+    # st..en: i .. i + (lookback-1)*input_steps, step input_steps
+    if num_outputs > 0 and (lookback - 1) > 0:
+        prev_len = lookback - 1
+        prev_y = as_strided(
+            Ysrc,
+            shape=(n_examples, prev_len, num_outputs),
+            strides=(t_stride, input_steps * t_stride, f_stride),
+            writeable=False
+        )
+    elif num_outputs > 0:
+        prev_y = np.empty((n_examples, 0, num_outputs), dtype=data.dtype)
+    else:
+        prev_y = np.empty((n_examples, max(lookback - 1, 0), 0), dtype=data.dtype)
 
-        x.append(np.array(x_example))
-        prev_y.append(np.array(y_data))
-        y.append(np.array(target))
+    # ---------- y (targets) ----------
+    # sty = (i + time_steps*input_steps) + forecast_step - input_steps
+    # start_offset is independent of mutated lookback (uses original time_steps)
+    if num_outputs > 0:
+        start_offset = time_steps*input_steps + forecast_step - input_steps
+        # shift Ysrc down by start_offset rows; safety guaranteed by n_examples formula
+        Yshift = Ysrc[start_offset:]
+        # for each example i, the start is Yshift[i]; then take forecast_len with step output_steps
+        y_seq = as_strided(
+            Yshift,
+            shape=(n_examples, forecast_len, num_outputs),
+            strides=(t_stride, output_steps * t_stride, f_stride),
+            writeable=False
+        )
+        # final shape (n_examples, num_outputs, forecast_len) to match your original
+        y = np.transpose(y_seq, (0, 2, 1))
+    else:
+        y = np.empty((n_examples, 0, forecast_len), dtype=data.dtype)
 
-    if len(x)<1:
-        raise ValueError(f"""
-        no examples generated from data of shape {data.shape} with lookback 
-        {lookback} input_steps {input_steps} forecast_step {forecast_step} forecast_len {forecast_len}
-""")
-    x = np.stack(x)
-    prev_y = np.array([np.array(i, dtype=np.float32) for i in prev_y], dtype=np.float32)
-    # transpose because we want labels to be of shape (examples, outs, forecast_len)
-    y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
-
+    # ---------- mask ----------
     if mask is not None:
         if isinstance(mask, np.ndarray):
-            assert mask.ndim == 1
-            assert len(x) == len(mask), f"Number of generated examples are {len(x)} " \
-                                        f"but the length of mask is {len(mask)}"
+            assert mask.ndim == 1 and len(mask) == n_examples, \
+                f"Number of generated examples are {n_examples} but mask length is {len(mask)}"
+            keep = mask.astype(bool)
         elif isinstance(mask, float) and np.isnan(mask):
-            mask = np.invert(np.isnan(y))
-            mask = np.array([all(i.reshape(-1,)) for i in mask])
+            keep = ~np.isnan(y).reshape(n_examples, -1).any(axis=1)
         else:
-            assert isinstance(mask, int), f"""
-                    Invalid mask identifier given of type: {mask.__class__.__name__}"""
-            mask = y != mask
-            mask = np.array([all(i.reshape(-1,)) for i in mask])
+            assert isinstance(mask, int), f"Invalid mask identifier: {type(mask).__name__}"
+            keep = (y != mask).reshape(n_examples, -1).all(axis=1)
+        x = x[keep]; prev_y = prev_y[keep]; y = y[keep]
 
-        x = x[mask]
-        prev_y = prev_y[mask]
-        y = y[mask]
-
+    # Keep dtype; keep views (contiguity not required). If you need contiguous arrays, add
+    # x = np.ascontiguousarray(x); prev_y = np.ascontiguousarray(prev_y); y = np.ascontiguousarray(y)
     return x, prev_y, y
 
 
