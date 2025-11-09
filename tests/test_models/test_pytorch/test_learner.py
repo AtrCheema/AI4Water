@@ -1,7 +1,7 @@
 import unittest
 
 import os
-import sys
+import time
 import site
 dirname = os.path.dirname
 ai4_dir = dirname(dirname(dirname(dirname(os.path.abspath(__file__)))))
@@ -25,14 +25,53 @@ class Net(nn.Module):
         super(Net, self).__init__()
         # hidden layer
         self.linear1 = nn.Linear(D_in, H)
+        self.dropout = nn.Dropout(p=0.5)
         self.linear2 = nn.Linear(H, D_out)
 
     # Prediction
     def forward(self, x):
         l1 = self.linear1(x)
         a1 = sigmoid(l1)
+        a1 = self.dropout(a1)
         yhat = sigmoid(self.linear2(a1))
         return yhat
+
+
+class NetArgs(Net):
+    def forward(self, *args):
+        tensors = []
+        for t in args:
+            tensors.append(t)
+
+        # Ensure all shapes align
+        base = tensors[0]
+        # Sum all (broadcast-safe only if same shape)
+        acc = torch.zeros_like(base)
+        for t in tensors:
+            acc = acc + t
+
+        h = torch.relu(self.linear1(acc))
+        h = self.dropout(h)
+        return torch.sigmoid(self.linear2(h))
+
+
+class Netkwargs(Net):
+    def forward(self, **kwargs):
+        tensors = []
+        for key in kwargs:
+            tensors.append(kwargs[key])
+
+        # Ensure all shapes align
+        base = tensors[0]
+        # Sum all (broadcast-safe only if same shape)
+        acc = torch.zeros_like(base)
+        for t in tensors:
+            acc = acc + t
+
+        h = torch.relu(self.linear1(acc))
+        h = self.dropout(h)
+        return torch.sigmoid(self.linear2(h))
+
 
 def PlotStuff(model, train_data, epoch, **kwargs):
 
@@ -58,8 +97,14 @@ def criterion_cross(labels, outputs):
     return out
 
 
-def make_learner(epochs=501, use_cuda=False, in_features=1, **kwargs):
-    model = Net(in_features, 2, 1)
+def make_learner(epochs=10, use_cuda=False, in_features=1,
+                 net_type='default', **kwargs):
+    if net_type == 'args':
+        model = NetArgs(in_features, 2, 1)
+    elif net_type == 'dict':
+        model = Netkwargs(in_features, 2, 1)
+    else:
+        model = Net(in_features, 2, 1)
     learner = Learner(model=model,
                       num_epochs=epochs,
                       patience=50,
@@ -76,9 +121,38 @@ def make_learner(epochs=501, use_cuda=False, in_features=1, **kwargs):
 
 def get_xy(in_features=1):
     X = torch.arange(0, 40*in_features, 1).view(-1, in_features).type(torch.FloatTensor)
+    # let Y be random 0 and 1
     Y = torch.zeros(X.shape[0])
-    Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+    Y[torch.rand(X.shape[0]) > 0.5] = 1.0
     return X, Y
+
+
+class DatasetArgs(torch.utils.data.Dataset):
+    def __init__(self, in_features=1):
+        self.in_features = in_features
+        self.X = torch.arange(0, 40*in_features, 1).view(-1, in_features).type(torch.FloatTensor)
+        self.Y = torch.zeros(self.X.shape[0])
+        self.Y[(self.X[:, 0] > -4) & (self.X[:, 0] < 4)] = 1.0
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return [self.X[idx], self.X[idx]*0.5], self.Y[idx]
+
+
+class DatasetDict(torch.utils.data.Dataset):
+    def __init__(self, in_features=1):
+        self.in_features = in_features
+        self.X = torch.arange(0, 40*in_features, 1).view(-1, in_features).type(torch.FloatTensor)
+        self.Y = torch.zeros(self.X.shape[0])
+        self.Y[(self.X[:, 0] > -4) & (self.X[:, 0] < 4)] = 1.0
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return {'var1': self.X[idx], 'var2': self.X[idx]*0.5}, self.Y[idx]
 
 
 class IterDataset(IterableDataset):
@@ -102,12 +176,13 @@ def get_iterdataset(in_features=1):
 class TestLearner(unittest.TestCase):
 
     def test_docstring(self):
+        time.sleep(1)  # to ensure different timestamp for weight files
         learner = make_learner()
         X, Y = get_xy()
 
         learner.fit(x=X,
                         y=Y,
-                        callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
+                        callbacks = [{'after_epochs': 3, 'func': PlotStuff}]
                         )
         m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
         assert len(m) == 3
@@ -141,18 +216,19 @@ class TestLearner(unittest.TestCase):
             return
         learner = make_learner(in_features=2, epochs=4,
                                verbosity=0,
-                               wandb_config=dict(project='test', entity='ai4water'))
+                               wandb_config=dict(project='test_ai4water'))
         X, Y = get_xy(in_features=2)
         _ = learner.fit(x=X, y=Y)
         return
     
     def test_max_time(self):
+        time.sleep(1)  # to ensure different timestamp for weight files
         learner = make_learner(in_features=2, epochs=100, 
-                               max_time=0.00058 # roughly 2 seconds
+                               max_time=0.00027 # roughly 1 seconds
                                )
         X, Y = get_xy(in_features=2)
         _ = learner.fit(x=X, y=Y)
-        assert learner.stopped_early_ == 2
+        assert learner.stopped_early_ == 2, learner.stopped_early_
         return
     
     def test_avg_func(self):
@@ -168,6 +244,7 @@ class TestLearner(unittest.TestCase):
         return
 
     def test_train_for_single_epoch(self):
+        time.sleep(1)  # to ensure different timestamp for weight files
         # weights should be saved when when model is trained even for single epoch
         learner = make_learner(in_features=2, epochs=1,)
         X, Y = get_xy(in_features=2)
@@ -185,8 +262,10 @@ class TestLearner(unittest.TestCase):
         assert len(os.listdir(learner.w_path)) > 1
         return
 
-    def test_train_for_single_epoch_with_val_data(self):
+    def test_train_for_single_epoch_with_val_data(self):       
         # weights should be saved when when model is trained even for single epoch
+        # wait for 1 second to ensure different timestamp
+        time.sleep(1)
         learner = make_learner(in_features=2, epochs=1,)
         X, Y = get_xy(in_features=2)
         learner.fit(x=X, y=Y, validation_data=(X, Y))
@@ -200,21 +279,56 @@ class TestLearner(unittest.TestCase):
         assert len(os.listdir(learner.w_path)) > 1
         return
 
-    # def test_use_cuda(self):
-    #     import torch
-    #     use_cuda = False
-    #
-    #     if torch.cuda.is_available():
-    #         use_cuda = True
-    #     learner = make_learner(epochs=5, use_cuda=use_cuda)
-    #
-    #     if torch.cuda.is_available():
-    #         assert next(learner.model.parameters()).is_cuda
-    #
-    #     X, Y = get_xy()
-    #
-    #     learner.fit(x=X, y=Y)
-    #     return
+    def test_use_cuda(self):
+        import torch
+        use_cuda = False
+    
+        if torch.cuda.is_available():
+            use_cuda = True
+            print("CUDA is available. Testing on CUDA device.")
+        learner = make_learner(epochs=2, use_cuda=use_cuda)
+    
+        if torch.cuda.is_available():
+            assert next(learner.model.parameters()).is_cuda
+    
+        X, Y = get_xy()
+    
+        learner.fit(x=X, y=Y)
+        return
+
+    def test_loader_with_list_of_args(self):
+        # test when the loader yields a list of inputs
+
+        learner = make_learner(in_features=3, epochs=2, net_type='args')
+        dataset = DatasetArgs(in_features=3)
+        learner.fit(dataset)
+        p1 = learner.predict(dataset)
+        p2 = learner.predict(dataset)
+        self.assertEqual(p1.shape, p2.shape)
+        self.assertTrue(np.allclose(p1, p2), "Predictions differ on repeated calls with list input.")
+        return
+
+    def test_loader_with_dict(self):
+        # test when the loader yields a dict of inputs
+        learner = make_learner(in_features=3, epochs=2, net_type='dict')
+        dataset = DatasetDict(in_features=3)
+        learner.fit(dataset)
+        p1 = learner.predict(dataset)
+        p2 = learner.predict(dataset)
+        self.assertEqual(p1.shape, p2.shape)
+        self.assertTrue(np.allclose(p1, p2), "Predictions differ on repeated calls with dict input.")
+        return
+
+
+    def test_predict_consistency_after_training_single_tensor(self):
+        learner = make_learner(in_features=3, epochs=2)
+        X, Y = get_xy(in_features=3)
+        learner.fit(x=X, y=Y)
+        p1 = learner.predict(X, y=Y)
+        p2 = learner.predict(X, y=Y)
+        self.assertTrue(np.allclose(p1, p2), "Predictions differ on repeated calls with single tensor.")
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -148,10 +148,10 @@ class Learner(AttributeContainer):
                 SeqMetrics
             wandb_config : dict
                 config for wandb. If given, it must contain at least ``project`` key.
+                The results will be logged to wandb however this requires wandb to be installed.
             max_time : int
                 maximum time in hours for which to train the model. The training loop
-                will stop after this time.
-                This is useful when you want to stop the training
+                will stop after this time. This is useful when you want to stop the training
                 after certain time.
             path : 
                 path to save results/weights
@@ -377,17 +377,22 @@ class Learner(AttributeContainer):
         """
         prepares the loader from x,y and iterate over batches present
         in loader. The results are concatenated as numpy array and returned as tuple
+        
+        This method is only called by `evaluate` and `predict` methods i.e. not
+        during training.
         """
         loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size, shuffle=False)
 
         true, pred = [], []
 
-        for i, (batch_x, batch_y) in enumerate(loader):
+        self.model.eval()
+        with torch.no_grad():
+            for i, (batch_x, batch_y) in enumerate(loader):
 
-            batch_y, pred_y = self.eval(batch_x, batch_y)
+                batch_y, pred_y = self.eval(batch_x, batch_y)
 
-            true.append(batch_y.detach().cpu().numpy())
-            pred.append(pred_y.detach().cpu().numpy())
+                true.append(batch_y.detach().cpu().numpy())
+                pred.append(pred_y.detach().cpu().numpy())
 
         true = np.concatenate(true)
         pred = np.concatenate(pred)
@@ -400,16 +405,41 @@ class Learner(AttributeContainer):
         return true, pred
 
     def eval(self, batch_x, batch_y):
-        """Calls the model with x and y data and returns trues and preds"""
-        batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
+        """Calls the model with x and y data and returns trues and preds.
 
-        batch_x = [tensor.float() for tensor in batch_x]  # todo, do we need it every time?
+        Supports:
+          - batch_x: Tensor | list[Tensor] | tuple[Tensor] | dict[str, Tensor]
+          - Moves tensors to correct device
+          - Casts only floating-point inputs to float32, preserves non-float dtypes
+          - Preserves dtype for batch_y
+        """
+        device = self._device() if self.use_cuda else torch.device("cpu")
 
-        if self.use_cuda:
-            batch_x = [tensor.cuda() for tensor in batch_x]
-            batch_y = batch_y.cuda()
+        def _to_device_and_cast(obj, cast_inputs=False):
+            # Recursively move to device; cast only floating-point inputs if requested
+            if torch.is_tensor(obj):
+                t = obj.to(device)
+                if cast_inputs and t.is_floating_point():
+                    t = t.float()
+                return t
+            if isinstance(obj, (list, tuple)):
+                items = [_to_device_and_cast(o, cast_inputs) for o in obj]
+                return type(obj)(items) if isinstance(obj, tuple) else items
+            if isinstance(obj, dict):
+                return {k: _to_device_and_cast(v, cast_inputs) for k, v in obj.items()}
+            return obj  # leave non-tensors as-is
 
-        pred_y = self.model(*batch_x)
+        # Inputs: cast floating tensors to float32; Targets: preserve dtype
+        batch_x = _to_device_and_cast(batch_x, cast_inputs=True)
+        batch_y = _to_device_and_cast(batch_y, cast_inputs=False)
+
+        # Dispatch call based on input type
+        if isinstance(batch_x, dict):
+            pred_y = self.model(**batch_x)
+        elif isinstance(batch_x, (list, tuple)):
+            pred_y = self.model(*batch_x)
+        else:
+            pred_y = self.model(batch_x)
 
         del batch_x
 
@@ -671,7 +701,7 @@ class Learner(AttributeContainer):
 
         if best_weights is not None:
             # fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
-            kwargs = {}
+            kwargs = {'weights_only': True}
             if not self.use_cuda:  # if the saved model was trained with cuda but we want to load it on cpu
                 kwargs['map_location'] = torch.device('cpu')            
             self.model.load_state_dict(torch.load(weight_file_path, **kwargs))
